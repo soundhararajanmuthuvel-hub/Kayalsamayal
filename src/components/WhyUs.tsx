@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ShieldCheck, Leaf, FlaskConical, Star, Quote } from "lucide-react";
+import { ShieldCheck, Leaf, FlaskConical, Star } from "lucide-react";
 
 const values = [
   {
@@ -27,30 +27,6 @@ const values = [
     title: "Authentic Coastal Recipes",
     description:
       "Our formulations are rooted in the culinary traditions of Kayalpatnam — not manufactured flavour profiles, but real-kitchen heritage.",
-  },
-];
-
-const testimonials = [
-  {
-    id: "testimonial-1",
-    text: "[ Customer review coming soon — this space is reserved for a real testimonial. ]",
-    author: "— Your Name Here",
-    location: "City, Tamil Nadu",
-    isPlaceholder: true,
-  },
-  {
-    id: "testimonial-2",
-    text: "[ Customer review coming soon — this space is reserved for a real testimonial. ]",
-    author: "— Your Name Here",
-    location: "City, Tamil Nadu",
-    isPlaceholder: true,
-  },
-  {
-    id: "testimonial-3",
-    text: "[ Customer review coming soon — this space is reserved for a real testimonial. ]",
-    author: "— Your Name Here",
-    location: "City, Tamil Nadu",
-    isPlaceholder: true,
   },
 ];
 
@@ -135,59 +111,6 @@ export default function WhyUs() {
               <p className="font-body text-cream-400 text-sm leading-relaxed">
                 {value.description}
               </p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Testimonials */}
-        <div className="text-center mb-8 sm:mb-10">
-          <motion.h3
-            className="font-display font-bold text-cream-100 text-xl sm:text-2xl mb-2"
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            What Our Customers Say
-          </motion.h3>
-          <p className="font-body text-cream-400 text-sm italic">
-            ← Real reviews will be added here once collected →
-          </p>
-        </div>
-
-        {/* Testimonials grid — 1 col mobile, 3 col md+ */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {testimonials.map((t, i) => (
-            <motion.div
-              key={t.id}
-              custom={i}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeUp}
-              className={`relative bg-white/5 border rounded-2xl p-5 sm:p-6 flex flex-col gap-3 sm:gap-4 ${
-                t.isPlaceholder
-                  ? "border-dashed border-white/20 opacity-60"
-                  : "border-white/10"
-              }`}
-            >
-              {t.isPlaceholder && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-espresso-900 border border-gold-600/30 rounded-full px-3 py-0.5">
-                  <span className="font-body text-[0.6rem] text-gold-500 tracking-widest uppercase">
-                    Coming Soon
-                  </span>
-                </div>
-              )}
-              <Quote size={18} className="text-gold-600 opacity-60 shrink-0" />
-              <p className="font-body text-cream-300 text-sm leading-relaxed italic flex-1">
-                {t.text}
-              </p>
-              <div>
-                <p className="font-display text-cream-100 font-semibold text-sm">
-                  {t.author}
-                </p>
-                <p className="font-body text-cream-500 text-xs">{t.location}</p>
-              </div>
             </motion.div>
           ))}
         </div>
