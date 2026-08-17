@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Anchor, Leaf, FlaskConical, Heart } from "lucide-react";
 
@@ -40,6 +41,24 @@ const fadeUp = {
 };
 
 export default function Story() {
+  const [activePillar, setActivePillar] = useState(0);
+
+  // Swipe handlers for mobile carousel
+  const swipeStart = useRef(0);
+  const onPointerDown = (e: React.PointerEvent) => {
+    swipeStart.current = e.clientX;
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const diff = swipeStart.current - e.clientX;
+    if (diff > 50) {
+      // Swipe Left -> Next
+      setActivePillar((p) => (p + 1) % pillars.length);
+    } else if (diff < -50) {
+      // Swipe Right -> Prev
+      setActivePillar((p) => (p - 1 + pillars.length) % pillars.length);
+    }
+  };
+
   return (
     <section id="story" className="relative texture-paper py-16 sm:py-24 lg:py-32 overflow-hidden">
       {/* Decorative jute-grid overlay on right — hidden on mobile to avoid layout issues */}
@@ -163,8 +182,8 @@ export default function Story() {
           </motion.div>
         </div>
 
-        {/* Trust Pillars Grid — 1 col mobile, 2 col tablet, 4 col desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* Desktop/Tablet view: Grid layout */}
+        <div className="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {pillars.map((pillar, i) => (
             <motion.div
               key={pillar.title}
@@ -186,6 +205,52 @@ export default function Story() {
               </p>
             </motion.div>
           ))}
+        </div>
+
+        {/* Mobile view: 1-by-1 swipe carousel */}
+        <div className="sm:hidden flex flex-col items-center px-2">
+          <div
+            className="w-full"
+            onPointerDown={onPointerDown}
+            onPointerUp={onPointerUp}
+            style={{ touchAction: "pan-y" }}
+          >
+            <motion.div
+              key={activePillar}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-cream-300 shadow-md text-center flex flex-col items-center min-h-[190px]"
+            >
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gold-600/10 mb-4">
+                {(() => {
+                  const Icon = pillars[activePillar].icon;
+                  return <Icon size={22} className="text-gold-600" />;
+                })()}
+              </div>
+              <h3 className="font-display font-bold text-espresso-900 text-base mb-2">
+                {pillars[activePillar].title}
+              </h3>
+              <p className="font-body text-espresso-800 text-sm leading-relaxed">
+                {pillars[activePillar].description}
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Dots Indicator */}
+          <div className="flex gap-2 mt-4 justify-center">
+            {pillars.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActivePillar(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  i === activePillar ? "bg-gold-600 scale-125" : "bg-cream-300"
+                }`}
+                aria-label={`Go to pillar ${i + 1}`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>
