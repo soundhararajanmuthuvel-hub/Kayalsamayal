@@ -192,12 +192,12 @@ export default function Footer() {
 
         {/* Bottom bar — stacks on mobile */}
         <div className="border-t border-white/8 pt-5 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 text-center sm:text-left">
-          <p className="font-body text-cream-500 text-xs">
+          <p className="font-body text-cream-300 text-xs">
             © 2026, Kayal Samayal. All rights reserved.
           </p>
-          <p className="font-body text-cream-500 text-xs">
+          <p className="font-body text-cream-300 text-xs">
             Powered by{" "}
-            <span className="text-gold-500 font-semibold">MSR Techlogies</span>
+            <span className="text-gold-400 font-semibold">MSR Techlogies</span>
           </p>
         </div>
       </div>
