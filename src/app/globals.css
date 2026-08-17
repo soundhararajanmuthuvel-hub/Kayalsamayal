@@ -1,0 +1,415 @@
+@import "tailwindcss";
+
+/* ── Brand Design Tokens ──────────────────────────────────────────────── */
+:root {
+  /* Warm Cream Palette */
+  --cream-50: #fffdf9;
+  --cream-100: #faf6f0;
+  --cream-200: #f5efe6;
+  --cream-300: #ede2d0;
+  --cream-400: #ddd0b8;
+
+  /* Turmeric / Saffron Gold */
+  --gold-400: #f4a261;
+  --gold-500: #e08e00;
+  --gold-600: #d48806;
+  --gold-700: #b87200;
+
+  /* Terracotta / Rust Red */
+  --rust-400: #d45f42;
+  --rust-500: #b83a1b;
+  --rust-600: #9e2a2b;
+  --rust-700: #802318;
+
+  /* Espresso / Charcoal */
+  --espresso-50: #fdf8f5;
+  --espresso-800: #2c221e;
+  --espresso-900: #1a1615;
+  --espresso-950: #120e0d;
+
+  /* Typography */
+  --font-display: var(--font-playfair), Georgia, serif;
+  --font-body: var(--font-jakarta), system-ui, sans-serif;
+}
+
+/* ── Tailwind v4 Theme Extension ─────────────────────────────────────── */
+@theme inline {
+  --color-cream-50: var(--cream-50);
+  --color-cream-100: var(--cream-100);
+  --color-cream-200: var(--cream-200);
+  --color-cream-300: var(--cream-300);
+  --color-cream-400: var(--cream-400);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+  --color-rust-400: var(--rust-400);
+  --color-rust-500: var(--rust-500);
+  --color-rust-600: var(--rust-600);
+  --color-rust-700: var(--rust-700);
+  --color-espresso-50: var(--espresso-50);
+  --color-espresso-800: var(--espresso-800);
+  --color-espresso-900: var(--espresso-900);
+  --color-espresso-950: var(--espresso-950);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+/* ── Base Resets ─────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--cream-100);
+  color: var(--espresso-900);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Custom Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--cream-200);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gold-600);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rust-500);
+}
+
+/* ── Background Textures ─────────────────────────────────────────────── */
+.texture-paper {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, var(--cream-100) 0%, var(--cream-200) 50%, var(--cream-100) 100%);
+}
+
+.texture-dark {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E"),
+    linear-gradient(135deg, var(--espresso-950) 0%, var(--espresso-900) 50%, var(--espresso-800) 100%);
+}
+
+.texture-jute {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(180, 140, 80, 0.04) 2px,
+      rgba(180, 140, 80, 0.04) 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(180, 140, 80, 0.04) 2px,
+      rgba(180, 140, 80, 0.04) 4px
+    ),
+    var(--cream-200);
+}
+
+/* ── Typography Utilities ─────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* ── Gold Foil / Shimmer Effect ──────────────────────────────────────── */
+.gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--gold-700) 0%,
+    var(--gold-400) 40%,
+    #fcd97e 60%,
+    var(--gold-600) 80%,
+    var(--gold-700) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ── Spice Gradient Backgrounds ───────────────────────────────────────── */
+.bg-spice-gradient {
+  background: linear-gradient(
+    135deg,
+    #3d1a0a 0%,
+    #5c2a10 20%,
+    #8b3a1b 40%,
+    #b05020 60%,
+    #7a3015 80%,
+    #2c1005 100%
+  );
+}
+
+.bg-gold-gradient {
+  background: linear-gradient(135deg, var(--gold-600) 0%, var(--gold-400) 50%, var(--gold-600) 100%);
+}
+
+/* ── Premium Badge ─────────────────────────────────────────────────────── */
+.badge-premium {
+  background: linear-gradient(135deg, #d4a017 0%, #f5cb5c 50%, #c8920a 100%);
+  color: var(--espresso-950);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(180, 120, 0, 0.5);
+}
+
+.badge-regular {
+  background: var(--cream-300);
+  color: var(--espresso-800);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+}
+
+/* ── Premium Ribbon ────────────────────────────────────────────────────── */
+.ribbon {
+  position: absolute;
+  top: 12px;
+  right: -4px;
+  background: linear-gradient(135deg, #c8920a 0%, #f5cb5c 50%, #d4a017 100%);
+  color: var(--espresso-950);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  box-shadow: 0 2px 8px rgba(180, 120, 0, 0.4);
+  z-index: 10;
+}
+.ribbon::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  right: 0;
+  border-left: 4px solid #8b6000;
+  border-bottom: 4px solid transparent;
+}
+
+/* ── Card Hover Effects ────────────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 20px 40px rgba(26, 22, 21, 0.15),
+    0 4px 12px rgba(180, 120, 0, 0.1);
+}
+
+/* ── Button Styles ─────────────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--rust-600) 0%, var(--rust-500) 100%);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  padding: 0.8rem 1.8rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  text-decoration: none;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(158, 42, 43, 0.35);
+  filter: brightness(1.05);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #1a8a3a 0%, #25d366 100%);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+  padding: 0.8rem 1.8rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+}
+.btn-whatsapp:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.35);
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--cream-100);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  padding: 0.75rem 1.75rem;
+  border-radius: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: translateY(-2px);
+}
+
+/* ── Section Dividers ─────────────────────────────────────────────────── */
+.divider-spice {
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--gold-600), transparent);
+  margin: 0 auto;
+}
+
+/* ── Photo Coming Soon placeholder ───────────────────────────────────── */
+.photo-coming-soon {
+  background: linear-gradient(
+    135deg,
+    var(--cream-200) 0%,
+    var(--cream-300) 50%,
+    var(--cream-200) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--espresso-800);
+  opacity: 0.7;
+}
+
+/* ── Section title styles ─────────────────────────────────────────────── */
+.section-eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-600);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--espresso-900);
+}
+
+.section-title-light {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--cream-100);
+}
+
+/* ── Animations ───────────────────────────────────────────────────────── */
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(228, 140, 0, 0.3); }
+  50% { box-shadow: 0 0 0 12px rgba(228, 140, 0, 0); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-float {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+/* ── Nav link underline effect ────────────────────────────────────────── */
+.nav-link {
+  position: relative;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--gold-600);
+  transition: width 0.3s ease;
+}
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* ── Spice dot ornament ────────────────────────────────────────────────── */
+.ornament {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold-600);
+  vertical-align: middle;
+}

@@ -1,0 +1,203 @@
+"use client";
+
+import { MessageCircle, Phone, Mail, MapPin } from "lucide-react";
+
+function InstagramIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+    </svg>
+  );
+}
+
+function FacebookIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    </svg>
+  );
+}
+
+const navLinks = [
+  { label: "Our Story", href: "#story" },
+  { label: "Products", href: "#products" },
+  { label: "Why Us", href: "#why-us" },
+  { label: "Contact", href: "#contact" },
+];
+
+const categories = [
+  "Traditional Masalas",
+  "Podi Products",
+  "Specialty Noodles",
+  "Health Mixes & Malts",
+  "PeruKalam Legiyam",
+];
+
+export default function Footer() {
+  const year = new Date().getFullYear();
+
+  return (
+    <footer className="relative texture-dark border-t border-gold-600/15">
+      {/* Gold top accent */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gold-gradient" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+          {/* Brand Column */}
+          <div className="lg:col-span-1">
+            <div className="flex items-center gap-3 mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/assets/logo.jpg"
+                alt="Kayal Samayal Logo"
+                className="w-12 h-12 rounded-full object-cover shadow-lg ring-2 ring-gold-600/30"
+              />
+              <div>
+                <div className="font-display font-bold text-cream-100 text-lg leading-tight">
+                  Kayal Samayal
+                </div>
+                <div className="font-body text-[0.6rem] tracking-[0.18em] uppercase text-gold-500">
+                  Pure · Traditional · Coastal
+                </div>
+              </div>
+            </div>
+            <p className="font-body text-cream-400 text-sm leading-relaxed mb-5">
+              Authentic South Indian spices, masalas, and health mixes rooted
+              in Kayalpatnam coastal heritage. No shortcuts. Pure flavour.
+            </p>
+            {/* Social Icons */}
+            <div className="flex gap-3">
+              <a
+                id="footer-instagram-link"
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="w-9 h-9 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-gold-400 hover:border-gold-600/30 transition-all"
+              >
+                <InstagramIcon size={16} />
+              </a>
+              <a
+                id="footer-facebook-link"
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="w-9 h-9 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-gold-400 hover:border-gold-600/30 transition-all"
+              >
+                <FacebookIcon size={16} />
+              </a>
+              <a
+                id="footer-whatsapp-link"
+                href="https://wa.me/919003860616"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp"
+                className="w-9 h-9 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-green-400 hover:border-green-500/30 transition-all"
+              >
+                <MessageCircle size={16} />
+              </a>
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h4 className="font-display font-semibold text-cream-100 text-sm mb-5 uppercase tracking-wider">
+              Quick Links
+            </h4>
+            <ul className="space-y-2.5">
+              {navLinks.map((link) => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Product Categories */}
+          <div>
+            <h4 className="font-display font-semibold text-cream-100 text-sm mb-5 uppercase tracking-wider">
+              Our Range
+            </h4>
+            <ul className="space-y-2.5">
+              {categories.map((cat) => (
+                <li key={cat}>
+                  <a
+                    href="#products"
+                    className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors"
+                  >
+                    {cat}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Contact Info */}
+          <div>
+            <h4 className="font-display font-semibold text-cream-100 text-sm mb-5 uppercase tracking-wider">
+              Contact Us
+            </h4>
+            <ul className="space-y-4">
+              <li className="flex items-start gap-3">
+                <Phone size={15} className="text-gold-500 mt-0.5 shrink-0" />
+                <a
+                  href="tel:+919003860616"
+                  className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors"
+                >
+                  (+91) 9003860616
+                </a>
+              </li>
+              <li className="flex items-start gap-3">
+                <Mail size={15} className="text-gold-500 mt-0.5 shrink-0" />
+                <a
+                  href="mailto:kpmsamayal@gmail.com"
+                  className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors break-all"
+                >
+                  kpmsamayal@gmail.com
+                </a>
+              </li>
+              <li className="flex items-start gap-3">
+                <MapPin size={15} className="text-gold-500 mt-0.5 shrink-0" />
+                <span className="font-body text-cream-400 text-sm">
+                  No.504, Housing Board Ph1,
+                  <br />
+                  Tirupattur – 635601, Tamil Nadu
+                </span>
+              </li>
+            </ul>
+
+            {/* WhatsApp CTA */}
+            <a
+              id="footer-order-whatsapp-btn"
+              href="https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%20order."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-whatsapp mt-6 inline-flex text-xs py-2.5 px-4"
+            >
+              <MessageCircle size={14} />
+              Order on WhatsApp
+            </a>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="border-t border-white/8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="font-body text-cream-500 text-xs text-center">
+            © {year} Kayal Samayal. All rights reserved.
+          </p>
+          <p className="font-display italic text-gold-700 text-xs">
+            Pure · Coastal · Heritage
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}
