@@ -41,14 +41,14 @@ function ProductCard({ product }: { product: Product }) {
         </div>
       )}
 
-      {/* Image / Placeholder */}
-      <div className="h-36 sm:h-44 bg-cream-200 relative overflow-hidden rounded-t-xl">
+      {/* Image — 1:1 square, full product visible */}
+      <div className="aspect-square bg-cream-100 relative overflow-hidden rounded-t-xl">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="w-full h-full object-contain p-2 transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
