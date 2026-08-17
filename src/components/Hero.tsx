@@ -26,20 +26,21 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-spice-gradient"
+      className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-spice-gradient"
+      style={{ minHeight: "100dvh" }}
     >
       {/* Animated noise texture overlay */}
       <div
-        className="absolute inset-0 opacity-20"
+        className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
         }}
       />
 
       {/* Radial warmth glow */}
-      <div className="absolute inset-0 bg-radial-[ellipse_at_center] from-[#7a2c10]/40 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-radial-[ellipse_at_center] from-[#7a2c10]/40 via-transparent to-transparent pointer-events-none" />
 
-      {/* Floating spice emojis — desktop only */}
+      {/* Floating spice emojis — desktop only, hidden on mobile to save space */}
       {spiceAccents.map((s) => (
         <motion.div
           key={s.label}
@@ -61,29 +62,29 @@ export default function Hero() {
       {/* Gold top accent line */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-gold-gradient" />
 
-      {/* Main Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-32">
+      {/* Main Content — pt accounts for sticky header (h-16 mobile, h-20 desktop) */}
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-24 pt-28 sm:pt-32 lg:py-32">
         {/* Eyebrow badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2 mb-6"
+          className="inline-flex items-center gap-1.5 sm:gap-2 mb-5 sm:mb-6 flex-wrap justify-center"
         >
-          <Sparkles size={14} className="text-gold-400" />
-          <span className="font-body text-xs font-700 tracking-[0.22em] uppercase text-gold-400">
+          <Sparkles size={13} className="text-gold-400 shrink-0" />
+          <span className="font-body text-[0.65rem] sm:text-xs font-700 tracking-[0.18em] sm:tracking-[0.22em] uppercase text-gold-400 text-center">
             Kayalpatnam Heritage — Est. with Love
           </span>
-          <Sparkles size={14} className="text-gold-400" />
+          <Sparkles size={13} className="text-gold-400 shrink-0" />
         </motion.div>
 
-        {/* Main headline */}
+        {/* Main headline — clamp ensures readable size on 375px */}
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1 }}
-          className="font-display font-black text-cream-50 leading-tight mb-4"
-          style={{ fontSize: "clamp(2.8rem, 7vw, 5.5rem)" }}
+          className="font-display font-black text-cream-50 leading-tight mb-3 sm:mb-4"
+          style={{ fontSize: "clamp(2.2rem, 8vw, 5.5rem)" }}
         >
           Kayal Samayal
         </motion.h1>
@@ -93,8 +94,8 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
-          className="font-display italic font-semibold text-gold-400 mb-6"
-          style={{ fontSize: "clamp(1.3rem, 3.5vw, 2.2rem)" }}
+          className="font-display italic font-semibold text-gold-400 mb-5 sm:mb-6"
+          style={{ fontSize: "clamp(1.1rem, 4vw, 2.2rem)" }}
         >
           <span className="gold-shimmer">Taste the Tradition</span>
         </motion.div>
@@ -104,36 +105,35 @@ export default function Hero() {
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ duration: 0.8, delay: 0.35 }}
-          className="divider-spice mb-8"
+          className="divider-spice mb-6 sm:mb-8"
         />
 
-        {/* Sub-headline */}
+        {/* Sub-headline — 16px minimum to prevent iOS auto-zoom */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.4 }}
-          className="font-body text-cream-300 max-w-2xl mx-auto leading-relaxed mb-10"
-          style={{ fontSize: "clamp(1rem, 2.2vw, 1.2rem)" }}
+          className="font-body text-cream-300 max-w-xl mx-auto leading-relaxed mb-8 sm:mb-10 px-2"
+          style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)" }}
         >
           No shortcuts. No additives.{" "}
           <span className="text-cream-100 font-semibold">
             Just pure, powerful flavours
           </span>{" "}
-          rooted in centuries of coastal South Indian culinary heritage — straight
-          from the heart of Kayalpatnam.
+          rooted in centuries of coastal South Indian culinary heritage.
         </motion.p>
 
-        {/* CTA Buttons */}
+        {/* CTA Buttons — stacked on mobile, side-by-side on sm+ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.55 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-14"
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center mb-10 sm:mb-14 px-4 sm:px-0"
         >
           <a
             id="hero-explore-masalas-btn"
             href="#products"
-            className="btn-primary text-base"
+            className="btn-primary text-base text-center min-h-[48px] flex items-center justify-center"
           >
             Explore Our Masalas
           </a>
@@ -142,27 +142,27 @@ export default function Hero() {
             href={WA_LINK}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-whatsapp text-base"
+            className="btn-whatsapp text-base min-h-[48px] justify-center"
           >
             <MessageCircle size={18} />
             Order on WhatsApp
           </a>
         </motion.div>
 
-        {/* Trust Pillars */}
+        {/* Trust Pillars — 2-col grid on mobile, flex-wrap on larger */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.7 }}
-          className="flex flex-wrap justify-center gap-3 sm:gap-6"
+          className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-2 sm:gap-4 px-2 sm:px-0"
         >
           {trustPillars.map((pillar) => (
             <div
               key={pillar.text}
-              className="flex items-center gap-2 bg-white/8 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 bg-white/8 backdrop-blur-sm border border-white/10 rounded-full px-3 py-2 sm:px-4"
             >
-              <span className="text-base">{pillar.icon}</span>
-              <span className="font-body text-cream-200 text-xs font-medium tracking-wide">
+              <span className="text-sm sm:text-base">{pillar.icon}</span>
+              <span className="font-body text-cream-200 text-[0.65rem] sm:text-xs font-medium tracking-wide">
                 {pillar.text}
               </span>
             </div>
@@ -173,7 +173,7 @@ export default function Hero() {
       {/* Scroll indicator */}
       <motion.a
         href="#story"
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-cream-400 hover:text-gold-400 transition-colors"
+        className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-cream-400 hover:text-gold-400 transition-colors min-h-[44px] justify-center"
         animate={{ y: [0, 6, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
         aria-label="Scroll to Our Story"

@@ -43,16 +43,18 @@ export default function Footer() {
       {/* Gold top accent */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gold-gradient" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-          {/* Brand Column */}
-          <div className="lg:col-span-1">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-6 sm:pb-8">
+        {/* Grid: 1-col mobile → 2-col tablet → 4-col desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 mb-10 sm:mb-12">
+
+          {/* Brand Column — full width on mobile */}
+          <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/assets/logo.jpg"
                 alt="Kayal Samayal Logo"
-                className="w-12 h-12 rounded-full object-cover shadow-lg ring-2 ring-gold-600/30"
+                className="w-12 h-12 rounded-full object-cover shadow-lg ring-2 ring-gold-600/30 shrink-0"
               />
               <div>
                 <div className="font-display font-bold text-cream-100 text-lg leading-tight">
@@ -67,15 +69,15 @@ export default function Footer() {
               Authentic South Indian spices, masalas, and health mixes rooted
               in Kayalpatnam coastal heritage. No shortcuts. Pure flavour.
             </p>
-            {/* Social Icons */}
-            <div className="flex gap-3">
+            {/* Social Icons — 44px tap targets */}
+            <div className="flex gap-2">
               <a
                 id="footer-instagram-link"
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"
-                className="w-9 h-9 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-gold-400 hover:border-gold-600/30 transition-all"
+                className="w-11 h-11 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-gold-400 hover:border-gold-600/30 transition-all"
               >
                 <InstagramIcon size={16} />
               </a>
@@ -85,7 +87,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
-                className="w-9 h-9 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-gold-400 hover:border-gold-600/30 transition-all"
+                className="w-11 h-11 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-gold-400 hover:border-gold-600/30 transition-all"
               >
                 <FacebookIcon size={16} />
               </a>
@@ -95,7 +97,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp"
-                className="w-9 h-9 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-green-400 hover:border-green-500/30 transition-all"
+                className="w-11 h-11 rounded-full bg-white/8 border border-white/10 flex items-center justify-center text-cream-400 hover:text-green-400 hover:border-green-500/30 transition-all"
               >
                 <MessageCircle size={16} />
               </a>
@@ -104,15 +106,15 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-display font-semibold text-cream-100 text-sm mb-5 uppercase tracking-wider">
+            <h4 className="font-display font-semibold text-cream-100 text-sm mb-4 sm:mb-5 uppercase tracking-wider">
               Quick Links
             </h4>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2 sm:space-y-2.5">
               {navLinks.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
-                    className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors"
+                    className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors inline-block py-1"
                   >
                     {link.label}
                   </a>
@@ -123,15 +125,15 @@ export default function Footer() {
 
           {/* Product Categories */}
           <div>
-            <h4 className="font-display font-semibold text-cream-100 text-sm mb-5 uppercase tracking-wider">
+            <h4 className="font-display font-semibold text-cream-100 text-sm mb-4 sm:mb-5 uppercase tracking-wider">
               Our Range
             </h4>
-            <ul className="space-y-2.5">
+            <ul className="space-y-2 sm:space-y-2.5">
               {categories.map((cat) => (
                 <li key={cat}>
                   <a
                     href="#products"
-                    className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors"
+                    className="font-body text-cream-400 text-sm hover:text-gold-400 transition-colors inline-block py-1"
                   >
                     {cat}
                   </a>
@@ -142,10 +144,10 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h4 className="font-display font-semibold text-cream-100 text-sm mb-5 uppercase tracking-wider">
+            <h4 className="font-display font-semibold text-cream-100 text-sm mb-4 sm:mb-5 uppercase tracking-wider">
               Contact Us
             </h4>
-            <ul className="space-y-4">
+            <ul className="space-y-3 sm:space-y-4">
               <li className="flex items-start gap-3">
                 <Phone size={15} className="text-gold-500 mt-0.5 shrink-0" />
                 <a
@@ -165,7 +167,7 @@ export default function Footer() {
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin size={15} className="text-gold-500 mt-0.5 shrink-0" />
+                <MapPin size={15} className="text-gold-500 mt-1 shrink-0" />
                 <span className="font-body text-cream-400 text-sm">
                   No.504, Housing Board Ph1,
                   <br />
@@ -174,13 +176,13 @@ export default function Footer() {
               </li>
             </ul>
 
-            {/* WhatsApp CTA */}
+            {/* WhatsApp CTA — full width on mobile */}
             <a
               id="footer-order-whatsapp-btn"
               href="https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%20order."
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-whatsapp mt-6 inline-flex text-xs py-2.5 px-4"
+              className="btn-whatsapp mt-5 sm:mt-6 w-full sm:w-auto justify-center inline-flex text-xs py-2.5 px-4 min-h-[44px]"
             >
               <MessageCircle size={14} />
               Order on WhatsApp
@@ -188,8 +190,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-white/8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Bottom bar — stacks on mobile */}
+        <div className="border-t border-white/8 pt-5 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3">
           <p className="font-body text-cream-500 text-xs text-center">
             © {year} Kayal Samayal. All rights reserved.
           </p>

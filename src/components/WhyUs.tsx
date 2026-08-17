@@ -65,16 +65,16 @@ const fadeUp = {
 
 export default function WhyUs() {
   return (
-    <section id="why-us" className="relative texture-dark py-24 sm:py-32 overflow-hidden">
+    <section id="why-us" className="relative texture-dark py-16 sm:py-24 lg:py-32 overflow-hidden">
       {/* Gold top border */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gold-gradient" />
 
-      {/* Decorative radial glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gold-600/5 blur-3xl pointer-events-none" />
+      {/* Decorative radial glow — won't cause overflow issues */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(600px,100vw)] h-[min(600px,100vw)] rounded-full bg-gold-600/5 blur-3xl pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-10 sm:mb-16">
           <motion.p
             className="font-body text-xs font-700 tracking-[0.2em] uppercase text-gold-500 mb-3"
             initial={{ opacity: 0, y: 16 }}
@@ -95,14 +95,14 @@ export default function WhyUs() {
             <span className="gold-shimmer">Kayal Samayal</span>
           </motion.h2>
           <motion.div
-            className="divider-spice mb-6"
+            className="divider-spice mb-5 sm:mb-6"
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.2 }}
           />
           <motion.p
-            className="font-body text-cream-300 max-w-xl mx-auto text-base"
+            className="font-body text-cream-300 max-w-xl mx-auto text-base px-2"
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -113,8 +113,8 @@ export default function WhyUs() {
           </motion.p>
         </div>
 
-        {/* Values Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-24">
+        {/* Values Grid — 1 col mobile, 2 col tablet, 4 col desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-16 sm:mb-24">
           {values.map((value, i) => (
             <motion.div
               key={value.title}
@@ -123,13 +123,13 @@ export default function WhyUs() {
               whileInView="visible"
               viewport={{ once: true }}
               variants={fadeUp}
-              className="card-hover relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center group"
+              className="card-hover relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-5 sm:p-6 text-center group"
             >
               {/* Icon ring */}
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-gold-600/30 bg-gold-600/10 mb-5 group-hover:bg-gold-600/20 transition-colors">
-                <value.icon size={24} className="text-gold-400" />
+              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-gold-600/30 bg-gold-600/10 mb-4 sm:mb-5 group-hover:bg-gold-600/20 transition-colors">
+                <value.icon size={22} className="text-gold-400" />
               </div>
-              <h3 className="font-display font-semibold text-cream-100 text-base mb-3">
+              <h3 className="font-display font-semibold text-cream-100 text-sm sm:text-base mb-2 sm:mb-3">
                 {value.title}
               </h3>
               <p className="font-body text-cream-400 text-sm leading-relaxed">
@@ -140,9 +140,9 @@ export default function WhyUs() {
         </div>
 
         {/* Testimonials */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-8 sm:mb-10">
           <motion.h3
-            className="font-display font-bold text-cream-100 text-2xl mb-2"
+            className="font-display font-bold text-cream-100 text-xl sm:text-2xl mb-2"
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -155,7 +155,8 @@ export default function WhyUs() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Testimonials grid — 1 col mobile, 3 col md+ */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {testimonials.map((t, i) => (
             <motion.div
               key={t.id}
@@ -164,7 +165,7 @@ export default function WhyUs() {
               whileInView="visible"
               viewport={{ once: true }}
               variants={fadeUp}
-              className={`relative bg-white/5 border rounded-2xl p-6 flex flex-col gap-4 ${
+              className={`relative bg-white/5 border rounded-2xl p-5 sm:p-6 flex flex-col gap-3 sm:gap-4 ${
                 t.isPlaceholder
                   ? "border-dashed border-white/20 opacity-60"
                   : "border-white/10"
@@ -177,7 +178,7 @@ export default function WhyUs() {
                   </span>
                 </div>
               )}
-              <Quote size={20} className="text-gold-600 opacity-60" />
+              <Quote size={18} className="text-gold-600 opacity-60 shrink-0" />
               <p className="font-body text-cream-300 text-sm leading-relaxed italic flex-1">
                 {t.text}
               </p>

@@ -54,7 +54,6 @@ export default function Contact() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Build WhatsApp message from form
     const msg = `Hi Kayal Samayal!\n\nName: ${form.name}\nPhone: ${form.phone}\n\nMessage: ${form.message}`;
     const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, "_blank", "noopener,noreferrer");
@@ -66,10 +65,10 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="relative texture-paper py-24 sm:py-32">
+    <section id="contact" className="relative texture-paper py-16 sm:py-24 lg:py-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-10 sm:mb-16">
           <motion.p
             className="section-eyebrow mb-3"
             initial={{ opacity: 0, y: 16 }}
@@ -90,7 +89,7 @@ export default function Contact() {
             <span className="gold-shimmer">Connect</span>
           </motion.h2>
           <motion.div
-            className="divider-spice mb-6"
+            className="divider-spice mb-5 sm:mb-6"
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
@@ -100,53 +99,54 @@ export default function Contact() {
 
         {/* WhatsApp CTA Banner */}
         <motion.div
-          className="bg-spice-gradient rounded-2xl p-8 sm:p-10 text-center mb-12 shadow-2xl border border-gold-600/20"
+          className="bg-spice-gradient rounded-2xl p-6 sm:p-8 lg:p-10 text-center mb-10 sm:mb-12 shadow-2xl border border-gold-600/20"
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
         >
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/10 border border-white/20 mb-5">
-            <MessageCircle size={30} className="text-cream-100" />
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 border border-white/20 mb-4 sm:mb-5">
+            <MessageCircle size={26} className="text-cream-100" />
           </div>
-          <h3 className="font-display font-bold text-cream-50 text-2xl sm:text-3xl mb-3">
+          <h3 className="font-display font-bold text-cream-50 text-xl sm:text-2xl lg:text-3xl mb-3">
             Ready to Order?
           </h3>
-          <p className="font-body text-cream-300 text-base max-w-md mx-auto mb-6">
+          <p className="font-body text-cream-300 text-sm sm:text-base max-w-sm mx-auto mb-5 sm:mb-6">
             The fastest way to order is directly on WhatsApp. We respond
             quickly and ship pan-India.
           </p>
+          {/* Full-width on mobile */}
           <a
             id="contact-whatsapp-cta-btn"
             href={WA_LINK}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-whatsapp text-base px-8 py-3.5 inline-flex"
+            className="btn-whatsapp text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-3.5 inline-flex w-full sm:w-auto justify-center min-h-[48px]"
           >
-            <MessageCircle size={20} />
+            <MessageCircle size={18} />
             Chat on WhatsApp — (+91) 9003860616
           </a>
         </motion.div>
 
-        {/* Two-column: Info + Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        {/* Two-column: Info + Form — stacks on mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12">
           {/* Contact Info */}
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
-            className="space-y-6"
+            className="space-y-5 sm:space-y-6"
           >
-            <h3 className="font-display font-semibold text-espresso-900 text-xl mb-6">
+            <h3 className="font-display font-semibold text-espresso-900 text-lg sm:text-xl mb-4 sm:mb-6">
               Our Details
             </h3>
             {contactInfo.map((info) => (
-              <div key={info.label} className="flex items-start gap-4">
+              <div key={info.label} className="flex items-start gap-3 sm:gap-4">
                 <div className="mt-0.5 flex-shrink-0 w-10 h-10 rounded-lg bg-gold-600/10 flex items-center justify-center">
-                  <info.icon size={18} className="text-gold-600" />
+                  <info.icon size={17} className="text-gold-600" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="font-body text-xs text-gold-700 font-semibold tracking-wide uppercase mb-0.5">
                     {info.label}
                   </p>
@@ -155,7 +155,7 @@ export default function Contact() {
                       href={info.href}
                       target={info.href.startsWith("http") ? "_blank" : undefined}
                       rel="noopener noreferrer"
-                      className="font-body text-espresso-900 text-sm hover:text-rust-600 transition-colors"
+                      className="font-body text-espresso-900 text-sm hover:text-rust-600 transition-colors break-words"
                     >
                       {info.value}
                     </a>
@@ -168,14 +168,17 @@ export default function Contact() {
               </div>
             ))}
 
-            {/* Embedded Google Map */}
-            <div className="mt-6 rounded-xl overflow-hidden border border-cream-300 shadow-sm h-56">
+            {/* Google Map — responsive with aspect-ratio */}
+            <div
+              className="mt-5 sm:mt-6 rounded-xl overflow-hidden border border-cream-300 shadow-sm"
+              style={{ aspectRatio: "16/9" }}
+            >
               <iframe
                 title="Tirupattur location"
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15564.8!2d78.9801!3d12.4962!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bac4f08e5b4a5ed%3A0x4a0ec0e31b9a0c8e!2sTirupattur%2C%20Tamil%20Nadu!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
                 width="100%"
                 height="100%"
-                style={{ border: 0 }}
+                style={{ border: 0, display: "block" }}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 allowFullScreen
@@ -190,13 +193,13 @@ export default function Contact() {
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.1 }}
           >
-            <h3 className="font-display font-semibold text-espresso-900 text-xl mb-6">
+            <h3 className="font-display font-semibold text-espresso-900 text-lg sm:text-xl mb-5 sm:mb-6">
               Send Us a Message
             </h3>
             {submitted ? (
-              <div className="flex flex-col items-center justify-center h-64 gap-4 bg-green-50 rounded-xl border border-green-200">
+              <div className="flex flex-col items-center justify-center min-h-[240px] gap-4 bg-green-50 rounded-xl border border-green-200 p-6">
                 <CheckCircle size={40} className="text-green-600" />
-                <p className="font-display text-espresso-900 text-lg font-semibold">
+                <p className="font-display text-espresso-900 text-lg font-semibold text-center">
                   Message sent to WhatsApp!
                 </p>
                 <p className="font-body text-espresso-800 text-sm text-center max-w-xs">
@@ -207,7 +210,7 @@ export default function Contact() {
               <form
                 id="contact-enquiry-form"
                 onSubmit={handleSubmit}
-                className="space-y-5"
+                className="space-y-4 sm:space-y-5"
                 noValidate
               >
                 <div>
@@ -225,7 +228,8 @@ export default function Contact() {
                     value={form.name}
                     onChange={handleChange}
                     placeholder="e.g. Fatima Begum"
-                    className="w-full font-body text-sm bg-white border border-cream-300 rounded-lg px-4 py-3 text-espresso-900 placeholder:text-espresso-800/40 focus:outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/20 transition"
+                    /* min font-size 16px prevents iOS auto-zoom */
+                    className="w-full font-body text-base sm:text-sm bg-white border border-cream-300 rounded-lg px-4 py-3 text-espresso-900 placeholder:text-espresso-800/40 focus:outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/20 transition min-h-[48px]"
                   />
                 </div>
                 <div>
@@ -243,7 +247,7 @@ export default function Contact() {
                     value={form.phone}
                     onChange={handleChange}
                     placeholder="+91 XXXXX XXXXX"
-                    className="w-full font-body text-sm bg-white border border-cream-300 rounded-lg px-4 py-3 text-espresso-900 placeholder:text-espresso-800/40 focus:outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/20 transition"
+                    className="w-full font-body text-base sm:text-sm bg-white border border-cream-300 rounded-lg px-4 py-3 text-espresso-900 placeholder:text-espresso-800/40 focus:outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/20 transition min-h-[48px]"
                   />
                 </div>
                 <div>
@@ -261,18 +265,18 @@ export default function Contact() {
                     value={form.message}
                     onChange={handleChange}
                     placeholder="Tell us what you'd like to order or ask..."
-                    className="w-full font-body text-sm bg-white border border-cream-300 rounded-lg px-4 py-3 text-espresso-900 placeholder:text-espresso-800/40 focus:outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/20 transition resize-none"
+                    className="w-full font-body text-base sm:text-sm bg-white border border-cream-300 rounded-lg px-4 py-3 text-espresso-900 placeholder:text-espresso-800/40 focus:outline-none focus:border-gold-600 focus:ring-2 focus:ring-gold-600/20 transition resize-none"
                   />
                 </div>
                 <button
                   type="submit"
                   id="contact-submit-btn"
-                  className="btn-whatsapp w-full justify-center text-sm py-3.5"
+                  className="btn-whatsapp w-full justify-center text-sm py-3.5 min-h-[48px]"
                 >
                   <Send size={16} />
                   Send via WhatsApp
                 </button>
-                <p className="font-body text-espresso-800 text-[0.7rem] text-center">
+                <p className="font-body text-espresso-800 text-xs text-center">
                   This will open WhatsApp with your message pre-filled.
                 </p>
               </form>

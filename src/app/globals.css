@@ -72,6 +72,28 @@ body {
   color: var(--espresso-900);
   line-height: 1.6;
   overflow-x: hidden;
+  /* Prevent horizontal scroll on all devices */
+  max-width: 100vw;
+}
+
+/* ── Anchor offset for sticky header ─────────────────────────────────── */
+section[id] {
+  scroll-margin-top: 4rem; /* h-16 mobile header */
+}
+
+@media (min-width: 640px) {
+  section[id] {
+    scroll-margin-top: 5rem; /* h-20 desktop header */
+  }
+}
+
+/* ── Hide scrollbar (keep scroll functionality) ───────────────────────── */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Custom Scrollbar ─────────────────────────────────────────────────── */

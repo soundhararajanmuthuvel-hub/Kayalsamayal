@@ -9,8 +9,8 @@ import { products, categories, type Category, type Product } from "@/data/produc
 function PhotoPlaceholder({ name }: { name: string }) {
   return (
     <div className="photo-coming-soon w-full h-full rounded-t-xl">
-      <Camera size={28} className="text-cream-400 opacity-50" />
-      <span className="font-body text-xs text-espresso-800 opacity-60 text-center px-2">
+      <Camera size={24} className="text-cream-400 opacity-50" />
+      <span className="font-body text-xs text-espresso-800 opacity-60 text-center px-2 leading-tight">
         Photo Coming Soon
       </span>
     </div>
@@ -36,19 +36,20 @@ function ProductCard({ product }: { product: Product }) {
     >
       {/* Premium ribbon */}
       {isPremium && (
-        <div className="ribbon">
+        <div className="ribbon text-[0.6rem] sm:text-[0.65rem]">
           ✦ PREMIUM
         </div>
       )}
 
       {/* Image / Placeholder */}
-      <div className="h-44 bg-cream-200 relative overflow-hidden rounded-t-xl">
+      <div className="h-36 sm:h-44 bg-cream-200 relative overflow-hidden rounded-t-xl">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={product.image}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
           />
         ) : (
           <PhotoPlaceholder name={product.name} />
@@ -63,39 +64,39 @@ function ProductCard({ product }: { product: Product }) {
       </div>
 
       {/* Body */}
-      <div className="p-4 flex flex-col flex-1">
+      <div className="p-3 sm:p-4 flex flex-col flex-1">
         {/* Category tag */}
-        <p className="font-body text-[0.6rem] tracking-[0.15em] uppercase text-gold-600 font-700 mb-1">
+        <p className="font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.12em] sm:tracking-[0.15em] uppercase text-gold-600 font-700 mb-1 leading-tight">
           {product.category}
         </p>
 
-        <h3 className="font-display font-semibold text-espresso-900 text-base leading-snug mb-2">
+        <h3 className="font-display font-semibold text-espresso-900 text-sm sm:text-base leading-snug mb-1.5 sm:mb-2">
           {product.name}
         </h3>
 
-        <p className="font-body text-espresso-800 text-xs leading-relaxed flex-1 mb-3 line-clamp-3">
+        <p className="font-body text-espresso-800 text-xs leading-relaxed flex-1 mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-3">
           {product.description}
         </p>
 
-        {/* Highlights */}
-        <ul className="space-y-1 mb-4">
+        {/* Highlights — hidden on very small cards to save space */}
+        <ul className="space-y-0.5 sm:space-y-1 mb-3 sm:mb-4 hidden sm:block">
           {product.highlights.map((h) => (
             <li key={h} className="flex items-center gap-1.5">
-              <CheckCircle size={11} className="text-gold-600 shrink-0" />
-              <span className="font-body text-espresso-800 text-[0.7rem]">{h}</span>
+              <CheckCircle size={10} className="text-gold-600 shrink-0" />
+              <span className="font-body text-espresso-800 text-[0.65rem] sm:text-[0.7rem]">{h}</span>
             </li>
           ))}
         </ul>
 
-        {/* CTA */}
+        {/* CTA — full width, min 44px tall */}
         <a
           id={`product-order-${product.id}`}
           href={product.whatsappMessage}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-whatsapp w-full justify-center text-xs py-2.5"
+          className="btn-whatsapp w-full justify-center text-xs py-2.5 min-h-[44px] mt-auto"
         >
-          <MessageCircle size={14} />
+          <MessageCircle size={13} />
           Order on WhatsApp
         </a>
       </div>
@@ -118,10 +119,10 @@ export default function ProductShowcase() {
       : products.filter((p) => p.category === cat).length;
 
   return (
-    <section id="products" className="relative texture-jute py-24 sm:py-32">
+    <section id="products" className="relative texture-jute py-16 sm:py-24 lg:py-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           <motion.p
             className="section-eyebrow mb-3"
             initial={{ opacity: 0, y: 16 }}
@@ -142,14 +143,14 @@ export default function ProductShowcase() {
             <span className="gold-shimmer">Pure Tradition</span>
           </motion.h2>
           <motion.div
-            className="divider-spice mb-6"
+            className="divider-spice mb-5 sm:mb-6"
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7, delay: 0.2 }}
           />
           <motion.p
-            className="font-body text-espresso-800 max-w-xl mx-auto text-base"
+            className="font-body text-espresso-800 max-w-xl mx-auto text-base px-2"
             initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -160,49 +161,55 @@ export default function ProductShowcase() {
           </motion.p>
         </div>
 
-        {/* Category Filter Bar */}
+        {/* Category Filter Bar — horizontally scrollable on mobile */}
         <motion.div
-          className="flex flex-wrap gap-2 justify-center mb-10"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.35 }}
+          className="mb-8 sm:mb-10"
           role="tablist"
           aria-label="Product categories"
         >
-          {(["All", ...categories] as (Category | "All")[]).map((cat) => (
-            <button
-              key={cat}
-              id={`filter-${cat.replace(/\s+/g, "-").toLowerCase()}`}
-              role="tab"
-              aria-selected={activeCategory === cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`
-                inline-flex items-center gap-1.5 font-body text-sm font-medium px-4 py-2 rounded-full border
-                transition-all duration-250
-                ${
-                  activeCategory === cat
-                    ? "bg-espresso-900 text-cream-100 border-espresso-900 shadow-md"
-                    : "bg-white/80 text-espresso-800 border-cream-300 hover:border-gold-600 hover:text-gold-700"
-                }
-              `}
-            >
-              {cat}
-              <span
-                className={`text-[0.65rem] font-semibold rounded-full px-1.5 py-0.5 ${
-                  activeCategory === cat
-                    ? "bg-white/15 text-cream-200"
-                    : "bg-cream-200 text-espresso-800"
-                }`}
+          <div className="flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:justify-center sm:overflow-x-visible scrollbar-none">
+            {(["All", ...categories] as (Category | "All")[]).map((cat) => (
+              <button
+                key={cat}
+                id={`filter-${cat.replace(/\s+/g, "-").toLowerCase()}`}
+                role="tab"
+                aria-selected={activeCategory === cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`
+                  flex-shrink-0 inline-flex items-center gap-1.5 font-body text-sm font-medium
+                  px-4 py-2.5 rounded-full border min-h-[44px] whitespace-nowrap
+                  transition-all duration-250
+                  ${
+                    activeCategory === cat
+                      ? "bg-espresso-900 text-cream-100 border-espresso-900 shadow-md"
+                      : "bg-white/80 text-espresso-800 border-cream-300 hover:border-gold-600 hover:text-gold-700"
+                  }
+                `}
               >
-                {categoryCount(cat)}
-              </span>
-            </button>
-          ))}
+                {cat}
+                <span
+                  className={`text-[0.65rem] font-semibold rounded-full px-1.5 py-0.5 ${
+                    activeCategory === cat
+                      ? "bg-white/15 text-cream-200"
+                      : "bg-cream-200 text-espresso-800"
+                  }`}
+                >
+                  {categoryCount(cat)}
+                </span>
+              </button>
+            ))}
+          </div>
         </motion.div>
 
-        {/* Product Grid */}
-        <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* Product Grid — 2 col on mobile, 3 col on md, 4 col on xl */}
+        <motion.div
+          layout
+          className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
+        >
           <AnimatePresence mode="popLayout">
             {filtered.map((product) => (
               <ProductCard key={product.id} product={product} />
@@ -219,7 +226,7 @@ export default function ProductShowcase() {
 
         {/* Bottom CTA */}
         <motion.div
-          className="text-center mt-14"
+          className="text-center mt-10 sm:mt-14"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -233,7 +240,7 @@ export default function ProductShowcase() {
             href="https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I%20have%20a%20product%20enquiry."
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-whatsapp inline-flex"
+            className="btn-whatsapp inline-flex min-h-[48px]"
           >
             <MessageCircle size={16} />
             WhatsApp Enquiry
