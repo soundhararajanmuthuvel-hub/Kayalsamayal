@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Quote } from "lucide-react";
-import { testimonials } from "@/data/testimonials";
+import { testimonials as localTestimonials } from "@/data/testimonials";
 import type { Testimonial } from "@/data/testimonials";
+import { getReviews } from "@/lib/api";
 
 /* ── Google G icon ───────────────────────────────────────────────────── */
 function GoogleG() {
@@ -54,6 +55,28 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+/* ── Review Skeleton ────────────────────────────────────────────────── */
+function ReviewSkeleton() {
+  return (
+    <div className="bg-cream-50 rounded-2xl border border-cream-300 p-5 sm:p-6 animate-pulse space-y-4 h-full flex flex-col justify-between">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-cream-200 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 bg-cream-200 rounded w-1/3" />
+            <div className="h-2 bg-cream-200 rounded w-1/4" />
+          </div>
+        </div>
+        <div className="h-3 bg-cream-200 rounded w-1/2" />
+        <div className="space-y-2">
+          <div className="h-3.5 bg-cream-200 rounded w-full" />
+          <div className="h-3.5 bg-cream-200 rounded w-5/6" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Initials avatar ─────────────────────────────────────────────────── */
 const PALETTE: { bg: string; fg: string }[] = [
   { bg: "#B83A1B", fg: "#FFFDF9" },
@@ -63,7 +86,20 @@ const PALETTE: { bg: string; fg: string }[] = [
   { bg: "#6B3A0F", fg: "#FFFDF9" },
 ];
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, avatar }: { name: string; avatar?: string }) {
+  const [imgError, setImgError] = useState(false);
+  
+  if (avatar && !imgError) {
+    return (
+      <img
+        src={avatar}
+        alt={name}
+        className="w-10 h-10 rounded-full object-cover shrink-0 select-none border border-gold-600/20"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
   const initials = name
     .split(/\s+/)
     .map((n) => n[0])
@@ -128,7 +164,7 @@ function ReviewCard({
 
       {/* Reviewer header */}
       <div className="flex items-center gap-3 mb-3">
-        <Avatar name={t.name} />
+        <Avatar name={t.name} avatar={(t as any).avatar} />
         <div className="min-w-0 flex-1">
           <p className="font-display font-semibold text-espresso-900 text-sm leading-tight truncate">
             {t.name}
@@ -177,12 +213,33 @@ function ReviewCard({
 
 /* ── Main section ────────────────────────────────────────────────────── */
 export default function Testimonials() {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
   const prefersReduced = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [itemsPerView, setItemsPerView] = useState(3);
   const [containerWidth, setContainerWidth] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    async function loadReviews() {
+      try {
+        const data = await getReviews();
+        if (data && data.length > 0) {
+          setTestimonials(data);
+        } else {
+          setTestimonials(localTestimonials);
+        }
+      } catch (err) {
+        console.error("Failed to load reviews", err);
+        setTestimonials(localTestimonials);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadReviews();
+  }, []);
   const [hoverPaused, setHoverPaused] = useState(false);
   const [interactionPaused, setInteractionPaused] = useState(false);
 
@@ -371,18 +428,33 @@ export default function Testimonials() {
               animate={{ x: trackX }}
               transition={springTransition}
             >
-              {testimonials.map((t, i) => (
-                <div
-                  key={t.id}
-                  style={{
-                    width: cardWidth > 0 ? cardWidth : undefined,
-                    minWidth: cardWidth > 0 ? cardWidth : `calc((100% - ${GAP * (itemsPerView - 1)}px) / ${itemsPerView})`,
-                    flexShrink: 0,
-                  }}
-                >
-                  <ReviewCard t={t} isCenter={i === centerIndex} />
-                </div>
-              ))}
+              {loading ? (
+                Array.from({ length: itemsPerView }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      width: cardWidth > 0 ? cardWidth : undefined,
+                      minWidth: cardWidth > 0 ? cardWidth : `calc((100% - ${GAP * (itemsPerView - 1)}px) / ${itemsPerView})`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ReviewSkeleton />
+                  </div>
+                ))
+              ) : (
+                testimonials.map((t, i) => (
+                  <div
+                    key={t.id}
+                    style={{
+                      width: cardWidth > 0 ? cardWidth : undefined,
+                      minWidth: cardWidth > 0 ? cardWidth : `calc((100% - ${GAP * (itemsPerView - 1)}px) / ${itemsPerView})`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <ReviewCard t={t} isCenter={i === centerIndex} />
+                  </div>
+                ))
+              )}
             </motion.div>
           </div>
 

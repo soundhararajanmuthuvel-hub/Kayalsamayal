@@ -17,6 +17,11 @@ export interface Product {
   description: string;
   highlights: string[];
   whatsappMessage: string;
+  price?: number;
+  mrp?: number;
+  gst?: number;
+  stock?: number;
+  active?: boolean;
 }
 
 const BASE_WA = "https://wa.me/919003860616?text=";

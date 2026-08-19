@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Camera, CheckCircle, ChevronRight } from "lucide-react";
-import { products, categories, type Category, type Product } from "@/data/products";
+import { MessageCircle, Camera, CheckCircle, ChevronRight, ShoppingBag } from "lucide-react";
+import { products as localProducts, categories, type Category, type Product } from "@/data/products";
+import { getProducts } from "@/lib/api";
+import { useCart, getProductPrice } from "@/context/CartContext";
 
 /* ── Photo Coming Soon placeholder ──────────────────────────────────── */
 function PhotoPlaceholder({ name }: { name: string }) {
@@ -17,9 +19,27 @@ function PhotoPlaceholder({ name }: { name: string }) {
   );
 }
 
+/* ── Product Skeleton Card ────────────────────────────────────────── */
+function ProductSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-cream-300 overflow-hidden flex flex-col h-[320px] sm:h-[380px] animate-pulse">
+      <div className="aspect-square bg-cream-200" />
+      <div className="p-3 sm:p-4 flex flex-col flex-1 space-y-2.5">
+        <div className="h-3 bg-cream-200 rounded w-1/4" />
+        <div className="h-5 bg-cream-200 rounded w-3/4" />
+        <div className="h-4 bg-cream-200 rounded w-full" />
+        <div className="h-4 bg-cream-200 rounded w-2/3" />
+        <div className="h-9 bg-cream-200 rounded w-full mt-auto" />
+      </div>
+    </div>
+  );
+}
+
 /* ── Product Card ─────────────────────────────────────────────────────── */
 function ProductCard({ product }: { product: Product }) {
   const isPremium = product.tier === "premium";
+  const { addToCart } = useCart();
+  const price = getProductPrice(product);
 
   return (
     <motion.div
@@ -70,11 +90,16 @@ function ProductCard({ product }: { product: Product }) {
           {product.category}
         </p>
 
-        <h3 className="font-display font-semibold text-espresso-900 text-sm sm:text-base leading-snug mb-1.5 sm:mb-2">
-          {product.name}
-        </h3>
+        <div className="flex items-start justify-between gap-1.5 mb-1.5 sm:mb-2">
+          <h3 className="font-display font-semibold text-espresso-900 text-sm sm:text-base leading-snug">
+            {product.name}
+          </h3>
+          <span className="font-body text-xs font-bold text-espresso-900 shrink-0 whitespace-nowrap bg-cream-200 px-2 py-0.5 rounded-lg border border-cream-300">
+            Rs. {price}
+          </span>
+        </div>
 
-        <p className="font-body text-espresso-800 text-xs leading-relaxed flex-1 mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-3">
+        <p className="font-body text-espresso-800 text-xs leading-relaxed flex-1 mb-3 line-clamp-2 sm:line-clamp-3">
           {product.description}
         </p>
 
@@ -83,22 +108,32 @@ function ProductCard({ product }: { product: Product }) {
           {product.highlights.map((h) => (
             <li key={h} className="flex items-center gap-1.5">
               <CheckCircle size={10} className="text-gold-600 shrink-0" />
-              <span className="font-body text-espresso-800 text-[0.65rem] sm:text-[0.7rem]">{h}</span>
+              <span className="font-body text-espresso-800 text-[0.65rem] sm:text-[0.7rem] truncate">{h}</span>
             </li>
           ))}
         </ul>
 
-        {/* CTA — full width, min 44px tall */}
-        <a
-          id={`product-order-${product.id}`}
-          href={product.whatsappMessage}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-whatsapp w-full justify-center text-xs py-2.5 min-h-[44px] mt-auto"
-        >
-          <MessageCircle size={13} />
-          Order on WhatsApp
-        </a>
+        {/* Action Button Pair: Add to Cart + WhatsApp */}
+        <div className="flex flex-col gap-1.5 mt-auto">
+          <button
+            onClick={() => addToCart(product)}
+            className="flex items-center justify-center gap-1.5 w-full bg-cream-200 hover:bg-cream-300 text-espresso-950 text-xs font-bold py-2 sm:py-2.5 rounded-lg transition-colors min-h-[40px] border border-cream-300 cursor-pointer"
+          >
+            <ShoppingBag size={13} />
+            Add to Cart
+          </button>
+          
+          <a
+            id={`product-order-${product.id}`}
+            href={product.whatsappMessage}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-whatsapp w-full justify-center text-xs py-2 sm:py-2.5 min-h-[40px] flex items-center gap-1"
+          >
+            <MessageCircle size={13} />
+            Order on WhatsApp
+          </a>
+        </div>
       </div>
     </motion.div>
   );
@@ -106,7 +141,30 @@ function ProductCard({ product }: { product: Product }) {
 
 /* ── Main Section ─────────────────────────────────────────────────────── */
 export default function ProductShowcase() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const data = await getProducts();
+        if (data && data.length > 0) {
+          setProducts(data);
+        } else {
+          setProducts(localProducts);
+        }
+      } catch (err) {
+        console.error("Error loading products", err);
+        setError("Unable to load products right now. Please try again.");
+        setProducts(localProducts);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const filtered =
     activeCategory === "All"
@@ -159,6 +217,12 @@ export default function ProductShowcase() {
             Browse our complete range of masalas, podis, noodles, health mixes,
             and legiyams — available in Regular and Premium tiers.
           </motion.p>
+          
+          {error && (
+            <div className="mt-4 inline-block bg-yellow-50 text-yellow-800 text-xs px-3 py-1.5 rounded-lg border border-yellow-200">
+              {error}
+            </div>
+          )}
         </div>
 
         {/* Category Filter Bar — horizontally scrollable on mobile */}
@@ -181,7 +245,7 @@ export default function ProductShowcase() {
                 onClick={() => setActiveCategory(cat)}
                 className={`
                   flex-shrink-0 inline-flex items-center gap-1.5 font-body text-sm font-medium
-                  px-4 py-2.5 rounded-full border min-h-[44px] whitespace-nowrap
+                  px-4 py-2.5 rounded-full border min-h-[44px] whitespace-nowrap cursor-pointer
                   transition-all duration-250
                   ${
                     activeCategory === cat
@@ -206,19 +270,27 @@ export default function ProductShowcase() {
         </motion.div>
 
         {/* Product Grid — 2 col on mobile, 3 col on md, 4 col on xl */}
-        <motion.div
-          layout
-          className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
-        >
-          <AnimatePresence mode="popLayout">
-            {filtered.map((product) => (
-              <ProductCard key={product.id} product={product} />
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <ProductSkeleton key={idx} />
             ))}
-          </AnimatePresence>
-        </motion.div>
+          </div>
+        ) : (
+          <motion.div
+            layout
+            className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
+          >
+            <AnimatePresence mode="popLayout">
+              {filtered.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
         {/* Empty state */}
-        {filtered.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div className="text-center py-20 text-espresso-800">
             <p className="font-display text-xl">No products found.</p>
           </div>

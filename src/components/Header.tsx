@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Menu, X, ShoppingBag } from "lucide-react";
+import { useCart } from "@/context/CartContext";
 
 const navLinks = [
   { label: "Our Story", href: "#story" },
@@ -17,6 +18,7 @@ const WA_LINK =
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { cartCount, setIsCartOpen } = useCart();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -98,6 +100,22 @@ export default function Header() {
 
             {/* CTA + Hamburger */}
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Shopping Cart Button */}
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className={`relative p-2.5 rounded-full transition-colors flex items-center justify-center min-h-[44px] min-w-[44px] ${
+                  scrolled ? "text-cream-100 hover:bg-white/10" : "text-cream-50 hover:bg-white/10"
+                }`}
+                aria-label="Open Cart"
+              >
+                <ShoppingBag size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gold-600 text-espresso-950 font-bold text-[0.65rem] w-5 h-5 rounded-full flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+
               <a
                 id="header-whatsapp-order-btn"
                 href={WA_LINK}
