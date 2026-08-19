@@ -147,12 +147,19 @@ function doGet(e) {
         return jsonResponse({ success: false, error: "Order ID parameter is required" });
       }
       
-      const ordersSheet = ss.getSheetByName(TABS.ORDERS);
-      const itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
-      const customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+      let ordersSheet = ss.getSheetByName(TABS.ORDERS);
+      let itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
+      let customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+      
+      if (!ordersSheet || !itemsSheet || !customersSheet) {
+        setupOrderDatabase();
+        ordersSheet = ss.getSheetByName(TABS.ORDERS);
+        itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
+        customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+      }
       
       if (!ordersSheet || !itemsSheet) {
-        return jsonResponse({ success: false, error: "Order database sheets not found" });
+        return jsonResponse({ success: false, error: "Sheet not found: Order database sheets could not be initialized." });
       }
       
       const orders = getSheetRowsAsJSON(ordersSheet);
@@ -202,9 +209,13 @@ function doPost(e) {
     }
     
     if (action === "createCustomer") {
-      const customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+      let customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
       if (!customersSheet) {
-        return jsonResponse({ success: false, error: "Customers database sheet not found" });
+        setupOrderDatabase();
+        customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+      }
+      if (!customersSheet) {
+        return jsonResponse({ success: false, error: "Sheet not found: Customers database sheet not found." });
       }
       const customerId = findOrCreateCustomer(customersSheet, postData);
       return jsonResponse({ success: true, customerId: customerId });
@@ -215,9 +226,13 @@ function doPost(e) {
     }
     
     if (action === "updateOrder") {
-      const ordersSheet = ss.getSheetByName(TABS.ORDERS);
+      let ordersSheet = ss.getSheetByName(TABS.ORDERS);
       if (!ordersSheet) {
-        return jsonResponse({ success: false, error: "Orders database sheet not found" });
+        setupOrderDatabase();
+        ordersSheet = ss.getSheetByName(TABS.ORDERS);
+      }
+      if (!ordersSheet) {
+        return jsonResponse({ success: false, error: "Sheet not found: Orders database sheet not found." });
       }
       return updateOrderStatus(ordersSheet, postData);
     }
@@ -284,13 +299,21 @@ function findOrCreateCustomer(sheet, data) {
  * Handle Order Transactions with Stock Deductions and Pricing Validation
  */
 function processOrderTransaction(ss, data) {
-  const productsSheet = ss.getSheetByName(TABS.PRODUCTS);
-  const ordersSheet = ss.getSheetByName(TABS.ORDERS);
-  const itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
-  const customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+  let productsSheet = ss.getSheetByName(TABS.PRODUCTS);
+  let ordersSheet = ss.getSheetByName(TABS.ORDERS);
+  let itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
+  let customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
   
   if (!productsSheet || !ordersSheet || !itemsSheet || !customersSheet) {
-    return jsonResponse({ success: false, error: "Required database sheets not found. Run setupOrderDatabase first." });
+    setupOrderDatabase();
+    productsSheet = ss.getSheetByName(TABS.PRODUCTS);
+    ordersSheet = ss.getSheetByName(TABS.ORDERS);
+    itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
+    customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
+  }
+  
+  if (!productsSheet || !ordersSheet || !itemsSheet || !customersSheet) {
+    return jsonResponse({ success: false, error: "Sheet not found: Required database sheets could not be initialized." });
   }
   
   const customerInput = data.customer;
