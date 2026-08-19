@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, Plus, Minus, Trash2, ShoppingBag, Send, CheckCircle, ArrowLeft } from "lucide-react";
+import { X, Plus, Minus, Trash2, ShoppingBag, Send, CheckCircle, ArrowLeft, MessageCircle } from "lucide-react";
 import { useCart, getProductPrice } from "@/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -36,6 +36,7 @@ export default function CartDrawer() {
   } = useCart();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -91,7 +92,11 @@ export default function CartDrawer() {
     e.preventDefault();
     if (!validateForm()) return;
     
-    await placeOrder();
+    setCheckoutError(null);
+    const response = await placeOrder();
+    if (response && !response.success) {
+      setCheckoutError(response.message || "Something went wrong while placing your order. Please try again.");
+    }
   };
 
   return (
@@ -262,6 +267,12 @@ export default function CartDrawer() {
                     <h3 className="font-display font-bold text-espresso-900 text-base border-b border-cream-300 pb-2">
                       Customer Information
                     </h3>
+                    
+                    {checkoutError && (
+                      <div className="bg-red-50 text-rust-600 border border-red-200 text-xs px-3 py-2 rounded-lg font-body font-semibold">
+                        {checkoutError}
+                      </div>
+                    )}
 
                     {/* Name */}
                     <div>
@@ -424,7 +435,7 @@ export default function CartDrawer() {
                       Processing Your Order
                     </h3>
                     <p className="font-body text-espresso-800/60 text-sm max-w-xs">
-                      Connecting with Google Sheets to log your order details. Please do not close this panel.
+                      Connecting securely to our order system...
                     </p>
                   </div>
                 )}
@@ -446,8 +457,12 @@ export default function CartDrawer() {
                       </div>
                       
                       <div className="border-t border-cream-300/60 my-2 pt-2 grid grid-cols-2 gap-2 text-xs font-body text-espresso-800">
+                        <span>Customer Name:</span>
+                        <span className="font-bold text-right truncate">{customerDetails.name}</span>
                         <span>Grand Total:</span>
                         <span className="font-bold text-right">Rs. {lastOrderResponse.grandTotal || cartSubtotal}</span>
+                        <span>Order Status:</span>
+                        <span className="font-bold text-right text-yellow-700">{lastOrderResponse.orderStatus || "Pending"}</span>
                         <span>Payment Status:</span>
                         <span className="font-bold text-right text-yellow-700">{lastOrderResponse.paymentStatus || "Pending"}</span>
                       </div>
@@ -457,15 +472,28 @@ export default function CartDrawer() {
                       Our team will contact you on your registered WhatsApp/Mobile number to arrange shipping.
                     </p>
 
-                    <button
-                      onClick={() => {
-                        setCheckoutStep("cart");
-                        setIsCartOpen(false);
-                      }}
-                      className="btn-primary w-full py-3"
-                    >
-                      Continue Shopping
-                    </button>
+                    <div className="flex flex-col gap-2 w-full">
+                      <a
+                        href={`https://wa.me/919003860616?text=${encodeURIComponent(
+                          `Hi Kayal Samayal! I just placed an order. Order ID: ${lastOrderResponse.orderId || "Pending"}. Name: ${customerDetails.name}. Total: Rs. ${lastOrderResponse.grandTotal || cartSubtotal}.`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-whatsapp w-full justify-center py-3 text-sm flex items-center gap-2"
+                      >
+                        <MessageCircle size={16} />
+                        Order on WhatsApp
+                      </a>
+                      <button
+                        onClick={() => {
+                          setCheckoutStep("cart");
+                          setIsCartOpen(false);
+                        }}
+                        className="btn-primary w-full py-3 cursor-pointer"
+                      >
+                        Continue Shopping
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

@@ -46,6 +46,8 @@ export interface OrderResponse {
     total: number;
   }>;
   message?: string;
+  code?: string;
+  error?: string;
 }
 
 export interface SettingsResponse {
@@ -208,7 +210,7 @@ export async function getSettings(): Promise<SettingsResponse> {
 }
 
 // ── CREATE CUSTOMER ───────────────────────────────────────────────────
-export async function createCustomer(customer: CustomerInput): Promise<{ success: boolean; customerId?: string; message?: string }> {
+export async function createCustomer(customer: CustomerInput): Promise<{ success: boolean; customerId?: string; message?: string; code?: string; error?: string }> {
   try {
     const payload = { action: "createCustomer", ...customer };
     const res = await fetch(API_URL, {
@@ -221,10 +223,21 @@ export async function createCustomer(customer: CustomerInput): Promise<{ success
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
+    
+    // Log development details
+    if (process.env.NODE_ENV !== "production") {
+      console.log("createCustomer Details:", {
+        action: payload.action,
+        customer: customer,
+        status: res.status,
+        response: json
+      });
+    }
+
     return json;
   } catch (err) {
     console.error("Failed to create customer:", err);
-    return { success: false, message: "Network error or invalid customer data" };
+    return { success: false, code: "NETWORK_ERROR", message: "We couldn't connect to our order system. Please check your connection and try again." };
   }
 }
 
@@ -240,13 +253,57 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
       },
       body: JSON.stringify(payload),
     });
+    
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
+    
+    // Log development details
+    if (process.env.NODE_ENV !== "production") {
+      console.log("createOrder Details:", {
+        action: payload.action,
+        customer: payload.customer,
+        items: payload.items,
+        status: res.status,
+        response: json
+      });
+    }
+
+    if (!json.success) {
+      const errMsg = json.error || json.message || "";
+      let code = "API_ERROR";
+      let message = "Something went wrong while placing your order. Please try again.";
+
+      if (errMsg.includes("Product not found")) {
+        code = "PRODUCT_NOT_FOUND";
+        message = "Some products in your cart are not yet available for online checkout.";
+      } else if (errMsg.includes("Insufficient stock") || errMsg.includes("stock")) {
+        code = "INSUFFICIENT_STOCK";
+        message = "Some items in your cart are no longer available in the requested quantity.";
+      } else if (errMsg.includes("Customer") || errMsg.includes("name")) {
+        code = "CUSTOMER_REQUIRED";
+        message = "Customer name is required.";
+      } else if (errMsg.includes("mobile")) {
+        code = "MOBILE_REQUIRED";
+        message = "Mobile number is required.";
+      } else if (errMsg.includes("Sheet not found")) {
+        code = "SHEET_NOT_FOUND";
+        message = "Order database sheet not found. Please contact support.";
+      }
+
+      return {
+        ...json,
+        success: false,
+        code,
+        message
+      };
+    }
+
     return json;
-  } catch (err) {
+  } catch (err: any) {
     console.error("Failed to create order:", err);
     return {
       success: false,
+      code: "NETWORK_ERROR",
       orderId: "",
       customerId: "",
       subtotal: 0,
@@ -257,7 +314,7 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
       paymentStatus: "Pending",
       orderStatus: "Pending",
       items: [],
-      message: "Something went wrong while placing your order. Please try again.",
+      message: "We couldn't connect to our order system. Please check your connection and try again.",
     };
   }
 }

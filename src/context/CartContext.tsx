@@ -179,14 +179,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setCheckoutStep("confirm");
       } else {
         setCheckoutStep("checkout");
-        alert(response?.message || "Something went wrong while placing your order. Please try again.");
       }
       return response;
     } catch (e) {
       console.error("Order creation error:", e);
       setCheckoutStep("checkout");
-      alert("Network error. Please check your internet connection and try again.");
-      return null;
+      return {
+        success: false,
+        code: "NETWORK_ERROR",
+        orderId: "",
+        customerId: "",
+        subtotal: 0,
+        shipping: 0,
+        discount: 0,
+        gst: 0,
+        grandTotal: 0,
+        paymentStatus: "Pending",
+        orderStatus: "Pending",
+        items: [],
+        message: "We couldn't connect to our order system. Please check your connection and try again.",
+      };
     }
   };
 
