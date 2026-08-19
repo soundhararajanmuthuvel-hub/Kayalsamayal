@@ -3,7 +3,7 @@ import { Testimonial } from "@/data/testimonials";
 
 const FALLBACK_API_URL = "https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec";
 
-export const API_URL = process.env.NEXT_PUBLIC_KAYAL_SAMAYAL_API_URL || FALLBACK_API_URL;
+export const API_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || process.env.NEXT_PUBLIC_KAYAL_SAMAYAL_API_URL || FALLBACK_API_URL;
 
 export interface CustomerInput {
   name: string;
@@ -337,5 +337,21 @@ export async function updateOrder(orderId: string, updateData: any): Promise<{ s
   } catch (err) {
     console.error("Failed to update order:", err);
     return { success: false, message: "Failed to update order status." };
+  }
+}
+
+// ── GET ORDER ─────────────────────────────────────────────────────────
+export async function getOrder(orderId: string): Promise<{ success: boolean; data?: any; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}?action=order&id=${encodeURIComponent(orderId)}`, {
+      method: "GET",
+      headers: { "Accept": "application/json" }
+    });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    console.error("Failed to fetch order:", err);
+    return { success: false, message: "Network error. Unable to fetch order details." };
   }
 }

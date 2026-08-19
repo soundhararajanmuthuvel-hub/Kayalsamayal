@@ -37,6 +37,7 @@ export default function CartDrawer() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -90,13 +91,15 @@ export default function CartDrawer() {
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm() || isSubmitting) return;
     
+    setIsSubmitting(true);
     setCheckoutError(null);
     const response = await placeOrder();
     if (response && !response.success) {
       setCheckoutError(response.message || "Something went wrong while placing your order. Please try again.");
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -521,9 +524,10 @@ export default function CartDrawer() {
                     <button
                       type="submit"
                       form="checkout-form"
-                      className="btn-whatsapp w-full py-3 justify-center flex items-center gap-2"
+                      disabled={isSubmitting}
+                      className="btn-whatsapp w-full py-3 justify-center flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
-                      <Send size={16} /> Place Order via API
+                      <Send size={16} /> {isSubmitting ? "Processing..." : "Place Order via API"}
                     </button>
                   )}
                 </div>
