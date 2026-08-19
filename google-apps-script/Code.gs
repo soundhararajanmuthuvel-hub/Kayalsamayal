@@ -19,8 +19,21 @@ const TABS = {
  * Administrative Setup Function
  * Run this function from the Apps Script editor to initialize missing sheets and columns.
  */
-function setupOrderDatabase() {
+/**
+ * Administrative Setup Function
+ * Run this function from the Apps Script editor to initialize missing sheets and columns.
+ */
+function setupDatabaseSheets() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const spreadsheetName = ss.getName();
+  
+  const existingSheets = [];
+  const createdSheets = [];
+  const skippedSheets = [];
+  
+  // Get all existing sheet names
+  const sheets = ss.getSheets();
+  sheets.forEach(s => existingSheets.push(s.getName()));
   
   const sheetDefinitions = [
     {
@@ -30,23 +43,39 @@ function setupOrderDatabase() {
     {
       name: TABS.ORDERS,
       headers: [
-        "Order ID", "Customer ID", "Order Date", "Customer Name", "Mobile", "Email", 
+        "Order ID", "Customer ID", "Order Date", "Full Name", "Mobile", "Email", 
         "Shipping Address", "City/Town", "State", "Pincode", "Order Notes", 
-        "Subtotal", "Shipping Charge", "GST", "Discount", "Grand Total", 
-        "Payment Status", "Order Status"
+        "Subtotal", "GST", "Shipping", "Discount", "Grand Total", 
+        "Payment Status", "Order Status", "Created At"
       ]
     },
     {
       name: TABS.ORDER_ITEMS,
-      headers: ["Order ID", "Product ID", "Product Name", "Tier", "Quantity", "Unit Price", "GST", "Line Total"]
+      headers: ["Order Item ID", "Order ID", "Product ID", "Product Name", "Tier", "Quantity", "Unit Price", "GST %", "GST Amount", "Line Total", "Created At"]
     },
     {
       name: TABS.REVIEWS,
-      headers: ["Review ID", "Customer Name", "Rating", "Date", "Review", "Language", "Avatar", "Active"]
+      headers: ["Review ID", "Product ID", "Product Name", "Customer Name", "Rating", "Review", "Approved", "Created At"]
     },
     {
       name: TABS.SETTINGS,
       headers: ["Key", "Value", "Description", "Updated At"]
+    },
+    {
+      name: "API Logs",
+      headers: ["Log ID", "Timestamp", "Action", "Method", "Order ID", "Customer ID", "Status", "Request Data", "Response Data", "Error Message"]
+    },
+    {
+      name: "Inventory Logs",
+      headers: ["Log ID", "Timestamp", "Product ID", "Product Name", "Action", "Quantity Before", "Quantity Changed", "Quantity After", "Reference ID", "Notes"]
+    },
+    {
+      name: "Payments",
+      headers: ["Payment ID", "Order ID", "Payment Date", "Payment Method", "Transaction ID", "Amount", "Payment Status", "Notes"]
+    },
+    {
+      name: "Shipments",
+      headers: ["Shipment ID", "Order ID", "Courier", "Tracking Number", "Shipment Status", "Shipped Date", "Delivered Date", "Notes"]
     }
   ];
 
@@ -57,17 +86,35 @@ function setupOrderDatabase() {
     if (!sheet) {
       sheet = ss.insertSheet(def.name);
       sheet.appendRow(def.headers);
-      // Format headers
-      sheet.getRange(1, 1, 1, def.headers.length).setFontWeight("bold").setBackground("#F4EBE1");
+      
+      // Freeze Row 1
+      sheet.setFrozenRows(1);
+      
+      // Bold Row 1 & Background Color
+      const headerRange = sheet.getRange(1, 1, 1, def.headers.length);
+      headerRange.setFontWeight("bold").setBackground("#F4EBE1");
+      
+      // Auto-resize columns
+      for (let i = 1; i <= def.headers.length; i++) {
+        sheet.autoResizeColumn(i);
+      }
+      
+      createdSheets.push(def.name);
       Logger.log("Created sheet: " + def.name);
     } else {
+      skippedSheets.push(def.name);
       Logger.log("Sheet already exists: " + def.name + ". Verifying headers...");
+      
       const actualHeaders = sheet.getRange(1, 1, 1, def.headers.length).getValues()[0];
       const match = def.headers.every((h, i) => actualHeaders[i] === h);
       if (!match) {
         Logger.log("Headers mismatch on " + def.name + ". Overwriting headers line...");
         sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
       }
+      
+      // Freeze Row 1 and bold headers
+      sheet.setFrozenRows(1);
+      sheet.getRange(1, 1, 1, def.headers.length).setFontWeight("bold");
     }
   });
 
@@ -85,6 +132,14 @@ function setupOrderDatabase() {
     Logger.log("Seeded default settings.");
   }
   
+  Logger.log("=========================================");
+  Logger.log("DATABASE SYNC COMPLETE REPORT");
+  Logger.log("=========================================");
+  Logger.log("Spreadsheet Name: " + spreadsheetName);
+  Logger.log("Existing Sheets: " + existingSheets.join(", "));
+  Logger.log("Created Sheets: " + (createdSheets.length > 0 ? createdSheets.join(", ") : "None"));
+  Logger.log("Skipped Sheets: " + skippedSheets.join(", "));
+  Logger.log("=========================================");
   Logger.log("Setup complete!");
 }
 
@@ -98,7 +153,7 @@ function doGet(e) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     
     if (action === "setup") {
-      setupOrderDatabase();
+      setupDatabaseSheets();
       return jsonResponse({ success: true, message: "Database sheets initialized successfully!" });
     }
     
@@ -152,7 +207,7 @@ function doGet(e) {
       let customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
       
       if (!ordersSheet || !itemsSheet || !customersSheet) {
-        setupOrderDatabase();
+        setupDatabaseSheets();
         ordersSheet = ss.getSheetByName(TABS.ORDERS);
         itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
         customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
@@ -211,7 +266,7 @@ function doPost(e) {
     if (action === "createCustomer") {
       let customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
       if (!customersSheet) {
-        setupOrderDatabase();
+        setupDatabaseSheets();
         customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
       }
       if (!customersSheet) {
@@ -228,7 +283,7 @@ function doPost(e) {
     if (action === "updateOrder") {
       let ordersSheet = ss.getSheetByName(TABS.ORDERS);
       if (!ordersSheet) {
-        setupOrderDatabase();
+        setupDatabaseSheets();
         ordersSheet = ss.getSheetByName(TABS.ORDERS);
       }
       if (!ordersSheet) {
@@ -305,7 +360,7 @@ function processOrderTransaction(ss, data) {
   let customersSheet = ss.getSheetByName(TABS.CUSTOMERS);
   
   if (!productsSheet || !ordersSheet || !itemsSheet || !customersSheet) {
-    setupOrderDatabase();
+    setupDatabaseSheets();
     productsSheet = ss.getSheetByName(TABS.PRODUCTS);
     ordersSheet = ss.getSheetByName(TABS.ORDERS);
     itemsSheet = ss.getSheetByName(TABS.ORDER_ITEMS);
@@ -403,7 +458,7 @@ function processOrderTransaction(ss, data) {
     orderId,
     customerId,
     new Date(), // Order Date
-    customerInput.name,
+    customerInput.name, // Full Name
     customerInput.mobile,
     customerInput.email || "",
     customerInput.address || "",
@@ -412,25 +467,32 @@ function processOrderTransaction(ss, data) {
     customerInput.pincode || "",
     customerInput.notes || "",
     subtotal,
-    shipping,
-    gstTotal,
+    gstTotal, // GST (index 13)
+    shipping, // Shipping (index 14)
     discount,
     grandTotal,
     "Pending", // Payment Status
-    "Pending"  // Order Status
+    "Pending", // Order Status
+    new Date() // Created At
   ]);
   
   // Write Order Items and Update Stocks
-  validatedItems.forEach(item => {
+  validatedItems.forEach((item, index) => {
+    // Generate Order Item ID
+    const orderItemId = orderId + "-ITEM-" + String(index + 1).padStart(3, "0");
+    
     itemsSheet.appendRow([
-      orderId,
+      orderItemId, // Order Item ID
+      orderId, // Order ID
       item.product["Product ID"],
       item.product["Product Name"],
       item.product["Tier"],
       item.quantity,
       item.unitPrice,
-      item.gstRate,
-      item.lineTotal
+      item.gstRate, // GST %
+      item.lineTotal * item.gstRate, // GST Amount
+      item.lineTotal,
+      new Date() // Created At
     ]);
     
     // Update Stock in sheet
