@@ -6,10 +6,10 @@ import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 
 const navLinks = [
-  { label: "About Us", href: "/about" },
+  { label: "Home", href: "/" },
   { label: "Products", href: "/#products" },
-  { label: "Why Us", href: "/#why-us" },
-  { label: "Reviews", href: "/#testimonials" },
+  { label: "About", href: "/about" },
+  { label: "Health Mixes", href: "/health-mixes" },
   { label: "Contact", href: "/#contact" },
 ];
 
@@ -122,7 +122,7 @@ export default function Header() {
                 href={WA_LINK}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-2 btn-whatsapp text-sm py-2.5 px-4"
+                className="hidden sm:inline-flex items-center gap-2 btn-primary text-sm py-2.5 px-4"
               >
                 <ShoppingBag size={15} />
                 Order Now

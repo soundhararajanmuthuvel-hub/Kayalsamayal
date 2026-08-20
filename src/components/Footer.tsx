@@ -21,10 +21,10 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 }
 
 const navLinks = [
-  { label: "About Us", href: "/about" },
+  { label: "Home", href: "/" },
   { label: "Products", href: "/#products" },
-  { label: "Why Us", href: "/#why-us" },
-  { label: "Reviews", href: "/#testimonials" },
+  { label: "About", href: "/about" },
+  { label: "Health Mixes", href: "/health-mixes" },
   { label: "Contact", href: "/#contact" },
 ];
 

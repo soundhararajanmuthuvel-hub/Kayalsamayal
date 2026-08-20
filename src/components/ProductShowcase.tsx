@@ -190,6 +190,24 @@ export default function ProductShowcase() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith("#products-")) {
+        const catName = decodeURIComponent(hash.substring(10)).replace(/-/g, " ");
+        const matched = categories.find(c => c.toLowerCase() === catName.toLowerCase());
+        if (matched) {
+          setActiveCategory(matched);
+        } else if (catName.toLowerCase() === "all") {
+          setActiveCategory("All");
+        }
+      }
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   const filtered =
     activeCategory === "All"
       ? products

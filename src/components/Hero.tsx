@@ -1,16 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronDown, MessageCircle, Sparkles } from "lucide-react";
-
-const WA_LINK =
-  "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%20explore%20your%20products.";
+import { ChevronDown, Sparkles } from "lucide-react";
 
 const trustPillars = [
-  { icon: "✨", label: "35+ Varieties", text: "Traditional Blends" },
-  { icon: "🌿", label: "100% Pure", text: "Authentic Recipes" },
-  { icon: "🚫", label: "No Additives", text: "No Artificial Colours" },
-  { icon: "🌊", label: "Coastal Heritage", text: "Kayalpatnam Taste" },
+  { icon: "📍", label: "Tirupattur, Tamil Nadu", text: "Heritage Location" },
+  { icon: "✓", label: "Organic & Traditional", text: "Zero Preservatives" },
+  { icon: "🏆", label: "Premium Quality", text: "Authentic Taste" },
 ];
 
 export default function Hero() {
@@ -45,9 +41,9 @@ export default function Hero() {
               transition={{ duration: 0.6 }}
               className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20"
             >
-              <Sparkles size={12} className="text-gold-400 shrink-0 animate-pulse" />
-              <span className="font-body text-[0.65rem] sm:text-xs font-bold tracking-[0.2em] uppercase text-gold-400">
-                PURE • TRADITIONAL • COASTAL
+              <Sparkles size={12} className="text-gold-500 shrink-0 animate-pulse" />
+              <span className="font-body text-[0.65rem] sm:text-xs font-bold tracking-[0.25em] uppercase text-gold-500">
+                TASTE THE TRADITION
               </span>
             </motion.div>
 
@@ -57,10 +53,10 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
               className="font-display font-black text-cream-50 leading-tight"
-              style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}
+              style={{ fontSize: "clamp(2rem, 5vw, 4.2rem)" }}
             >
-              Authentic Flavours.<br />
-              <span className="gold-shimmer font-semibold">Rooted in Tradition.</span>
+              Authentic Kayalpatnam Masalas<br />
+              <span className="gold-shimmer font-semibold">Since Generations</span>
             </motion.h1>
 
             {/* Supporting Text */}
@@ -70,7 +66,7 @@ export default function Hero() {
               transition={{ duration: 0.7, delay: 0.2 }}
               className="font-body text-cream-300 max-w-xl mx-auto lg:mx-0 leading-relaxed text-sm sm:text-base px-1"
             >
-              Discover traditional masalas, podis, noodles, health mixes and time-honoured recipes crafted with authentic coastal flavours. Pure ingredients, stone-ground with love.
+              No shortcuts, no additives—just pure, powerful flavours crafted with traditional recipes.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -83,19 +79,16 @@ export default function Hero() {
               <a
                 id="hero-explore-masalas-btn"
                 href="#products"
-                className="btn-primary text-sm sm:text-base text-center min-h-[48px] flex items-center justify-center"
+                className="btn-primary text-sm sm:text-base text-center min-h-[48px] flex items-center justify-center cursor-pointer"
               >
-                Explore Products
+                Shop Now
               </a>
               <a
-                id="hero-whatsapp-order-btn"
-                href={WA_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-whatsapp text-sm sm:text-base min-h-[48px] justify-center"
+                id="hero-about-story-btn"
+                href="/about"
+                className="btn-outline text-sm sm:text-base text-center min-h-[48px] flex items-center justify-center cursor-pointer"
               >
-                <MessageCircle size={18} />
-                Order on WhatsApp
+                Learn Our Story
               </a>
             </motion.div>
           </div>
@@ -159,7 +152,7 @@ export default function Hero() {
       {/* Trust Strip Banner below Hero */}
       <section className="bg-cream-200 border-y border-cream-300 py-6 relative z-10 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-y-0 divide-x-0 md:divide-x divide-cream-300/70">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center divide-y-0 divide-x-0 sm:divide-x divide-cream-300/70">
             {trustPillars.map((item, idx) => (
               <div key={idx} className="flex flex-col items-center justify-center p-2 space-y-1">
                 <span className="text-2xl mb-1">{item.icon}</span>
