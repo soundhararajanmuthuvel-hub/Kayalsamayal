@@ -3,29 +3,40 @@
 /* ── Brand Design Tokens ──────────────────────────────────────────────── */
 :root {
   /* Warm Cream Palette */
-  --cream-50: #fffdf9;
-  --cream-100: #faf6f0;
-  --cream-200: #f5efe6;
-  --cream-300: #ede2d0;
-  --cream-400: #ddd0b8;
+  --cream-50: #fffdf7;
+  --cream-100: #faf7f0;
+  --cream-200: #f5eedc;
+  --cream-300: #ebdfc4;
+  --cream-400: #dccea6;
 
-  /* Turmeric / Saffron Gold */
-  --gold-400: #f4a261;
-  --gold-500: #e08e00;
-  --gold-600: #d48806;
-  --gold-700: #b87200;
+  /* Turmeric / Saffron / Orange Gold */
+  --gold-400: #fcd34d;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+  --gold-700: #b45309;
 
-  /* Terracotta / Rust Red */
-  --rust-400: #d45f42;
-  --rust-500: #b83a1b;
-  --rust-600: #9e2a2b;
-  --rust-700: #802318;
+  /* Royal Purple (replacing old Rust Red) */
+  --rust-400: #a855f7;
+  --rust-500: #7c3aed;
+  --rust-600: #581c87;
+  --rust-700: #4c1d95;
 
-  /* Espresso / Charcoal */
-  --espresso-50: #fdf8f5;
-  --espresso-800: #2c221e;
-  --espresso-900: #1a1615;
-  --espresso-950: #120e0d;
+  /* Brand visual language from logo reference */
+  --brand-purple: #48154d;
+  --brand-purple-light: #6b2173;
+  --brand-purple-dark: #2d0a30;
+  --brand-orange: #d96a20;
+  --brand-orange-light: #f48037;
+  --brand-orange-dark: #b24d0d;
+  --brand-cream: #faf5eb;
+  --brand-cream-dark: #ebdfc7;
+  --brand-gold: #cfa140;
+
+  /* Espresso / Charcoal / Purple-black */
+  --espresso-50: #faf5eb;
+  --espresso-800: #3b2c28;
+  --espresso-900: #2d0a30;
+  --espresso-950: #1b021d;
 
   /* Typography */
   --font-display: var(--font-playfair), Georgia, serif;
@@ -51,6 +62,17 @@
   --color-espresso-800: var(--espresso-800);
   --color-espresso-900: var(--espresso-900);
   --color-espresso-950: var(--espresso-950);
+
+  --color-brand-purple: var(--brand-purple);
+  --color-brand-purple-light: var(--brand-purple-light);
+  --color-brand-purple-dark: var(--brand-purple-dark);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-orange-light: var(--brand-orange-light);
+  --color-brand-orange-dark: var(--brand-orange-dark);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-cream-dark: var(--brand-cream-dark);
+  --color-brand-gold: var(--brand-gold);
+
   --font-display: var(--font-display);
   --font-body: var(--font-body);
 }
@@ -101,14 +123,14 @@ section[id] {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--cream-200);
+  background: var(--brand-cream);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--gold-600);
+  background: var(--brand-purple-light);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--rust-500);
+  background: var(--brand-purple);
 }
 
 /* ── Background Textures ─────────────────────────────────────────────── */
@@ -121,7 +143,7 @@ section[id] {
 .texture-dark {
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E"),
-    linear-gradient(135deg, var(--espresso-950) 0%, var(--espresso-900) 50%, var(--espresso-800) 100%);
+    linear-gradient(135deg, var(--brand-purple-dark) 0%, var(--brand-purple) 50%, var(--brand-purple-dark) 100%);
 }
 
 .texture-jute {
@@ -130,15 +152,15 @@ section[id] {
       0deg,
       transparent,
       transparent 2px,
-      rgba(180, 140, 80, 0.04) 2px,
-      rgba(180, 140, 80, 0.04) 4px
+      rgba(72, 21, 77, 0.03) 2px,
+      rgba(72, 21, 77, 0.03) 4px
     ),
     repeating-linear-gradient(
       90deg,
       transparent,
       transparent 2px,
-      rgba(180, 140, 80, 0.04) 2px,
-      rgba(180, 140, 80, 0.04) 4px
+      rgba(72, 21, 77, 0.03) 2px,
+      rgba(72, 21, 77, 0.03) 4px
     ),
     var(--cream-200);
 }
@@ -156,11 +178,11 @@ section[id] {
 .gold-shimmer {
   background: linear-gradient(
     90deg,
-    var(--gold-700) 0%,
-    var(--gold-400) 40%,
-    #fcd97e 60%,
-    var(--gold-600) 80%,
-    var(--gold-700) 100%
+    var(--brand-orange) 0%,
+    var(--gold-500) 40%,
+    #fcd34d 60%,
+    var(--brand-orange-light) 80%,
+    var(--brand-orange) 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -178,35 +200,32 @@ section[id] {
 .bg-spice-gradient {
   background: linear-gradient(
     135deg,
-    #3d1a0a 0%,
-    #5c2a10 20%,
-    #8b3a1b 40%,
-    #b05020 60%,
-    #7a3015 80%,
-    #2c1005 100%
+    var(--brand-purple-dark) 0%,
+    var(--brand-purple) 50%,
+    #4a0a50 100%
   );
 }
 
 .bg-gold-gradient {
-  background: linear-gradient(135deg, var(--gold-600) 0%, var(--gold-400) 50%, var(--gold-600) 100%);
+  background: linear-gradient(135deg, var(--brand-orange) 0%, var(--gold-500) 50%, var(--brand-orange) 100%);
 }
 
 /* ── Premium Badge ─────────────────────────────────────────────────────── */
 .badge-premium {
-  background: linear-gradient(135deg, #d4a017 0%, #f5cb5c 50%, #c8920a 100%);
-  color: var(--espresso-950);
+  background: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-light) 50%, var(--brand-orange-dark) 100%);
+  color: #fff;
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.2rem 0.6rem;
   border-radius: 2px;
-  box-shadow: 0 1px 4px rgba(180, 120, 0, 0.5);
+  box-shadow: 0 1px 4px rgba(217, 106, 32, 0.4);
 }
 
 .badge-regular {
   background: var(--cream-300);
-  color: var(--espresso-800);
+  color: var(--brand-purple);
   font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -220,14 +239,14 @@ section[id] {
   position: absolute;
   top: 12px;
   right: -4px;
-  background: linear-gradient(135deg, #c8920a 0%, #f5cb5c 50%, #d4a017 100%);
-  color: var(--espresso-950);
+  background: linear-gradient(135deg, var(--brand-orange-dark) 0%, var(--brand-orange-light) 50%, var(--brand-orange) 100%);
+  color: #fff;
   font-size: 0.55rem;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 0.25rem 0.75rem;
-  box-shadow: 0 2px 8px rgba(180, 120, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(217, 106, 32, 0.3);
   z-index: 10;
 }
 .ribbon::after {
@@ -235,7 +254,7 @@ section[id] {
   position: absolute;
   bottom: -4px;
   right: 0;
-  border-left: 4px solid #8b6000;
+  border-left: 4px solid var(--brand-orange-dark);
   border-bottom: 4px solid transparent;
 }
 
@@ -247,8 +266,8 @@ section[id] {
 .card-hover:hover {
   transform: translateY(-6px);
   box-shadow:
-    0 20px 40px rgba(26, 22, 21, 0.15),
-    0 4px 12px rgba(180, 120, 0, 0.1);
+    0 20px 40px rgba(72, 21, 77, 0.12),
+    0 4px 12px rgba(217, 106, 32, 0.08);
 }
 
 /* ── Button Styles ─────────────────────────────────────────────────────── */
@@ -256,7 +275,7 @@ section[id] {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, var(--rust-600) 0%, var(--rust-500) 100%);
+  background: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-light) 100%);
   color: #fff;
   font-family: var(--font-body);
   font-weight: 600;
@@ -271,12 +290,13 @@ section[id] {
 }
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(158, 42, 43, 0.35);
+  box-shadow: 0 8px 24px rgba(217, 106, 32, 0.35);
   filter: brightness(1.05);
 }
 .btn-primary:active {
   transform: translateY(0);
 }
+
 
 .btn-whatsapp {
   display: inline-flex;

@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import Story from "@/components/Story";
+import FeaturedProducts from "@/components/FeaturedProducts";
 import ProductShowcase from "@/components/ProductShowcase";
 import WhyUs from "@/components/WhyUs";
 import Testimonials from "@/components/Testimonials";
@@ -69,6 +70,7 @@ export default function Home() {
         <Header />
         <Hero />
         <Story />
+        <FeaturedProducts />
         <ProductShowcase />
         <WhyUs />
         <Testimonials />

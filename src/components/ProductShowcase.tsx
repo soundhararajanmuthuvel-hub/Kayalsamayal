@@ -70,7 +70,7 @@ function ProductCard({ product }: { product: Product }) {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className={`card-hover relative bg-white rounded-xl shadow-md overflow-hidden border flex flex-col ${
         isPremium
-          ? "border-gold-500/40 shadow-[0_4px_24px_rgba(212,136,6,0.12)]"
+          ? "border-brand-orange/40 shadow-[0_4px_24px_rgba(217,106,32,0.1)]"
           : "border-cream-300"
       }`}
     >
@@ -86,7 +86,7 @@ function ProductCard({ product }: { product: Product }) {
       )}
 
       {/* Image — 1:1 square, full product visible */}
-      <div className="aspect-square bg-cream-100 relative overflow-hidden rounded-t-xl">
+      <div className="aspect-square bg-brand-cream/30 relative overflow-hidden rounded-t-xl">
         {product.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -110,15 +110,15 @@ function ProductCard({ product }: { product: Product }) {
       {/* Body */}
       <div className="p-3 sm:p-4 flex flex-col flex-1">
         {/* Category tag */}
-        <p className="font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.12em] sm:tracking-[0.15em] uppercase text-gold-600 font-700 mb-1 leading-tight">
+        <p className="font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.12em] sm:tracking-[0.15em] uppercase text-brand-orange font-bold mb-1 leading-tight">
           {product.category}
         </p>
 
         <div className="flex items-start justify-between gap-1.5 mb-1.5 sm:mb-2">
-          <h3 className="font-display font-semibold text-espresso-900 text-sm sm:text-base leading-snug">
+          <h3 className="font-display font-bold text-brand-purple text-sm sm:text-base leading-snug">
             {product.name}
           </h3>
-          <span className="font-body text-xs font-bold text-espresso-900 shrink-0 whitespace-nowrap bg-cream-200 px-2 py-0.5 rounded-lg border border-cream-300">
+          <span className="font-body text-xs font-bold text-brand-purple shrink-0 whitespace-nowrap bg-brand-cream px-2 py-0.5 rounded-lg border border-brand-cream-dark/65">
             Rs. {price}
           </span>
         </div>
@@ -131,7 +131,7 @@ function ProductCard({ product }: { product: Product }) {
         <ul className="space-y-0.5 sm:space-y-1 mb-3 sm:mb-4 hidden sm:block">
           {product.highlights.map((h) => (
             <li key={h} className="flex items-center gap-1.5">
-              <CheckCircle size={10} className="text-gold-600 shrink-0" />
+              <CheckCircle size={10} className="text-brand-orange shrink-0" />
               <span className="font-body text-espresso-800 text-[0.65rem] sm:text-[0.7rem] truncate">{h}</span>
             </li>
           ))}
@@ -141,7 +141,7 @@ function ProductCard({ product }: { product: Product }) {
         <div className="flex flex-col gap-1.5 mt-auto">
           <button
             onClick={() => addToCart(product)}
-            className="flex items-center justify-center gap-1.5 w-full bg-cream-200 hover:bg-cream-300 text-espresso-950 text-xs font-bold py-2 sm:py-2.5 rounded-lg transition-colors min-h-[40px] border border-cream-300 cursor-pointer"
+            className="flex items-center justify-center gap-1.5 w-full bg-brand-purple hover:bg-brand-purple-light text-white text-xs font-bold py-2 sm:py-2.5 rounded-lg transition-colors min-h-[40px] cursor-pointer"
           >
             <ShoppingBag size={13} />
             Add to Cart
@@ -273,8 +273,8 @@ export default function ProductShowcase() {
                   transition-all duration-250
                   ${
                     activeCategory === cat
-                      ? "bg-espresso-900 text-cream-100 border-espresso-900 shadow-md"
-                      : "bg-white/80 text-espresso-800 border-cream-300 hover:border-gold-600 hover:text-gold-700"
+                      ? "bg-brand-purple text-cream-100 border-brand-purple shadow-md"
+                      : "bg-white/80 text-espresso-800 border-cream-300 hover:border-brand-orange hover:text-brand-orange"
                   }
                 `}
               >

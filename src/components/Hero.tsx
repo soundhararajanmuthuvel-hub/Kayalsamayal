@@ -6,183 +6,174 @@ import { ChevronDown, MessageCircle, Sparkles } from "lucide-react";
 const WA_LINK =
   "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%20explore%20your%20products.";
 
-const spiceAccents = [
-  { emoji: "🌶️", label: "Chilli", x: "8%", y: "20%", delay: 0 },
-  { emoji: "🫚", label: "Oil", x: "88%", y: "15%", delay: 0.5 },
-  { emoji: "🌿", label: "Herb", x: "5%", y: "70%", delay: 1 },
-  { emoji: "⭐", label: "Star Anise", x: "92%", y: "65%", delay: 0.8 },
-  { emoji: "🧄", label: "Garlic", x: "15%", y: "85%", delay: 1.2 },
-  { emoji: "🫛", label: "Cardamom", x: "82%", y: "82%", delay: 0.3 },
-];
-
 const trustPillars = [
-  { icon: "🚫", text: "No Preservatives" },
-  { icon: "🌿", text: "No Artificial Colours" },
-  { icon: "🏺", text: "Stone-Ground Spices" },
-  { icon: "🏡", text: "Heritage Recipes" },
+  { icon: "✨", label: "35+ Varieties", text: "Traditional Blends" },
+  { icon: "🌿", label: "100% Pure", text: "Authentic Recipes" },
+  { icon: "🚫", label: "No Additives", text: "No Artificial Colours" },
+  { icon: "🌊", label: "Coastal Heritage", text: "Kayalpatnam Taste" },
 ];
 
 export default function Hero() {
   return (
-    <section
-      id="hero"
-      className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-spice-gradient"
-      style={{ minHeight: "100dvh" }}
-    >
-      {/* Animated noise texture overlay */}
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-        }}
-      />
-
-      {/* Radial warmth glow */}
-      <div className="absolute inset-0 bg-radial-[ellipse_at_center] from-[#7a2c10]/40 via-transparent to-transparent pointer-events-none" />
-
-      {/* Floating spice emojis — desktop only, hidden on mobile to save space */}
-      {spiceAccents.map((s) => (
-        <motion.div
-          key={s.label}
-          className="absolute hidden lg:flex text-3xl select-none pointer-events-none opacity-30"
-          style={{ left: s.x, top: s.y }}
-          animate={{ y: [0, -14, 0], rotate: [0, 5, -5, 0] }}
-          transition={{
-            duration: 5 + s.delay,
-            delay: s.delay,
-            repeat: Infinity,
-            ease: "easeInOut",
+    <>
+      <section
+        id="hero"
+        className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden bg-spice-gradient pt-20"
+      >
+        {/* Animated noise texture overlay */}
+        <div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
           }}
-          aria-hidden="true"
-        >
-          {s.emoji}
-        </motion.div>
-      ))}
-
-      {/* Gold top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gold-gradient" />
-
-      {/* Main Content — pt accounts for sticky header (h-16 mobile, h-20 desktop) */}
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-24 pt-28 sm:pt-32 lg:py-32">
-        {/* Eyebrow badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-1.5 sm:gap-2 mb-5 sm:mb-6 flex-wrap justify-center"
-        >
-          <Sparkles size={13} className="text-gold-400 shrink-0" />
-          <span className="font-body text-[0.65rem] sm:text-xs font-700 tracking-[0.18em] sm:tracking-[0.22em] uppercase text-gold-400 text-center">
-            Kayalpatnam Heritage — Est. with Love
-          </span>
-          <Sparkles size={13} className="text-gold-400 shrink-0" />
-        </motion.div>
-
-        {/* Main headline — clamp ensures readable size on 375px */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="font-display font-black text-cream-50 leading-tight mb-3 sm:mb-4"
-          style={{ fontSize: "clamp(2.2rem, 8vw, 5.5rem)" }}
-        >
-          Kayal Samayal
-        </motion.h1>
-
-        {/* Gold shimmer tagline */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="font-display italic font-semibold text-gold-400 mb-5 sm:mb-6"
-          style={{ fontSize: "clamp(1.1rem, 4vw, 2.2rem)" }}
-        >
-          <span className="gold-shimmer">Taste the Tradition</span>
-        </motion.div>
-
-        {/* Divider */}
-        <motion.div
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ duration: 0.8, delay: 0.35 }}
-          className="divider-spice mb-6 sm:mb-8"
         />
 
-        {/* Sub-headline — 16px minimum to prevent iOS auto-zoom */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          className="font-body text-cream-300 max-w-xl mx-auto leading-relaxed mb-8 sm:mb-10 px-2"
-          style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)" }}
-        >
-          No shortcuts. No additives.{" "}
-          <span className="text-cream-100 font-semibold">
-            Just pure, powerful flavours
-          </span>{" "}
-          rooted in centuries of coastal South Indian culinary heritage.
-        </motion.p>
+        {/* Radial warmth glow */}
+        <div className="absolute inset-0 bg-radial-[ellipse_at_center] from-[#4a0a50]/40 via-transparent to-transparent pointer-events-none" />
 
-        {/* CTA Buttons — stacked on mobile, side-by-side on sm+ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.55 }}
-          className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center mb-10 sm:mb-14 px-4 sm:px-0"
-        >
-          <a
-            id="hero-explore-masalas-btn"
-            href="#products"
-            className="btn-primary text-base text-center min-h-[48px] flex items-center justify-center"
-          >
-            Explore Our Masalas
-          </a>
-          <a
-            id="hero-whatsapp-order-btn"
-            href={WA_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-whatsapp text-base min-h-[48px] justify-center"
-          >
-            <MessageCircle size={18} />
-            Order on WhatsApp
-          </a>
-        </motion.div>
+        {/* Gold top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gold-gradient" />
 
-        {/* Trust Pillars — 2-col grid on mobile, flex-wrap on larger */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.7 }}
-          className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-2 sm:gap-4 px-2 sm:px-0"
-        >
-          {trustPillars.map((pillar) => (
-            <div
-              key={pillar.text}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 bg-white/8 backdrop-blur-sm border border-white/10 rounded-full px-3 py-2 sm:px-4"
+        {/* Main Content Split: Left Info, Right Stacked Images */}
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 flex flex-col lg:flex-row items-center gap-12 lg:gap-8">
+          {/* Left Text Column */}
+          <div className="w-full lg:w-1/2 text-center lg:text-left space-y-6 sm:space-y-8">
+            {/* Eyebrow badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/20"
             >
-              <span className="text-sm sm:text-base">{pillar.icon}</span>
-              <span className="font-body text-cream-200 text-[0.65rem] sm:text-xs font-medium tracking-wide">
-                {pillar.text}
+              <Sparkles size={12} className="text-gold-400 shrink-0 animate-pulse" />
+              <span className="font-body text-[0.65rem] sm:text-xs font-bold tracking-[0.2em] uppercase text-gold-400">
+                PURE • TRADITIONAL • COASTAL
               </span>
-            </div>
-          ))}
-        </motion.div>
-      </div>
+            </motion.div>
 
-      {/* Scroll indicator */}
-      <motion.a
-        href="#story"
-        className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-cream-400 hover:text-gold-400 transition-colors min-h-[44px] justify-center"
-        animate={{ y: [0, 6, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        aria-label="Scroll to Our Story"
-      >
-        <span className="font-body text-[0.65rem] tracking-widest uppercase">
-          Discover
-        </span>
-        <ChevronDown size={18} />
-      </motion.a>
-    </section>
+            {/* Main Headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="font-display font-black text-cream-50 leading-tight"
+              style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}
+            >
+              Authentic Flavours.<br />
+              <span className="gold-shimmer font-semibold">Rooted in Tradition.</span>
+            </motion.h1>
+
+            {/* Supporting Text */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="font-body text-cream-300 max-w-xl mx-auto lg:mx-0 leading-relaxed text-sm sm:text-base px-1"
+            >
+              Discover traditional masalas, podis, noodles, health mixes and time-honoured recipes crafted with authentic coastal flavours. Pure ingredients, stone-ground with love.
+            </motion.p>
+
+            {/* CTA Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start items-stretch sm:items-center px-4 sm:px-0"
+            >
+              <a
+                id="hero-explore-masalas-btn"
+                href="#products"
+                className="btn-primary text-sm sm:text-base text-center min-h-[48px] flex items-center justify-center"
+              >
+                Explore Products
+              </a>
+              <a
+                id="hero-whatsapp-order-btn"
+                href={WA_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-whatsapp text-sm sm:text-base min-h-[48px] justify-center"
+              >
+                <MessageCircle size={18} />
+                Order on WhatsApp
+              </a>
+            </motion.div>
+          </div>
+
+          {/* Right Product Image Collage Column */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="w-full lg:w-1/2 flex items-center justify-center relative min-h-[300px] sm:min-h-[400px] select-none"
+          >
+            {/* Soft decorative background glow */}
+            <div className="absolute w-64 h-64 rounded-full bg-gold-500/10 blur-3xl pointer-events-none" />
+
+            {/* Overlapping Stacks */}
+            <div className="relative w-64 h-64 sm:w-80 sm:h-80 flex items-center justify-center">
+              {/* Product 1: ABC Malt (Left/Back) */}
+              <div className="absolute transform -translate-x-12 -rotate-12 w-32 h-32 sm:w-44 sm:h-44 bg-white/95 rounded-2xl p-2 shadow-xl border border-cream-300/40 transition-transform hover:scale-105 hover:z-30 duration-300">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/abc-malt.jpg"
+                  alt="ABC Malt Premium - Health Drink"
+                  className="w-full h-full object-contain rounded-lg"
+                  loading="eager"
+                />
+              </div>
+
+              {/* Product 2: Biriyani Masala (Right/Back) */}
+              <div className="absolute transform translate-x-12 rotate-12 w-32 h-32 sm:w-44 sm:h-44 bg-white/95 rounded-2xl p-2 shadow-xl border border-cream-300/40 transition-transform hover:scale-105 hover:z-30 duration-300">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/biriyani-masala.jpg"
+                  alt="Biriyani Masala - Heritage Spices"
+                  className="w-full h-full object-contain rounded-lg"
+                  loading="eager"
+                />
+              </div>
+
+              {/* Product 3: Fish Curry Masala (Center/Front) */}
+              <div className="absolute z-20 w-36 h-36 sm:w-48 sm:h-48 bg-white rounded-2xl p-2.5 shadow-2xl border-2 border-brand-orange transition-transform hover:scale-105 hover:z-30 duration-300">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/fish-curry-masala.jpg"
+                  alt="Fish Curry Masala - Traditional Coastal Spices"
+                  className="w-full h-full object-contain rounded-lg"
+                  loading="eager"
+                />
+                <span className="absolute -top-3 -right-3 badge-premium text-[0.55rem]">BEST SELLER</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-cream-400 pointer-events-none">
+          <span className="font-body text-[0.6rem] tracking-widest uppercase opacity-60">Discover</span>
+          <ChevronDown size={14} className="animate-bounce" />
+        </div>
+      </section>
+
+      {/* Trust Strip Banner below Hero */}
+      <section className="bg-cream-200 border-y border-cream-300 py-6 relative z-10 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center divide-y-0 divide-x-0 md:divide-x divide-cream-300/70">
+            {trustPillars.map((item, idx) => (
+              <div key={idx} className="flex flex-col items-center justify-center p-2 space-y-1">
+                <span className="text-2xl mb-1">{item.icon}</span>
+                <span className="font-display font-bold text-brand-purple text-sm sm:text-base leading-tight">
+                  {item.label}
+                </span>
+                <span className="font-body text-espresso-800 text-[0.67rem] sm:text-xs tracking-wide">
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
