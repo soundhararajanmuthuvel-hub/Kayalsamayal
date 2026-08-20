@@ -20,6 +20,8 @@ export interface CustomerDetails {
   notes: string;
 }
 
+export type CheckoutStep = "cart" | "checkout" | "payment" | "loading" | "confirm";
+
 interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product, quantity?: number) => void;
@@ -32,9 +34,10 @@ interface CartContextType {
   setIsCartOpen: (isOpen: boolean) => void;
   customerDetails: CustomerDetails;
   setCustomerDetails: React.Dispatch<React.SetStateAction<CustomerDetails>>;
-  checkoutStep: "cart" | "checkout" | "confirm" | "loading";
-  setCheckoutStep: (step: "cart" | "checkout" | "confirm" | "loading") => void;
-  placeOrder: () => Promise<OrderResponse | null>;
+  checkoutStep: CheckoutStep;
+  setCheckoutStep: (step: CheckoutStep) => void;
+  /** Place the order. Must pass the UTR entered by the customer. */
+  placeOrder: (utr: string) => Promise<OrderResponse | null>;
   lastOrderResponse: OrderResponse | null;
 }
 
@@ -43,43 +46,29 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 // Helper to assign default prices if not present (e.g. for fallback products)
 export function getProductPrice(product: Product): number {
   if (product.price && product.price > 0) return product.price;
-  
-  // Default fallback prices based on category and tier
   const isPremium = product.tier === "premium";
   switch (product.category) {
-    case "Traditional Masalas":
-      return isPremium ? 120 : 60;
-    case "Podi Products":
-      return isPremium ? 100 : 50;
-    case "Specialty Noodles":
-      return isPremium ? 140 : 80;
-    case "Health Mixes & Malts":
-      return isPremium ? 320 : 180;
-    case "PeruKalam Legiyam":
-      return 250;
-    default:
-      return 100;
+    case "Traditional Masalas":    return isPremium ? 120 : 60;
+    case "Podi Products":          return isPremium ? 100 : 50;
+    case "Specialty Noodles":      return isPremium ? 140 : 80;
+    case "Health Mixes & Malts":   return isPremium ? 320 : 180;
+    case "PeruKalam Legiyam":      return 250;
+    default:                       return 100;
   }
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [checkoutStep, setCheckoutStep] = useState<"cart" | "checkout" | "confirm" | "loading">("cart");
+  const [cart, setCart]                       = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen]           = useState(false);
+  const [checkoutStep, setCheckoutStep]       = useState<CheckoutStep>("cart");
   const [lastOrderResponse, setLastOrderResponse] = useState<OrderResponse | null>(null);
-  
+
   const [customerDetails, setCustomerDetails] = useState<CustomerDetails>({
-    name: "",
-    mobile: "",
-    email: "",
-    address: "",
-    city: "",
-    state: "",
-    pincode: "",
-    notes: "",
+    name: "", mobile: "", email: "",
+    address: "", city: "", state: "", pincode: "", notes: "",
   });
 
-  // Load cart from localStorage on mount
+  // Restore cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem("kayal_samayal_cart");
     if (savedCart) {
@@ -91,7 +80,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Save cart to localStorage
   const saveCart = (newCart: CartItem[]) => {
     setCart(newCart);
     localStorage.setItem("kayal_samayal_cart", JSON.stringify(newCart));
@@ -99,10 +87,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addToCart = (product: Product, quantity = 1) => {
     const existingIndex = cart.findIndex((item) => item.product.id === product.id);
-    
-    // Check stock if available from API
-    const currentStock = product.stock ?? 999;
-    
+    const currentStock  = product.stock ?? 999;
+
     if (existingIndex > -1) {
       const newQuantity = cart[existingIndex].quantity + quantity;
       if (newQuantity > currentStock) {
@@ -123,29 +109,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const removeFromCart = (productId: string) => {
-    const newCart = cart.filter((item) => item.product.id !== productId);
-    saveCart(newCart);
+    saveCart(cart.filter((item) => item.product.id !== productId));
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    
+    if (quantity <= 0) { removeFromCart(productId); return; }
     const existingItem = cart.find((item) => item.product.id === productId);
     if (!existingItem) return;
-    
     const maxStock = existingItem.product.stock ?? 999;
     if (quantity > maxStock) {
       alert(`Only ${maxStock} units of ${existingItem.product.name} are available in stock.`);
       return;
     }
-
-    const newCart = cart.map((item) =>
-      item.product.id === productId ? { ...item, quantity } : item
-    );
-    saveCart(newCart);
+    saveCart(cart.map((item) => item.product.id === productId ? { ...item, quantity } : item));
   };
 
   const clearCart = () => {
@@ -153,24 +129,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("kayal_samayal_cart");
   };
 
-  const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartCount    = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartSubtotal = cart.reduce((total, item) => total + getProductPrice(item.product) * item.quantity, 0);
 
-  const cartSubtotal = cart.reduce((total, item) => {
-    const itemPrice = getProductPrice(item.product);
-    return total + itemPrice * item.quantity;
-  }, 0);
-
-  const placeOrder = async (): Promise<OrderResponse | null> => {
+  /**
+   * Place the order with the customer-entered UTR.
+   * Sets checkoutStep to "loading" while the API call is in flight.
+   * On success → "confirm". On failure → returns to "payment" step.
+   * Email failure from the backend does NOT cause the order to fail.
+   */
+  const placeOrder = async (utr: string): Promise<OrderResponse | null> => {
     setCheckoutStep("loading");
-    
+
     const orderInput: OrderInput = {
       customer: customerDetails,
       items: cart.map((item) => ({
         productId: item.product.id,
-        quantity: item.quantity,
+        quantity:  item.quantity,
       })),
+      utr:           utr,
+      paymentMethod: "UPI",
     };
-    
+
     try {
       const response = await createOrder(orderInput);
       setLastOrderResponse(response);
@@ -178,24 +158,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart();
         setCheckoutStep("confirm");
       } else {
-        setCheckoutStep("checkout");
+        setCheckoutStep("payment"); // back to payment step so customer can retry/re-enter UTR
       }
       return response;
     } catch (e) {
       console.error("Order creation error:", e);
-      setCheckoutStep("checkout");
+      setCheckoutStep("payment");
       return {
-        success: false,
-        code: "NETWORK_ERROR",
-        orderId: "",
-        customerId: "",
-        subtotal: 0,
-        shipping: 0,
-        discount: 0,
-        gst: 0,
-        grandTotal: 0,
-        paymentStatus: "Pending",
-        orderStatus: "Pending",
+        success: false, code: "NETWORK_ERROR",
+        orderId: "", customerId: "",
+        subtotal: 0, shipping: 0, discount: 0, gst: 0, grandTotal: 0,
+        paymentStatus: "Pending Verification", paymentMethod: "UPI", orderStatus: "Pending",
         items: [],
         message: "We couldn't connect to our order system. Please check your connection and try again.",
       };
@@ -205,19 +178,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider
       value={{
-        cart,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        cartCount,
-        cartSubtotal,
-        isCartOpen,
-        setIsCartOpen,
-        customerDetails,
-        setCustomerDetails,
-        checkoutStep,
-        setCheckoutStep,
+        cart, addToCart, removeFromCart, updateQuantity, clearCart,
+        cartCount, cartSubtotal,
+        isCartOpen, setIsCartOpen,
+        customerDetails, setCustomerDetails,
+        checkoutStep, setCheckoutStep,
         placeOrder,
         lastOrderResponse,
       }}
