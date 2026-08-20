@@ -269,32 +269,15 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
     }
 
     if (!json.success) {
-      const errMsg = json.error || json.message || "";
-      let code = "API_ERROR";
-      let message = "Something went wrong while placing your order. Please try again.";
-
-      if (errMsg.includes("Product not found")) {
-        code = "PRODUCT_NOT_FOUND";
-        message = "Some products in your cart are not yet available for online checkout.";
-      } else if (errMsg.includes("Insufficient stock") || errMsg.includes("stock")) {
-        code = "INSUFFICIENT_STOCK";
-        message = "Some items in your cart are no longer available in the requested quantity.";
-      } else if (errMsg.includes("Customer") || errMsg.includes("name")) {
-        code = "CUSTOMER_REQUIRED";
-        message = "Customer name is required.";
-      } else if (errMsg.includes("mobile")) {
-        code = "MOBILE_REQUIRED";
-        message = "Mobile number is required.";
-      } else if (errMsg.includes("Sheet not found")) {
-        code = "SHEET_NOT_FOUND";
-        message = "Order database sheet not found. Please contact support.";
-      }
+      const errMsg = json.error || json.message || "Something went wrong while placing your order. Please try again.";
+      const code = json.code || "API_ERROR";
 
       return {
         ...json,
         success: false,
         code,
-        message
+        message: errMsg,
+        error: errMsg
       };
     }
 
