@@ -3,17 +3,18 @@
 import { useState, useEffect } from "react";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import Link from "next/link";
 
 const navLinks = [
-  { label: "Our Story", href: "#story" },
-  { label: "Products", href: "#products" },
-  { label: "Why Us", href: "#why-us" },
-  { label: "Reviews", href: "#testimonials" },
-  { label: "Contact", href: "#contact" },
+  { label: "About Us", href: "/about" },
+  { label: "Products", href: "/#products" },
+  { label: "Why Us", href: "/#why-us" },
+  { label: "Reviews", href: "/#testimonials" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 const WA_LINK =
-  "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%20place%20an%20order.";
+  "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%2520place%2520an%2520order.";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -52,8 +53,8 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             {/* Logo */}
-            <a
-              href="#hero"
+            <Link
+              href="/"
               className="flex items-center gap-2 sm:gap-3 group min-w-0"
               aria-label="Kayal Samayal — Home"
             >
@@ -81,7 +82,7 @@ export default function Header() {
                   Pure · Traditional · Coastal
                 </div>
               </div>
-            </a>
+            </Link>
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">

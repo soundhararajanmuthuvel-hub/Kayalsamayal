@@ -21,11 +21,11 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 }
 
 const navLinks = [
-  { label: "Our Story", href: "#story" },
-  { label: "Products", href: "#products" },
-  { label: "Why Us", href: "#why-us" },
-  { label: "Reviews", href: "#testimonials" },
-  { label: "Contact", href: "#contact" },
+  { label: "About Us", href: "/about" },
+  { label: "Products", href: "/#products" },
+  { label: "Why Us", href: "/#why-us" },
+  { label: "Reviews", href: "/#testimonials" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 const categories = [
