@@ -7,10 +7,10 @@ import Link from "next/link";
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Products", href: "/#products" },
+  { label: "Products", href: "/products" },
   { label: "About", href: "/about" },
   { label: "Health Mixes", href: "/health-mixes" },
-  { label: "Contact", href: "/#contact" },
+  { label: "Contact", href: "/contact" },
 ];
 
 const WA_LINK =
@@ -102,8 +102,8 @@ export default function Header() {
             {/* CTA + Hamburger */}
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               {/* Shopping Cart Button */}
-              <button
-                onClick={() => setIsCartOpen(true)}
+              <Link
+                href="/cart"
                 className={`relative p-2.5 rounded-full transition-colors flex items-center justify-center min-h-[44px] min-w-[44px] ${
                   scrolled ? "text-cream-100 hover:bg-white/10" : "text-cream-50 hover:bg-white/10"
                 }`}
@@ -115,7 +115,7 @@ export default function Header() {
                     {cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               <a
                 id="header-whatsapp-order-btn"

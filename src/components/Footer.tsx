@@ -22,10 +22,10 @@ function FacebookIcon({ size = 16 }: { size?: number }) {
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Products", href: "/#products" },
+  { label: "Products", href: "/products" },
   { label: "About", href: "/about" },
   { label: "Health Mixes", href: "/health-mixes" },
-  { label: "Contact", href: "/#contact" },
+  { label: "Contact", href: "/contact" },
 ];
 
 const categories = [
