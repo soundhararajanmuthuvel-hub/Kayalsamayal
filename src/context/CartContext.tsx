@@ -36,8 +36,8 @@ interface CartContextType {
   setCustomerDetails: React.Dispatch<React.SetStateAction<CustomerDetails>>;
   checkoutStep: CheckoutStep;
   setCheckoutStep: (step: CheckoutStep) => void;
-  /** Place the order. Must pass the UTR entered by the customer. */
-  placeOrder: (utr: string) => Promise<OrderResponse | null>;
+  /** Place the order. Pass utr (required for UPI) and paymentMethod (defaults to UPI). */
+  placeOrder: (utr: string, paymentMethod?: "UPI" | "COD") => Promise<OrderResponse | null>;
   lastOrderResponse: OrderResponse | null;
 }
 
@@ -138,7 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
    * On success → "confirm". On failure → returns to "payment" step.
    * Email failure from the backend does NOT cause the order to fail.
    */
-  const placeOrder = async (utr: string): Promise<OrderResponse | null> => {
+  const placeOrder = async (utr: string, paymentMethod: "UPI" | "COD" = "UPI"): Promise<OrderResponse | null> => {
     setCheckoutStep("loading");
 
     const orderInput: OrderInput = {
@@ -148,7 +148,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         quantity:  item.quantity,
       })),
       utr:           utr,
-      paymentMethod: "UPI",
+      paymentMethod: paymentMethod,
     };
 
     try {
@@ -158,7 +158,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart();
         setCheckoutStep("confirm");
       } else {
-        setCheckoutStep("payment"); // back to payment step so customer can retry/re-enter UTR
+        setCheckoutStep("payment"); // back to payment step so customer can retry
       }
       return response;
     } catch (e) {
@@ -168,7 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         success: false, code: "NETWORK_ERROR",
         orderId: "", customerId: "",
         subtotal: 0, shipping: 0, discount: 0, gst: 0, grandTotal: 0,
-        paymentStatus: "Pending Verification", paymentMethod: "UPI", orderStatus: "Pending",
+        paymentStatus: "Pending", paymentMethod: paymentMethod === "COD" ? "COD / Pay Later" : "UPI", orderStatus: "Pending",
         items: [],
         message: "We couldn't connect to our order system. Please check your connection and try again.",
       };

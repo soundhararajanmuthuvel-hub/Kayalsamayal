@@ -30,7 +30,7 @@ export interface OrderInput {
   customer: CustomerInput;
   items: OrderItemInput[];
   utr: string;
-  paymentMethod: "UPI";
+  paymentMethod: "UPI" | "COD";
 }
 
 export interface OrderResponse {

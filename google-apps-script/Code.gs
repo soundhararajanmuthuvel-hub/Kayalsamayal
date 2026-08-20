@@ -486,8 +486,24 @@ function processOrderTransaction(ss, data) {
     // Extract payload fields
     const customerInput = data.customer;
     const itemsInput    = data.items;
-    const utr           = String(data.utr || "").trim();
+    const rawUtr        = String(data.utr || "").trim();
     const paymentMethod = data.paymentMethod || "UPI";
+
+    // ── Validate paymentMethod — backend must not trust frontend ──────────
+    if (paymentMethod !== "UPI" && paymentMethod !== "COD") {
+      return {
+        success: false,
+        error: "Invalid payment method: " + paymentMethod + ". Allowed: UPI, COD",
+        step: "Payment Method Validation"
+      };
+    }
+
+    // Backend-authoritative values based on payment method
+    const displayPaymentMethod = paymentMethod === "UPI" ? "UPI" : "COD / Pay Later";
+    const paymentStatus        = paymentMethod === "UPI" ? "Pending Verification" : "Pending";
+    const storedUtr            = paymentMethod === "UPI" ? rawUtr : "";
+    const orderStatus          = paymentMethod === "COD" ? "New" : "Pending";
+    const paymentSubmittedAt   = paymentMethod === "UPI" ? new Date() : "";
 
     // ── Step 1: Validate customer ──────────────────────────────────────────
     if (!customerInput || !customerInput.name || !customerInput.mobile) {
@@ -607,8 +623,8 @@ function processOrderTransaction(ss, data) {
       shipping,
       discount,
       grandTotal,
-      "Pending Verification",   // Payment Status
-      "Pending",                // Order Status
+      paymentStatus,            // Backend-set: "Pending Verification" or "Pending"
+      orderStatus,              // "Pending" for UPI, "New" for COD
       new Date()                // Created At
     ]);
 
@@ -621,10 +637,10 @@ function processOrderTransaction(ss, data) {
       if (idx > 0) ordersSheet.getRange(newOrderRowNum, idx).setValue(value);
     }
 
-    setOrderCol("Payment Method",     paymentMethod);
-    setOrderCol("UPI ID",             upiId);
-    setOrderCol("UTR",                utr);
-    setOrderCol("Payment Submitted At", new Date());
+    setOrderCol("Payment Method",     displayPaymentMethod);
+    setOrderCol("UPI ID",             paymentMethod === "UPI" ? upiId : "");
+    setOrderCol("UTR",                storedUtr);
+    setOrderCol("Payment Submitted At", paymentSubmittedAt);
     setOrderCol("Payment Verified At",  ""); // Empty — owner must manually verify
 
     // ── Step 9: Append Order Items & deduct stock ──────────────────────────
@@ -659,7 +675,10 @@ function processOrderTransaction(ss, data) {
     const orderData = {
       orderId, customerId, customerInput, validatedItems,
       subtotal, gstTotal, shipping, discount, grandTotal,
-      paymentMethod, paymentStatus: "Pending Verification", utr, upiId
+      paymentMethod: displayPaymentMethod,
+      paymentStatus,
+      utr: storedUtr,
+      upiId: paymentMethod === "UPI" ? upiId : ""
     };
 
     // ── Step 10: Send emails — NEVER cancels order on failure ──────────────
@@ -703,15 +722,15 @@ function processOrderTransaction(ss, data) {
       success:       true,
       orderId,
       customerId,
-      paymentMethod,
-      paymentStatus: "Pending Verification",
-      utr,
+      paymentMethod: displayPaymentMethod,
+      paymentStatus,
+      utr:           storedUtr,
       subtotal,
       shipping,
       discount,
       gst:           gstTotal,
       grandTotal,
-      orderStatus:   "Pending",
+      orderStatus,
       emailSent,
       items: validatedItems.map(i => ({
         productId:   i.productId,
@@ -758,27 +777,52 @@ function buildOrderEmailHtml(orderData, isAdmin) {
       <td style="padding:8px 6px;font-size:13px;text-align:right;font-family:sans-serif;font-weight:bold;">Rs. ${item.lineTotal.toFixed(2)}</td>
     </tr>`).join("");
 
-  const adminWarning = isAdmin ? `
-    <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px;margin-bottom:20px;border-radius:4px;">
-      <strong style="font-family:sans-serif;color:#b45309;font-size:14px;">⚠️ Action Required: Verify UPI Payment</strong><br>
-      <span style="font-family:sans-serif;font-size:13px;color:#92400e;">
-        Customer UTR: <strong>${utr || "Not provided"}</strong><br>
-        Please verify this UTR in your UPI app / bank statement before marking the order as Verified.
-        Update Payment Status in the Orders sheet after verification.
-      </span>
-    </div>` : "";
+  const isCod = paymentMethod !== "UPI" && paymentMethod !== "Pending Verification";
 
-  const customerIntro = !isAdmin ? `
-    <p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">
-      Dear <strong>${customerInput.name}</strong>,<br><br>
-      Your order has been received successfully. Your UPI payment is
-      <strong style="color:#b45309;">pending verification</strong>.
-      We will confirm your payment and process your order shortly.
-      Thank you for choosing Kayal Samayal!
-    </p>` : `
-    <p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">
-      A new UPI order has been placed and is awaiting payment verification.
-    </p>`;
+  const adminWarning = isAdmin ? (
+    isCod
+      ? `<div style="background:#e0f2fe;border-left:4px solid #0ea5e9;padding:16px;margin-bottom:20px;border-radius:4px;">
+           <strong style="font-family:sans-serif;color:#0369a1;font-size:14px;">ℹ️ COD / Pay Later Order</strong><br>
+           <span style="font-family:sans-serif;font-size:13px;color:#0c4a6e;">
+             This customer chose <strong>Skip Payment</strong>. No online payment was made.<br>
+             Payment Method: <strong>COD / Pay Later</strong> &middot; Payment Status: <strong>Pending</strong>
+           </span>
+         </div>`
+      : `<div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px;margin-bottom:20px;border-radius:4px;">
+           <strong style="font-family:sans-serif;color:#b45309;font-size:14px;">⚠️ Action Required: Verify UPI Payment</strong><br>
+           <span style="font-family:sans-serif;font-size:13px;color:#92400e;">
+             Customer UTR: <strong>${utr || "Not provided"}</strong><br>
+             Please verify this UTR in your UPI app / bank statement before marking the order as Verified.
+             Update Payment Status in the Orders sheet after verification.
+           </span>
+         </div>`
+  ) : "";
+
+  const customerIntro = !isAdmin ? (
+    isCod
+      ? `<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">
+           Dear <strong>${customerInput.name}</strong>,<br><br>
+           Your order has been received successfully!<br>
+           <strong>Payment Method: Cash on Delivery / Pay Later</strong><br>
+           Payment can be completed when the order is delivered, or as agreed with Kayal Samayal.
+           We will contact you to confirm delivery. Thank you for choosing Kayal Samayal!
+         </p>`
+      : `<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">
+           Dear <strong>${customerInput.name}</strong>,<br><br>
+           Your order has been received successfully. Your UPI payment is
+           <strong style="color:#b45309;">pending verification</strong>.
+           We will confirm your payment and process your order shortly.
+           Thank you for choosing Kayal Samayal!
+         </p>`
+  ) : (
+    isCod
+      ? `<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">
+           A new COD / Pay Later order has been placed. No online payment was collected.
+         </p>`
+      : `<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">
+           A new UPI order has been placed and is awaiting payment verification.
+         </p>`
+  );
 
   return `<!DOCTYPE html>
 <html>
@@ -892,6 +936,7 @@ function buildOrderEmailHtml(orderData, isAdmin) {
             <td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Payment Status</td>
             <td style="padding:4px 16px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#b45309;">${paymentStatus}</td>
           </tr>
+          ${!isCod ? `
           <tr>
             <td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">UPI ID Paid To</td>
             <td style="padding:4px 16px;font-family:sans-serif;font-size:13px;color:#3d2010;">${upiId || "Not configured"}</td>
