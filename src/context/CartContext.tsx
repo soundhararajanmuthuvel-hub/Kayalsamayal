@@ -73,7 +73,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const savedCart = localStorage.getItem("kayal_samayal_cart");
     if (savedCart) {
       try {
-        setCart(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        setTimeout(() => {
+          setCart(parsed);
+        }, 0);
       } catch (e) {
         console.error("Failed to parse cart data", e);
       }

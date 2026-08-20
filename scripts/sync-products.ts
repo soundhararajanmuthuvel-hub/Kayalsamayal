@@ -21,7 +21,7 @@ function getProductPrice(category: string, tier: string): number {
   }
 }
 
-function escapeCSVField(field: any): string {
+function escapeCSVField(field: unknown): string {
   if (field === null || field === undefined) return "";
   const str = String(field);
   if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {

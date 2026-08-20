@@ -66,6 +66,7 @@ export interface SettingsResponse {
 
 // ── MAPPING HELPERS ───────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapProduct(raw: any): Product {
   const price  = Number(raw["Price"]  || raw["price"]  || 0);
   const mrp    = Number(raw["MRP"]    || raw["mrp"]    || 0);
@@ -121,6 +122,7 @@ function mapProduct(raw: any): Product {
   return { id, name, category, image, tier, description, highlights, whatsappMessage, price, mrp, gst, stock, active };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapReview(raw: any): Testimonial & { avatar?: string; active?: boolean } {
   const id     = String(raw["Review ID"] || raw["id"] || raw["reviewId"] || Math.random().toString());
   const name   = String(raw["Customer Name"] || raw["name"] || "Anonymous");
@@ -172,7 +174,7 @@ export async function getReviews(): Promise<Testimonial[]> {
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
     if (json && json.success && Array.isArray(json.data)) {
-      return json.data.map(mapReview).filter((r: any) => r.active !== false);
+      return json.data.map(mapReview).filter((r: Testimonial & { active?: boolean }) => r.active !== false);
     }
     return [];
   } catch (err) {
@@ -255,7 +257,7 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
     }
 
     return json;
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to create order:", err);
     return {
       success: false, code: "NETWORK_ERROR",
@@ -272,7 +274,7 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
 
 export async function updateOrder(
   orderId: string,
-  updateData: any
+  updateData: Record<string, unknown>
 ): Promise<{ success: boolean; message?: string }> {
   try {
     const payload = { action: "updateOrder", orderId, ...updateData };
@@ -294,7 +296,7 @@ export async function updateOrder(
 
 export async function getOrder(
   orderId: string
-): Promise<{ success: boolean; data?: any; message?: string }> {
+): Promise<{ success: boolean; data?: unknown; message?: string }> {
   try {
     const res = await fetch(`${API_URL}?action=order&id=${encodeURIComponent(orderId)}`, {
       method: "GET",

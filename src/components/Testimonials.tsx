@@ -164,7 +164,7 @@ function ReviewCard({
 
       {/* Reviewer header */}
       <div className="flex items-center gap-3 mb-3">
-        <Avatar name={t.name} avatar={(t as any).avatar} />
+        <Avatar name={t.name} avatar={t.avatar} />
         <div className="min-w-0 flex-1">
           <p className="font-display font-semibold text-espresso-900 text-sm leading-tight truncate">
             {t.name}
@@ -278,7 +278,10 @@ export default function Testimonials() {
 
   // Clamp index when itemsPerView changes
   useEffect(() => {
-    setCurrentIndex((i) => Math.min(i, maxIndex));
+    const timer = setTimeout(() => {
+      setCurrentIndex((i) => Math.min(i, maxIndex));
+    }, 0);
+    return () => clearTimeout(timer);
   }, [maxIndex]);
 
   const prev = useCallback(() => {

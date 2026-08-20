@@ -4,6 +4,7 @@ export interface Testimonial {
   rating: number; // 1–5
   date: string;
   review: string;
+  avatar?: string;
 }
 
 export const testimonials: Testimonial[] = [

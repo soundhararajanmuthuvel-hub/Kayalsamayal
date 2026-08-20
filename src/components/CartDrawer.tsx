@@ -289,6 +289,7 @@ export default function CartDrawer() {
                       <div>
                         <label htmlFor="chk-name" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">Full Name <span className="text-rust-500">*</span></label>
                         <input id="chk-name" name="name" type="text" value={customerDetails.name} onChange={handleInputChange}
+                          autoComplete="name"
                           className={`w-full font-body text-sm bg-white border rounded-lg px-3 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition ${errors.name ? "border-rust-500" : "border-cream-300"}`}
                           placeholder="e.g. Ahamed Kabeer" />
                         {errors.name && <p className="text-rust-500 text-xs mt-1">{errors.name}</p>}
@@ -298,6 +299,7 @@ export default function CartDrawer() {
                         <div>
                           <label htmlFor="chk-mobile" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">Mobile <span className="text-rust-500">*</span></label>
                           <input id="chk-mobile" name="mobile" type="tel" value={customerDetails.mobile} onChange={handleInputChange}
+                            autoComplete="tel"
                             className={`w-full font-body text-sm bg-white border rounded-lg px-3 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition ${errors.mobile ? "border-rust-500" : "border-cream-300"}`}
                             placeholder="10-digit mobile" />
                           {errors.mobile && <p className="text-rust-500 text-xs mt-1">{errors.mobile}</p>}
@@ -305,6 +307,7 @@ export default function CartDrawer() {
                         <div>
                           <label htmlFor="chk-email" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">Email</label>
                           <input id="chk-email" name="email" type="email" value={customerDetails.email} onChange={handleInputChange}
+                            autoComplete="email"
                             className={`w-full font-body text-sm bg-white border rounded-lg px-3 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition ${errors.email ? "border-rust-500" : "border-cream-300"}`}
                             placeholder="email@example.com" />
                           {errors.email && <p className="text-rust-500 text-xs mt-1">{errors.email}</p>}
@@ -314,6 +317,7 @@ export default function CartDrawer() {
                       <div>
                         <label htmlFor="chk-address" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">Shipping Address <span className="text-rust-500">*</span></label>
                         <textarea id="chk-address" name="address" rows={2} value={customerDetails.address} onChange={handleInputChange}
+                          autoComplete="street-address"
                           className={`w-full font-body text-sm bg-white border rounded-lg px-3 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition resize-none ${errors.address ? "border-rust-500" : "border-cream-300"}`}
                           placeholder="House/Plot No, Street, Locality" />
                         {errors.address && <p className="text-rust-500 text-xs mt-1">{errors.address}</p>}
@@ -323,6 +327,7 @@ export default function CartDrawer() {
                         <div className="col-span-1">
                           <label htmlFor="chk-city" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">City <span className="text-rust-500">*</span></label>
                           <input id="chk-city" name="city" type="text" value={customerDetails.city} onChange={handleInputChange}
+                            autoComplete="address-level2"
                             className={`w-full font-body text-sm bg-white border rounded-lg px-3 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition ${errors.city ? "border-rust-500" : "border-cream-300"}`}
                             placeholder="City" />
                           {errors.city && <p className="text-rust-500 text-xs mt-1">{errors.city}</p>}
@@ -330,6 +335,7 @@ export default function CartDrawer() {
                         <div className="col-span-1">
                           <label htmlFor="chk-state" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">State <span className="text-rust-500">*</span></label>
                           <select id="chk-state" name="state" value={customerDetails.state} onChange={handleInputChange}
+                            autoComplete="address-level1"
                             className={`w-full font-body text-sm bg-white border rounded-lg px-2 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition ${errors.state ? "border-rust-500" : "border-cream-300"}`}>
                             <option value="">State</option>
                             {STATES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -339,6 +345,7 @@ export default function CartDrawer() {
                         <div className="col-span-1">
                           <label htmlFor="chk-pincode" className="block font-body text-xs font-bold uppercase tracking-wider text-espresso-800 mb-1">Pincode <span className="text-rust-500">*</span></label>
                           <input id="chk-pincode" name="pincode" type="text" value={customerDetails.pincode} onChange={handleInputChange}
+                            autoComplete="postal-code" inputMode="numeric"
                             className={`w-full font-body text-sm bg-white border rounded-lg px-3 py-2 text-espresso-900 focus:outline-none focus:ring-2 focus:ring-gold-600/20 focus:border-gold-600 transition ${errors.pincode ? "border-rust-500" : "border-cream-300"}`}
                             placeholder="6 digits" />
                           {errors.pincode && <p className="text-rust-500 text-xs mt-1">{errors.pincode}</p>}
@@ -488,7 +495,7 @@ export default function CartDrawer() {
                       <div className="bg-cream-100 border border-cream-300 rounded-xl p-4 space-y-3">
                         <div className="flex items-center gap-2">
                           <PackageCheck size={18} className="text-espresso-800/60" />
-                          <span className="font-display font-semibold text-espresso-900 text-sm">Don't want to pay online?</span>
+                          <span className="font-display font-semibold text-espresso-900 text-sm">Don&apos;t want to pay online?</span>
                         </div>
                         <p className="font-body text-xs text-espresso-800/70 leading-relaxed">
                           No problem! Place your order now and pay on delivery or as agreed with Kayal Samayal.

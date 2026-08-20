@@ -41,6 +41,26 @@ function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
   const price = getProductPrice(product);
 
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": product.name,
+    "image": product.image ? `https://kayalsamayal-gamma.vercel.app${product.image}` : undefined,
+    "description": product.description,
+    "category": product.category,
+    "brand": {
+      "@type": "Brand",
+      "name": "Kayal Samayal"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": price,
+      "priceCurrency": "INR",
+      "availability": "https://schema.org/InStock",
+      "url": "https://kayalsamayal-gamma.vercel.app/#products"
+    }
+  };
+
   return (
     <motion.div
       layout
@@ -54,6 +74,10 @@ function ProductCard({ product }: { product: Product }) {
           : "border-cream-300"
       }`}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       {/* Premium ribbon */}
       {isPremium && (
         <div className="ribbon text-[0.6rem] sm:text-[0.65rem]">
