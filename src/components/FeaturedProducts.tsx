@@ -6,6 +6,7 @@ import { ShoppingBag, MessageCircle, Star, ArrowRight } from "lucide-react";
 import { products as localProducts, type Product } from "@/data/products";
 import { getProducts } from "@/lib/api";
 import { useCart, getProductPrice } from "@/context/CartContext";
+import Link from "next/link";
 
 export default function FeaturedProducts() {
   const [featured, setFeatured] = useState<Product[]>([]);
@@ -128,13 +129,13 @@ export default function FeaturedProducts() {
 
         {/* View all products link */}
         <div className="text-center mt-12">
-          <a
-            href="#products"
+          <Link
+            href="/products"
             className="inline-flex items-center gap-1.5 font-body text-brand-purple hover:text-brand-orange font-bold text-sm transition-colors group cursor-pointer"
           >
             <span>View All Traditional Varieties</span>
             <ArrowRight size={14} className="transform group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
