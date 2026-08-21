@@ -75,7 +75,7 @@ export default function Header() {
                   Kayal Samayal
                 </div>
                 <div
-                  className={`font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.15em] sm:tracking-[0.18em] uppercase transition-colors ${
+                  className={`hidden sm:block font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.15em] sm:tracking-[0.18em] uppercase transition-colors ${
                     scrolled ? "text-gold-500" : "text-gold-400"
                   }`}
                 >
@@ -122,7 +122,7 @@ export default function Header() {
                 href={WA_LINK}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-2 btn-primary text-sm py-2.5 px-4"
+                className="hidden md:inline-flex items-center gap-2 btn-primary text-sm py-2.5 px-4"
               >
                 <ShoppingBag size={15} />
                 Order Now
