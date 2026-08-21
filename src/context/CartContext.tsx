@@ -37,7 +37,7 @@ interface CartContextType {
   checkoutStep: CheckoutStep;
   setCheckoutStep: (step: CheckoutStep) => void;
   /** Place the order. Pass utr (required for UPI) and paymentMethod (defaults to UPI). */
-  placeOrder: (utr: string, paymentMethod?: "UPI" | "COD") => Promise<OrderResponse | null>;
+  placeOrder: (utr: string, paymentMethod?: "UPI" | "COD", screenshotBase64?: string, screenshotName?: string) => Promise<OrderResponse | null>;
   lastOrderResponse: OrderResponse | null;
 }
 
@@ -141,7 +141,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
    * On success → "confirm". On failure → returns to "payment" step.
    * Email failure from the backend does NOT cause the order to fail.
    */
-  const placeOrder = async (utr: string, paymentMethod: "UPI" | "COD" = "UPI"): Promise<OrderResponse | null> => {
+  const placeOrder = async (
+    utr: string,
+    paymentMethod: "UPI" | "COD" = "UPI",
+    screenshotBase64?: string,
+    screenshotName?: string
+  ): Promise<OrderResponse | null> => {
     setCheckoutStep("loading");
 
     const orderInput: OrderInput = {
@@ -152,6 +157,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       })),
       utr:           utr,
       paymentMethod: paymentMethod,
+      screenshotBase64: screenshotBase64,
+      screenshotName:   screenshotName,
     };
 
     try {

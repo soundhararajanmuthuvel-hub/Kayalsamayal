@@ -31,6 +31,8 @@ export interface OrderInput {
   items: OrderItemInput[];
   utr: string;
   paymentMethod: "UPI" | "COD";
+  screenshotBase64?: string;
+  screenshotName?: string;
 }
 
 export interface OrderResponse {

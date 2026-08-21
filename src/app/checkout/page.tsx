@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart, getProductPrice } from "@/context/CartContext";
 import { getSettings } from "@/lib/api";
-import { ShieldCheck, CreditCard, ChevronRight, CheckCircle, AlertCircle, QrCode, MessageSquare } from "lucide-react";
+import { ShieldCheck, ChevronRight, CheckCircle, AlertCircle, QrCode, Camera, Trash2, RefreshCw, Copy, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function CheckoutPage() {
@@ -30,8 +30,52 @@ export default function CheckoutPage() {
   const [utr, setUtr] = useState("");
   const [isChecked, setIsChecked] = useState(false);
   const [upiId, setUpiId] = useState("pay.kayalsamayal@okaxis"); // Dynamic fallback
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderErr, setOrderErr] = useState("");
+
+  // Screenshot Upload State
+  const [paymentScreenshot, setPaymentScreenshot] = useState<File | null>(null);
+  const [paymentScreenshotPreview, setPaymentScreenshotPreview] = useState<string | null>(null);
+  const [screenshotBase64, setScreenshotBase64] = useState<string>("");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a JPG, PNG or WEBP image under 5 MB.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please upload a JPG, PNG or WEBP image under 5 MB.");
+      return;
+    }
+
+    setPaymentScreenshot(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Url = reader.result as string;
+      setPaymentScreenshotPreview(base64Url);
+      setScreenshotBase64(base64Url);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveScreenshot = () => {
+    setPaymentScreenshot(null);
+    setPaymentScreenshotPreview(null);
+    setScreenshotBase64("");
+  };
+
+  const handleCopyUPI = () => {
+    navigator.clipboard.writeText(upiId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Load Settings from Sheet
   useEffect(() => {
@@ -108,8 +152,11 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async () => {
     if (paymentMethod === "UPI") {
-      if (!utr.trim()) {
-        alert("Please enter the UTR / Transaction ID for manual UPI verification.");
+      const hasUtr = utr.trim() !== "";
+      const hasScreenshot = !!paymentScreenshot;
+
+      if (!hasUtr && !hasScreenshot) {
+        alert("Please enter your UTR / Transaction ID or upload a payment screenshot.");
         return;
       }
       if (!isChecked) {
@@ -122,7 +169,12 @@ export default function CheckoutPage() {
     setOrderErr("");
 
     try {
-      const response = await placeOrder(paymentMethod === "UPI" ? utr : "", paymentMethod);
+      const response = await placeOrder(
+        paymentMethod === "UPI" ? utr : "",
+        paymentMethod,
+        paymentMethod === "UPI" ? screenshotBase64 : "",
+        paymentMethod === "UPI" && paymentScreenshot ? paymentScreenshot.name : ""
+      );
       if (response && response.success) {
         router.push("/thank-you");
       } else {
@@ -318,110 +370,218 @@ export default function CheckoutPage() {
               {/* STEP 2: PAYMENT METHOD */}
               {step === "payment" && (
                 <div className="space-y-6">
-                  <h2 className="font-display font-bold text-brand-purple text-xl">Select Payment Method</h2>
-                  
-                  <div className="space-y-4">
-                    {/* UPI Radio */}
-                    <label className="flex items-start gap-3 border border-cream-300 p-4 rounded-xl cursor-pointer hover:bg-cream-100/20 transition-all select-none">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        checked={paymentMethod === "UPI"}
-                        onChange={() => setPaymentMethod("UPI")}
-                        className="mt-1 text-brand-orange focus:ring-brand-orange"
-                      />
-                      <div>
-                        <h3 className="font-display font-bold text-brand-purple text-sm sm:text-base">Pay via UPI (Instant Order Dispatch)</h3>
-                        <p className="font-body text-espresso-800 text-xs mt-1">
-                          Transfer directly using any UPI App (GPay, PhonePe, Paytm). Safe & verified.
-                        </p>
+                  <h2 className="font-display font-bold text-brand-purple text-xl">Payment Details</h2>
+
+                  <div className="bg-cream-100/30 border border-cream-300 p-4 sm:p-6 rounded-2xl space-y-6">
+                    {/* QR Code and Copy UPI ID */}
+                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 justify-center sm:justify-start">
+                      {/* QR Box */}
+                      <div className="bg-white p-3 border border-cream-300 rounded-xl shadow-xs inline-flex flex-col items-center shrink-0">
+                        <QrCode size={100} className="text-brand-purple" />
+                        <span className="font-body text-[0.6rem] font-bold text-brand-purple mt-1 select-none">UPI SCAN CODE</span>
                       </div>
-                    </label>
 
-                    {/* WhatsApp COD Radio */}
-                    <label className="flex items-start gap-3 border border-cream-300 p-4 rounded-xl cursor-pointer hover:bg-cream-100/20 transition-all select-none">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        checked={paymentMethod === "COD"}
-                        onChange={() => setPaymentMethod("COD")}
-                        className="mt-1 text-brand-orange focus:ring-brand-orange"
-                      />
-                      <div>
-                        <h3 className="font-display font-bold text-brand-purple text-sm sm:text-base">Skip Payment / Cash on Delivery</h3>
-                        <p className="font-body text-espresso-800 text-xs mt-1">
-                          Order now, verify shipping details, and pay on delivery (or via WhatsApp catalog chat).
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* UPI Details Box */}
-                  {paymentMethod === "UPI" && (
-                    <div className="bg-cream-100/30 border border-cream-300 p-6 rounded-2xl space-y-6">
-                      <div className="flex flex-col md:flex-row items-center gap-6 justify-center md:justify-start">
-                        {/* QR Box */}
-                        <div className="bg-white p-3.5 border border-cream-300 rounded-xl shadow-xs inline-flex flex-col items-center">
-                          <QrCode size={100} className="text-brand-purple" />
-                          <span className="font-body text-[0.6rem] font-bold text-brand-purple mt-1 select-none">UPI SCAN CODE</span>
-                        </div>
-
-                        {/* Details copy */}
-                        <div className="text-center md:text-left space-y-2">
-                          <p className="font-body text-xs font-bold text-brand-orange uppercase tracking-wider">UPI Account Coordinates</p>
-                          <div className="space-y-1">
-                            <p className="font-display font-bold text-brand-purple text-sm sm:text-base">
-                              UPI ID: <span className="underline select-all">{upiId}</span>
-                            </p>
-                            <p className="font-body text-espresso-800 text-xs">
-                              Account Holder: <span className="font-semibold text-brand-purple">Kayal Samayal Spices</span>
-                            </p>
+                      {/* Details copy */}
+                      <div className="text-center sm:text-left space-y-2.5 min-w-0 w-full">
+                        <p className="font-body text-xs font-bold text-brand-orange uppercase tracking-wider">UPI Account Coordinates</p>
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                            <span className="font-display font-bold text-brand-purple text-sm sm:text-base break-all bg-white px-3 py-1.5 rounded-lg border border-cream-300 select-all">
+                              {upiId}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCopyUPI}
+                              className="inline-flex items-center gap-1 bg-brand-purple hover:bg-brand-purple-light text-white text-[0.7rem] font-bold px-3 py-2 rounded-lg cursor-pointer min-h-[36px]"
+                            >
+                              <Copy size={12} />
+                              <span>{copied ? "Copied!" : "Copy"}</span>
+                            </button>
                           </div>
+                          <p className="font-body text-espresso-900 text-xs font-semibold">
+                            Account Holder: <span className="text-brand-purple">Kayal Samayal Spices</span>
+                          </p>
                         </div>
-                      </div>
-
-                      {/* UTR Input Form */}
-                      <div className="space-y-4 pt-4 border-t border-cream-200">
-                        <div className="space-y-1.5">
-                          <label className="block font-body text-xs font-bold uppercase text-brand-purple">
-                            UTR / Transaction Reference Number *
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Enter the 12-digit transaction UTR code"
-                            value={utr}
-                            onChange={(e) => setUtr(e.target.value)}
-                            className="w-full font-body text-sm bg-white border border-cream-300 rounded-xl px-4 py-3 min-h-[44px]"
-                          />
-                        </div>
-
-                        <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => setIsChecked(e.target.checked)}
-                            className="mt-0.5 rounded text-brand-orange focus:ring-brand-orange cursor-pointer"
-                          />
-                          <span className="font-body text-xs sm:text-sm text-espresso-900 leading-normal">
-                            I confirm that I have transferred <span className="font-bold text-brand-purple">Rs. {grandTotal}</span> to the above UPI address.
-                          </span>
-                        </label>
                       </div>
                     </div>
-                  )}
 
-                  <div className="pt-4 border-t border-cream-200 flex justify-between items-center">
+                    {/* Pay via UPI App button */}
+                    <div className="pt-2 text-center sm:text-left">
+                      <a
+                        href={`upi://pay?pa=${upiId}&pn=Kayal%20Samayal%20Spices&am=${grandTotal}&cu=INR`}
+                        className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-light text-white text-xs sm:text-sm font-bold py-2.5 px-6 rounded-xl shadow-sm min-h-[44px]"
+                      >
+                        <ShieldCheck size={16} />
+                        <span>Pay via UPI App — Rs. {grandTotal}</span>
+                      </a>
+                    </div>
+
+                    {/* OR divider */}
+                    <div className="relative flex py-2 items-center">
+                      <div className="flex-grow border-t border-cream-300"></div>
+                      <span className="flex-shrink mx-4 text-espresso-800 text-xs font-bold uppercase tracking-wider">Verification Options</span>
+                      <div className="flex-grow border-t border-cream-300"></div>
+                    </div>
+
+                    <p className="font-body text-xs text-espresso-800 text-center sm:text-left">
+                      Enter your UTR / Transaction ID OR upload your payment screenshot.
+                    </p>
+
+                    {/* Option 1: UTR Input */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="block font-body text-xs font-bold uppercase text-brand-purple">
+                          Option 1: UTR / Transaction ID
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter 12-digit UTR Reference Number"
+                          value={utr}
+                          onChange={(e) => setUtr(e.target.value)}
+                          className="w-full font-body text-sm bg-white border border-cream-300 rounded-xl px-4 py-3 min-h-[44px]"
+                        />
+                      </div>
+
+                      <div className="relative flex py-2 items-center">
+                        <div className="flex-grow border-t border-cream-200/50"></div>
+                        <span className="flex-shrink mx-4 text-cream-400 text-xs font-bold uppercase tracking-wider">OR</span>
+                        <div className="flex-grow border-t border-cream-200/50"></div>
+                      </div>
+
+                      {/* Option 2: Payment Screenshot */}
+                      <div className="space-y-2.5">
+                        <label className="block font-body text-xs font-bold uppercase text-brand-purple">
+                          Option 2: Payment Screenshot
+                        </label>
+                        
+                        <div className="flex flex-col items-stretch sm:items-start gap-2">
+                          <label className="btn-outline border-2 border-brand-purple text-brand-purple hover:bg-brand-cream/20 font-bold text-xs sm:text-sm py-3 px-5 rounded-xl flex items-center justify-center gap-2 cursor-pointer min-h-[44px]">
+                            <Camera size={16} />
+                            <span>📷 Upload Payment Screenshot</span>
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              onChange={handleFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                          <span className="font-body text-[0.65rem] text-espresso-800">
+                            Supported: PNG, JPG, JPEG, WEBP. Max size: 5 MB.
+                          </span>
+                        </div>
+
+                        {/* Screenshot Preview Card */}
+                        {paymentScreenshotPreview && (
+                          <div className="bg-white border border-cream-300 p-4 rounded-xl shadow-xs max-w-sm space-y-3">
+                            <div className="flex justify-between items-center border-b border-cream-200 pb-2">
+                              <span className="font-body text-xs font-bold text-brand-purple">Payment Screenshot</span>
+                              <button
+                                type="button"
+                                onClick={handleRemoveScreenshot}
+                                className="text-red-500 hover:text-red-700 font-body text-[0.7rem] font-bold inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 size={12} />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                            <div className="aspect-video bg-cream-50 rounded-lg overflow-hidden flex items-center justify-center p-2 border border-cream-200">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={paymentScreenshotPreview}
+                                alt="Payment Screenshot Preview"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            </div>
+                            <div className="flex justify-between text-[0.65rem] text-espresso-800/80 font-mono">
+                              <span className="truncate max-w-[200px]">{paymentScreenshot?.name}</span>
+                              <span>{paymentScreenshot ? `${(paymentScreenshot.size / 1024).toFixed(0)} KB` : ""}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Checkbox */}
+                    <div className="pt-4 border-t border-cream-200/50 space-y-1.5">
+                      <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => setIsChecked(e.target.checked)}
+                          className="mt-1 rounded text-brand-orange focus:ring-brand-orange cursor-pointer shrink-0"
+                        />
+                        <div className="space-y-0.5">
+                          <span className="font-body text-xs sm:text-sm font-bold text-brand-purple">
+                            I have completed the UPI payment of Rs. {grandTotal}
+                          </span>
+                          <span className="block font-body text-[0.65rem] sm:text-xs text-espresso-800 leading-normal">
+                            Please make sure your payment was successful before placing the order.
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Confirm UPI Payment Button */}
+                    <div className="pt-2">
+                      <button
+                        onClick={handlePlaceOrder}
+                        disabled={loading || !isChecked || (!utr.trim() && !paymentScreenshot)}
+                        className={`btn-primary w-full justify-center text-sm font-bold py-3.5 px-6 rounded-xl flex items-center gap-1.5 min-h-[48px] cursor-pointer ${
+                          (loading || !isChecked || (!utr.trim() && !paymentScreenshot)) ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                      >
+                        {loading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Confirming Payment...</span>
+                          </>
+                        ) : (
+                          <span>Confirm Payment & Place Order</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Skip Payment / COD Section */}
+                  <div className="border-t border-cream-300 pt-6 space-y-4">
+                    <div className="space-y-1 text-center sm:text-left">
+                      <h3 className="font-display font-bold text-brand-purple text-base">Don&apos;t want to pay online?</h3>
+                      <p className="font-body text-espresso-800 text-xs sm:text-sm leading-relaxed">
+                        Place your order now and pay on delivery or as agreed with Kayal Samayal. We will contact you to confirm your order.
+                      </p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setPaymentMethod("COD");
+                        setLoading(true);
+                        setOrderErr("");
+                        try {
+                          const response = await placeOrder("", "COD");
+                          if (response && response.success) {
+                            router.push("/thank-you");
+                          } else {
+                            setOrderErr(response?.message || "Failed to submit order. Please try again.");
+                          }
+                        } catch (e) {
+                          console.error(e);
+                          setOrderErr("A connection error occurred. Please verify your internet and try again.");
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="btn-outline w-full justify-center text-brand-purple border-2 border-brand-purple hover:bg-brand-cream/20 text-sm font-bold py-3 px-6 rounded-xl min-h-[48px] cursor-pointer"
+                    >
+                      {loading ? "Processing..." : "Skip Payment & Place Order"}
+                    </button>
+                  </div>
+
+                  <div className="pt-4 border-t border-cream-200 flex justify-start">
                     <button
                       onClick={() => setStep("shipping")}
                       className="font-body text-xs sm:text-sm font-bold text-brand-purple hover:underline"
                     >
                       Back to Address
-                    </button>
-                    <button
-                      onClick={() => setStep("review")}
-                      className="btn-primary text-sm font-bold py-3.5 px-8 rounded-xl min-h-[48px]"
-                    >
-                      Review Order Details
                     </button>
                   </div>
                 </div>

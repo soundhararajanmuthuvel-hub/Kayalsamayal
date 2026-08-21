@@ -122,7 +122,10 @@ function addPaymentColumnsToOrders(ss) {
       "UPI ID",
       "UTR",
       "Payment Submitted At",
-      "Payment Verified At"
+      "Payment Verified At",
+      "Payment Screenshot File ID",
+      "Payment Screenshot URL",
+      "Payment Evidence"
     ];
 
     paymentCols.forEach(function(colName) {
@@ -172,7 +175,8 @@ function setupDatabaseSheets() {
         "Shipping Address", "City/Town", "State", "Pincode", "Order Notes",
         "Subtotal", "GST", "Shipping", "Discount", "Grand Total",
         "Payment Status", "Order Status", "Created At",
-        "Payment Method", "UPI ID", "UTR", "Payment Submitted At", "Payment Verified At"
+        "Payment Method", "UPI ID", "UTR", "Payment Submitted At", "Payment Verified At",
+        "Payment Screenshot File ID", "Payment Screenshot URL", "Payment Evidence"
       ]
     },
     {
@@ -419,6 +423,47 @@ function findOrCreateCustomer(sheet, data) {
   return customerId;
 }
 
+/**
+ * Decodes base64 payment screenshot and saves it to a Google Drive folder.
+ * Returns { fileId: string, url: string } or null.
+ */
+function savePaymentScreenshotToDrive(base64Data, filename) {
+  if (!base64Data) return null;
+  try {
+    var data = base64Data;
+    if (data.indexOf(",") > -1) {
+      data = data.split(",")[1];
+    }
+    var decodedBytes = Utilities.base64Decode(data);
+    
+    var mimeType = "image/jpeg";
+    var lower = String(filename || "").toLowerCase();
+    if (lower.endsWith(".png")) mimeType = "image/png";
+    else if (lower.endsWith(".webp")) mimeType = "image/webp";
+    
+    var blob = Utilities.newBlob(decodedBytes, mimeType, filename || "screenshot.jpg");
+    
+    var folderName = "Kayal Samayal Payment Screenshots";
+    var folders = DriveApp.getFoldersByName(folderName);
+    var folder;
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(folderName);
+      Logger.log("Created Drive folder: " + folderName);
+    }
+    
+    var file = folder.createFile(blob);
+    return {
+      fileId: file.getId(),
+      url: file.getUrl()
+    };
+  } catch (e) {
+    Logger.log("savePaymentScreenshotToDrive error: " + e.toString());
+    return null;
+  }
+}
+
 // ── ORDER PROCESSING ─────────────────────────────────────────────────────────
 
 /**
@@ -467,6 +512,26 @@ function processOrderTransaction(ss, data) {
     var storedUtr            = (paymentMethod === "UPI") ? rawUtr : "";
     var orderStatus          = (paymentMethod === "COD") ? "New" : "Pending";
     var paymentSubmittedAt   = (paymentMethod === "UPI") ? new Date() : "";
+
+    // Upload screenshot to Drive if provided
+    var screenshotResult = null;
+    if (paymentMethod === "UPI" && data.screenshotBase64) {
+      screenshotResult = savePaymentScreenshotToDrive(data.screenshotBase64, data.screenshotName || "payment_screenshot.jpg");
+    }
+
+    // Determine payment evidence type
+    var paymentEvidence = "None";
+    if (paymentMethod === "UPI") {
+      var hasUtr = storedUtr !== "";
+      var hasScreenshot = !!screenshotResult;
+      if (hasUtr && hasScreenshot) {
+        paymentEvidence = "UTR + Screenshot";
+      } else if (hasUtr) {
+        paymentEvidence = "UTR";
+      } else if (hasScreenshot) {
+        paymentEvidence = "Screenshot";
+      }
+    }
 
     // Validate customer
     if (!customerInput || !customerInput.name || !customerInput.mobile) {
@@ -605,6 +670,9 @@ function processOrderTransaction(ss, data) {
     setOrderCol("UTR",                 storedUtr);
     setOrderCol("Payment Submitted At", paymentSubmittedAt);
     setOrderCol("Payment Verified At",  "");
+    setOrderCol("Payment Screenshot File ID", screenshotResult ? screenshotResult.fileId : "");
+    setOrderCol("Payment Screenshot URL",     screenshotResult ? screenshotResult.url    : "");
+    setOrderCol("Payment Evidence",           paymentEvidence);
 
     // Append Order Items & deduct stock
     validatedItems.forEach(function(item, index) {
@@ -649,7 +717,10 @@ function processOrderTransaction(ss, data) {
       paymentMethod: displayPaymentMethod,
       paymentStatus: paymentStatus,
       utr:          storedUtr,
-      upiId:        (paymentMethod === "UPI") ? upiId : ""
+      upiId:        (paymentMethod === "UPI") ? upiId : "",
+      screenshotFileId: screenshotResult ? screenshotResult.fileId : "",
+      screenshotUrl:    screenshotResult ? screenshotResult.url    : "",
+      paymentEvidence:  paymentEvidence
     };
 
     // Send emails — NEVER cancels order on failure
@@ -687,6 +758,8 @@ function processOrderTransaction(ss, data) {
       paymentMethod: displayPaymentMethod,
       paymentStatus: paymentStatus,
       utr:           storedUtr,
+      paymentEvidence: paymentEvidence,
+      paymentScreenshotUploaded: !!screenshotResult,
       subtotal:      subtotal,
       shipping:      shipping,
       discount:      discount,
@@ -762,11 +835,19 @@ function buildOrderEmailHtml(orderData, isAdmin) {
         + 'Payment Method: <strong>COD / Pay Later</strong> &middot; Payment Status: <strong>Pending</strong>'
         + '</span></div>';
     } else {
+      var evidenceDetails = 'Customer UTR: <strong>' + (utr || "Not provided") + '</strong><br>';
+      if (orderData.screenshotUrl) {
+        evidenceDetails += 'Screenshot Available: <strong>YES</strong> (Evidence: ' + orderData.paymentEvidence + ')<br>'
+          + 'Drive Reference: <a href="' + orderData.screenshotUrl + '" target="_blank" style="color:#b45309;font-weight:bold;">Open Secure Screenshot Link</a><br>';
+      } else {
+        evidenceDetails += 'Screenshot Available: <strong>NO</strong><br>';
+      }
+
       adminWarning = '<div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px;margin-bottom:20px;border-radius:4px;">'
         + '<strong style="font-family:sans-serif;color:#b45309;font-size:14px;">&#9888; Action Required: Verify UPI Payment</strong><br>'
         + '<span style="font-family:sans-serif;font-size:13px;color:#92400e;">'
-        + 'Customer UTR: <strong>' + (utr || "Not provided") + '</strong><br>'
-        + 'Please verify this UTR in your UPI app / bank statement before marking as Verified. '
+        + evidenceDetails
+        + 'Please verify payment details in your UPI app/statement. '
         + 'Update Payment Status in the Orders sheet after verification.'
         + '</span></div>';
     }
@@ -801,14 +882,26 @@ function buildOrderEmailHtml(orderData, isAdmin) {
   // Payment detail rows
   var paymentRows = "";
   if (!isCod) {
+    var evidenceType = orderData.paymentEvidence || "UTR";
     paymentRows = '<tr>'
       + '<td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">UPI ID Paid To</td>'
       + '<td style="padding:4px 16px;font-family:sans-serif;font-size:13px;color:#3d2010;">' + (upiId || "Not configured") + '</td>'
       + '</tr>'
       + '<tr>'
-      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">UTR / Transaction ID</td>'
-      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#1c0f06;">' + (utr || "Not provided") + '</td>'
+      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">UTR / Transaction ID</td>'
+      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#1c0f06;">' + (utr || "Not provided") + '</td>'
+      + '</tr>'
+      + '<tr>'
+      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Payment Evidence</td>'
+      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#1c0f06;">' + evidenceType + '</td>'
       + '</tr>';
+
+    if (isAdmin && orderData.screenshotUrl) {
+      paymentRows += '<tr>'
+        + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Screenshot Reference</td>'
+        + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;color:#3d2010;"><a href="' + orderData.screenshotUrl + '" target="_blank" style="color:#c86432;font-weight:bold;">View Private Screenshot in Google Drive</a></td>'
+        + '</tr>';
+    }
   } else {
     paymentRows = '<tr>'
       + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Note</td>'
