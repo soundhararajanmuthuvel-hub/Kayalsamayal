@@ -1,185 +1,243 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
+import {
+  Check,
+  ArrowRight,
+  ShieldCheck,
+  Truck,
+  MessageCircle,
+  CreditCard,
+  Grid,
+} from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { whatsappLink } from "@/lib/brand";
+import { brand } from "@/lib/brand";
 
 const trustPillars = [
-  "100% Whole Spices, Stone Ground",
-  "No Artificial Colours or Preservatives",
-  "Authentic Kayalpatnam Coastal Recipes",
-  "35+ Traditional Homemade Varieties",
+  "35+ Authentic Varieties",
+  "No Artificial Colours",
+  "Zero Chemical Preservatives",
+  "Slow Sun-Dried & Stone Ground",
 ];
 
 export default function Hero() {
   return (
-    <section
-      id="hero"
-      className="relative overflow-hidden bg-spice-gradient text-primary-foreground pt-12 pb-16 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28"
-    >
-      {/* Background Decorative Motifs */}
-      <div
-        className="absolute inset-0 opacity-5 pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle at 20px 20px, #ffffff 2px, transparent 0)`,
-          backgroundSize: "40px 40px",
-        }}
-      />
-      <div className="absolute top-0 right-0 -mt-20 -mr-20 h-96 w-96 rounded-full bg-gold/10 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-96 w-96 rounded-full bg-secondary/15 blur-3xl pointer-events-none" />
+    <div className="relative w-full overflow-hidden">
+      {/* ── ATMOSPHERIC EDITORIAL CANVAS FROM STITCH ─────────────────── */}
+      <section className="relative w-full bg-surface-container-low border-b border-border/60 overflow-hidden pt-8 pb-14 sm:pt-12 sm:pb-20">
+        {/* Subtle Ambient Glows */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -right-32 w-[30rem] h-[30rem] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
 
-      <div className="container-page relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          
-          {/* Left Column: Brand Story & Headline */}
-          <div className="lg:col-span-7 text-center lg:text-left space-y-6 sm:space-y-7">
-            {/* Pill Tag */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1.5 backdrop-blur-md border border-white/15 text-xs font-semibold text-gold tracking-wide"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-gold" />
-              <span>TRADITIONAL SOUTH INDIAN HERITAGE</span>
-            </motion.div>
-
-            {/* Headline */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="space-y-2"
-            >
-              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1] text-white">
-                Authentic Coastal Flavours,{" "}
-                <span className="gold-shimmer block sm:inline">Crafted with Purity</span>
-              </h1>
-            </motion.div>
-
-            {/* Subheading */}
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-white/85 text-sm sm:text-base md:text-lg leading-relaxed max-w-2xl mx-auto lg:mx-0 font-sans"
-            >
-              From stone-ground sambar & fish curry masalas to aromatic podis, herbal teas, and multi-millet noodles — experience true homemade goodness with zero chemicals.
-            </motion.p>
-
-            {/* Trust Pillars */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.25 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-left max-w-xl mx-auto lg:mx-0"
-            >
-              {trustPillars.map((pillar, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm text-white/90">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold/20 text-gold">
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  </div>
-                  <span>{pillar}</span>
-                </div>
-              ))}
-            </motion.div>
-
-            {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3.5 pt-2"
-            >
-              <Link href="/products" className="w-full sm:w-auto">
-                <Button variant="secondary" size="touch" className="w-full sm:w-auto font-bold gap-2 text-sm shadow-lg">
-                  <span>Explore Catalogue (35+ Items)</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <a
-                href={whatsappLink("Hi Kayal Samayal! I would like to place an order.")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto"
+        <div className="container-page relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            
+            {/* Left Column: Copy & Value Proposition */}
+            <div className="lg:col-span-7 flex flex-col items-start space-y-5 text-left">
+              {/* Heritage Micro Pill */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="inline-flex items-center gap-2 bg-card px-3.5 py-1.5 rounded-full shadow-xs border border-border"
               >
-                <Button
-                  variant="whatsapp"
-                  size="touch"
-                  className="w-full sm:w-auto font-bold gap-2 text-sm shadow-md"
-                >
-                  <span>Quick WhatsApp Order</span>
-                </Button>
-              </a>
-            </motion.div>
-          </div>
+                <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                <span className="text-[0.68rem] font-bold text-primary uppercase tracking-wider font-sans">
+                  Artisanal Tamil Heritage • Small Batch Crafted
+                </span>
+              </motion.div>
 
-          {/* Right Column: Hero Showcase Showcase */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            className="lg:col-span-5 flex justify-center"
-          >
-            <div className="relative w-full max-w-[340px] sm:max-w-[400px]">
-              {/* Card Showcase Frame */}
-              <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-card/95 p-6 shadow-2xl backdrop-blur-md text-foreground">
-                <div className="relative aspect-square overflow-hidden rounded-2xl bg-surface flex items-center justify-center p-4">
+              {/* Headline */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="space-y-1"
+              >
+                <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] text-primary">
+                  Traditional Taste.
+                  <br />
+                  <span className="italic font-display font-normal text-secondary block sm:inline">
+                    Pure Quality.
+                  </span>
+                </h1>
+              </motion.div>
+
+              {/* Editorial Lead Subheading */}
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-muted-foreground text-sm sm:text-base lg:text-lg leading-relaxed max-w-xl"
+              >
+                Handcrafted South Indian masalas, authentic homemade podis, specialty millet noodles, and wellness health mixes prepared strictly with time-honoured heritage recipes. No artificial fillers, just pure kitchen aromas.
+              </motion.p>
+
+              {/* Key Value Chips */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.25 }}
+                className="flex flex-wrap gap-2 pt-1"
+              >
+                {trustPillars.map((pillar, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-card text-leaf font-semibold text-xs border border-border/80 shadow-2xs"
+                  >
+                    <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                    <span>{pillar}</span>
+                  </span>
+                ))}
+              </motion.div>
+
+              {/* Action CTA Group */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="flex flex-wrap items-center gap-3.5 pt-2 w-full sm:w-auto"
+              >
+                <Link href="/products" className="w-full sm:w-auto">
+                  <Button
+                    variant="secondary"
+                    size="touch"
+                    className="w-full sm:w-auto font-bold gap-2 text-sm shadow-md"
+                  >
+                    <span>Shop Bestsellers</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <a
+                  href="#categories"
+                  className="w-full sm:w-auto"
+                >
+                  <Button
+                    variant="outline"
+                    size="touch"
+                    className="w-full sm:w-auto font-bold gap-2 text-sm border-primary/40 text-primary hover:bg-primary hover:text-white"
+                  >
+                    <Grid className="h-4 w-4" />
+                    <span>Explore 35+ Varieties</span>
+                  </Button>
+                </a>
+              </motion.div>
+
+              {/* Quick Micro Social Proof */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="flex items-center gap-3 pt-2 text-muted-foreground text-xs"
+              >
+                <div className="flex -space-x-2">
+                  <span className="w-7 h-7 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-[0.65rem] shadow-xs">
+                    4.9★
+                  </span>
+                  <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-[0.65rem] shadow-xs">
+                    12k
+                  </span>
+                </div>
+                <p>
+                  Loved by <span className="font-bold text-foreground">12,800+ homes</span> across Tamil Nadu, Bengaluru & Pan-India
+                </p>
+              </motion.div>
+            </div>
+
+            {/* Right Column: Visual Showcase Frame */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="lg:col-span-5 relative mt-6 lg:mt-0"
+            >
+              <div className="relative bg-card p-4 sm:p-5 rounded-3xl border border-border shadow-xl overflow-hidden group">
+                <div className="relative w-full h-[360px] sm:h-[420px] rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/assets/fish-curry-masala.jpg"
-                    alt="Kayal Samayal Authentic Masalas"
-                    className="h-full w-full object-contain filter drop-shadow-md"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0teReeioyJvJBbsoBQZ0Vy2KEASHe_gtoem_hVL-MB1799Pvql0jHQ7dnw3Sz2fZpds0ux9_m8Mp3r_weauf3h97Ok-FbAv8tsNuvcgTlYhgNMVw9SNByDdITFGvxUYF82sPXKXCoB92_CudGBRXXUsDBLxBYUcTVxfSyO5Si6xXjCElSh1kAS8tMViVQhrhRTSKklqp69ocUK6SWlAh4qBgDoQwqT6CSnp59wHWY0J9oROswDi_V"
+                    alt="Authentic traditional spices prepared under natural sunlight"
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out filter brightness-95"
                   />
-                  <div className="absolute top-3 left-3">
-                    <span className="badge-premium">✦ BESTSELLER</span>
-                  </div>
-                </div>
+                  
+                  {/* Gradient Scrim for Contrast */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-transparent to-transparent" />
 
-                <div className="mt-5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-secondary">
-                      Traditional Masalas
-                    </span>
-                    <span className="text-xs font-semibold text-leaf flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5" /> FSSAI Certified
-                    </span>
-                  </div>
-                  <h3 className="font-display font-bold text-lg text-primary">
-                    Fish Curry Masala
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Slow-roasted coastal spice blend for rich, tangy curries with genuine Kayalpatnam heritage.
-                  </p>
-                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                  {/* Floating Pill on Image */}
+                  <div className="absolute bottom-4 left-4 right-4 bg-card/95 backdrop-blur-md p-4 rounded-2xl shadow-lg flex items-center justify-between border border-border/80">
                     <div>
-                      <span className="text-[0.65rem] uppercase text-muted-foreground font-semibold block">Price</span>
-                      <span className="text-lg font-bold text-foreground">₹60 / 100g</span>
+                      <span className="text-[0.65rem] font-bold text-secondary uppercase tracking-wider block">
+                        Featured Origin Blend
+                      </span>
+                      <h3 className="font-display font-bold text-base sm:text-lg text-primary">
+                        Chettinad Kulambu Masala
+                      </h3>
+                      <p className="text-[0.7rem] text-muted-foreground">
+                        Prepared with 18 heritage roasted whole spices
+                      </p>
                     </div>
-                    <Link href="/products/fish-curry-masala-regular">
-                      <Button variant="plum" size="sm" className="text-xs font-bold">
-                        View Details
-                      </Button>
-                    </Link>
+                    <div className="text-right">
+                      <span className="font-display font-extrabold text-lg text-primary block">
+                        ₹140
+                      </span>
+                      <span className="text-[0.65rem] font-bold text-leaf">
+                        IN STOCK
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Floating Accent Badge */}
-              <div className="absolute -bottom-4 -left-4 rounded-2xl bg-card border border-border p-3 shadow-xl flex items-center gap-3 text-foreground select-none">
-                <span className="text-2xl">🌿</span>
-                <div>
-                  <p className="text-xs font-bold text-primary">Zero Chemicals</p>
-                  <p className="text-[0.65rem] text-muted-foreground">100% Pure & Unadulterated</p>
+                {/* 100% Pure Veg Emblem Badge */}
+                <div className="absolute top-7 left-7 bg-card/95 backdrop-blur-md px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 border border-border">
+                  <span className="w-3.5 h-3.5 rounded-xs bg-white flex items-center justify-center p-0.5 border border-leaf">
+                    <span className="w-2 h-2 rounded-full bg-leaf" />
+                  </span>
+                  <span className="text-[0.65rem] font-bold text-leaf uppercase tracking-wider">
+                    100% PURE VEG
+                  </span>
                 </div>
               </div>
-            </div>
-          </motion.div>
 
+              {/* Overlapping FSSAI Stamp */}
+              <div className="hidden sm:flex absolute -bottom-5 -left-5 bg-primary text-white p-4 rounded-2xl shadow-2xl flex-col items-center justify-center max-w-[170px] text-center border border-white/10 transform -rotate-2 hover:rotate-0 transition-transform">
+                <ShieldCheck className="h-6 w-6 text-gold" />
+                <span className="text-[0.65rem] uppercase tracking-widest font-bold text-white mt-1">
+                  FSSAI Certified
+                </span>
+                <span className="text-[0.68rem] text-white/80 font-mono leading-tight">
+                  {brand.fssai}
+                </span>
+              </div>
+            </motion.div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ── QUICK TRUST MICRO-STRIP FROM STITCH ──────────────────────── */}
+      <div className="w-full bg-surface-container py-3.5 border-b border-border/60">
+        <div className="container-page">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+            <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-foreground">
+              <Truck className="h-4 w-4 text-secondary" />
+              <span>Pan-India Express Delivery</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-foreground">
+              <ShieldCheck className="h-4 w-4 text-leaf" />
+              <span>FSSAI Registered Brand</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-foreground">
+              <MessageCircle className="h-4 w-4 text-secondary" />
+              <span>WhatsApp: {brand.phone}</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-foreground">
+              <CreditCard className="h-4 w-4 text-primary" />
+              <span>UPI & Cash on Delivery</span>
+            </div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

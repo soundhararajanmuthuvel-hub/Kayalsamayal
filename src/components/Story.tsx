@@ -8,11 +8,11 @@ import { brand } from "@/lib/brand";
 
 export default function Story() {
   return (
-    <section className="py-16 sm:py-24 bg-background border-b border-border/60 overflow-hidden">
+    <section className="py-16 sm:py-24 bg-surface-container border-b border-border/60 overflow-hidden">
       <div className="container-page">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           
-          {/* Left: Brand Visual Element */}
+          {/* Left: Story Visual Mosaic from Stitch */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -20,23 +20,24 @@ export default function Story() {
             transition={{ duration: 0.6 }}
             className="lg:col-span-5 relative"
           >
-            <div className="relative mx-auto max-w-md overflow-hidden rounded-3xl border border-border/80 bg-surface p-6 shadow-xl">
-              <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-card flex items-center justify-center p-6">
+            <div className="relative bg-card p-4 sm:p-5 rounded-3xl border border-border/80 shadow-xl overflow-hidden">
+              <div className="relative h-[380px] sm:h-[420px] rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/assets/logo.jpg"
-                  alt="Kayal Samayal Brand Heritage"
-                  className="w-40 h-40 rounded-full object-cover shadow-lg ring-4 ring-gold/40"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3stZ6qSXFNfgQA7FmwkCboXVB3BrCuEoEqIqfIl5ndyB9GL5bi2GrvjRBOw1xUAaPuAfPB9ME33T_VU1uFrfIyu200BQkablkmp8Q8Rm6jqnZhgBboYic0xpK9JGTnNkBOe7vM30zEHS3DBggV1_W07WNN2fy2c3RCUW9yLtosK7f4v1I50aN3zdfa9sJVZbE5rQMwJoYWe6D5aNQdJ7Z_EszOIIY469dQvbLp4igN5XsOAHnLPq8"
+                  alt="Traditional grandmother sun-drying spices"
+                  className="w-full h-full object-cover rounded-2xl filter brightness-95"
                 />
-              </div>
-
-              <div className="mt-6 rounded-2xl bg-card border border-border p-4 space-y-2 text-center">
-                <p className="font-display font-bold text-primary text-base">
-                  FSSAI Reg: {brand.fssai}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  GST: {brand.gst} • {brand.address.city}, {brand.address.state}
-                </p>
+                
+                {/* Floating Quote Badge */}
+                <div className="absolute -bottom-1 right-2 left-2 sm:left-auto sm:right-3 bg-primary text-primary-foreground p-4 rounded-2xl shadow-xl max-w-sm border border-white/10">
+                  <p className="font-display italic text-xs sm:text-sm leading-relaxed text-white">
+                    &ldquo;Real flavour cannot be rushed with giant machines. Spices must breathe the sun.&rdquo;
+                  </p>
+                  <span className="block text-[0.65rem] font-bold text-gold uppercase tracking-wider mt-1.5">
+                    — Kayal Kitchen Tradition
+                  </span>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -49,40 +50,57 @@ export default function Story() {
             transition={{ duration: 0.6 }}
             className="lg:col-span-7 space-y-6 text-center lg:text-left"
           >
-            <p className="section-eyebrow">Our Heritage & Roots</p>
+            <div className="inline-flex items-center gap-2 text-secondary justify-center lg:justify-start">
+              <span className="w-6 h-0.5 bg-secondary" />
+              <span className="section-eyebrow">The Story of Kayal Samayal</span>
+            </div>
+
             <h2 className="section-title">
-              Crafting Pure Coastal Flavours Since Generations
+              Restoring the Lost Aromas of Our Grandmother&apos;s Brass Kitchen.
             </h2>
             <div className="divider-spice lg:mx-0" />
 
             <div className="space-y-4 text-muted-foreground text-sm sm:text-base leading-relaxed">
               <p>
-                Rooted in the historic coastal spice trading heritage of <strong>Kayalpatnam, Tamil Nadu</strong>, Kayal Samayal was founded with a singular purpose: to bring uncompromised, homemade traditional taste to modern dining tables.
+                Kayal Samayal was born out of a simple, nostalgic yearning: why does modern city food never smell like the kulambu made in our childhood homes? Commercial powders rely on synthetic essences and excessive starch fillers to cut costs.
               </p>
               <p>
-                In an era dominated by bulk-manufactured spices loaded with fillers, salt, and artificial colors, we stand committed to <strong>100% whole spices</strong> slow-roasted to perfection, preserving their natural oils, depth, and therapeutic digestive properties.
+                We went back to the roots in <strong>Tirupattur, Tamil Nadu</strong>. We gathered heirloom recipes from grandmothers across Kongu and Chettinad belts, reviving the delicate science of sun-drying ingredients on terrace courtyards before gently stone-pounding them.
               </p>
             </div>
 
-            {/* Checklist */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
-              {[
-                "No Added Starch or Fillers",
-                "Authentic Coastal Fish & Curry Blends",
-                "Homemade Sathu Maavu & Malts",
-                "Delivered Fresh Across India",
-              ].map((text, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-foreground">
-                  <CheckCircle2 className="h-4 w-4 text-leaf shrink-0" />
-                  <span>{text}</span>
-                </div>
-              ))}
+            {/* Metrics from Stitch */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+              <div className="bg-card p-4 rounded-2xl border border-border shadow-xs text-center">
+                <span className="font-display font-extrabold text-2xl text-secondary block">100%</span>
+                <span className="text-[0.68rem] font-bold text-muted-foreground uppercase tracking-wider">Single Origin Spices</span>
+              </div>
+              <div className="bg-card p-4 rounded-2xl border border-border shadow-xs text-center">
+                <span className="font-display font-extrabold text-2xl text-secondary block">Zero</span>
+                <span className="text-[0.68rem] font-bold text-muted-foreground uppercase tracking-wider">Artificial Additives</span>
+              </div>
+              <div className="bg-card p-4 rounded-2xl border border-border shadow-xs text-center col-span-2 sm:col-span-1">
+                <span className="font-display font-extrabold text-2xl text-secondary block">35+</span>
+                <span className="text-[0.68rem] font-bold text-muted-foreground uppercase tracking-wider">Heirloom Recipes</span>
+              </div>
             </div>
 
-            <div className="pt-4 flex flex-wrap justify-center lg:justify-start gap-4">
+            {/* Trust and License Credentials */}
+            <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-xs font-semibold text-primary">
+              <span className="flex items-center gap-1.5 bg-card px-3 py-1.5 rounded-full border border-border shadow-2xs">
+                <CheckCircle2 className="h-4 w-4 text-leaf" />
+                <span>FSSAI: {brand.fssai}</span>
+              </span>
+              <span className="flex items-center gap-1.5 bg-card px-3 py-1.5 rounded-full border border-border shadow-2xs">
+                <CheckCircle2 className="h-4 w-4 text-secondary" />
+                <span>GST: {brand.gst}</span>
+              </span>
+            </div>
+
+            <div className="pt-3 flex flex-wrap justify-center lg:justify-start gap-4">
               <Link href="/about">
-                <Button variant="plum" size="touch" className="gap-2 font-bold">
-                  <span>Read Full Brand Story</span>
+                <Button variant="plum" size="touch" className="gap-2 font-bold shadow-md">
+                  <span>Read Full Brand Heritage</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>

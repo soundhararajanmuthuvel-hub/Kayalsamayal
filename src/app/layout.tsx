@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
   subsets: ["latin"],
   display: "swap",
   weight: ["400", "500", "600", "700", "800", "900"],
+  style: ["normal", "italic"],
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -17,7 +18,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#341424",
+  themeColor: "#2E152C",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -25,9 +26,9 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kayalsamayal.in"),
-  title: "Kayal Samayal | Traditional Coastal Masalas & Pure South Indian Foods",
+  title: "Kayal Samayal | Artisanal South Indian Foods & Heritage Masalas",
   description:
-    "Buy authentic South Indian spices, traditional coastal masalas, organic podis, herbal mixes and health mixes from Kayalpatnam heritage. No preservatives, 100% pure taste.",
+    "Handcrafted South Indian masalas, authentic homemade podis, specialty millet noodles, and wellness health mixes prepared strictly with time-honoured heritage recipes. No artificial colours, zero preservatives.",
   keywords: [
     "Kayal Samayal",
     "Kayalpattinam masala",
@@ -41,6 +42,8 @@ export const metadata: Metadata = {
     "biriyani masala",
     "moringa noodles",
     "nannari sukku",
+    "Chettinad Kulambu Masala",
+    "Gunpowder idli podi",
   ],
   alternates: {
     canonical: "https://kayalsamayal.in",
@@ -51,9 +54,9 @@ export const metadata: Metadata = {
     shortcut: "/assets/logo.jpg",
   },
   openGraph: {
-    title: "Kayal Samayal | Traditional Coastal Masalas & Pure South Indian Foods",
+    title: "Kayal Samayal | Artisanal South Indian Foods & Heritage Masalas",
     description:
-      "Handcrafted spices, masalas, and health mixes rooted in Kayalpatnam coastal heritage. Pure, clean ingredients. 35+ Varieties.",
+      "Handcrafted South Indian masalas, authentic homemade podis, specialty millet noodles, and wellness health mixes. 35+ Authentic Varieties. FSSAI Certified.",
     type: "website",
     locale: "en_IN",
     siteName: "Kayal Samayal",
@@ -69,7 +72,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kayal Samayal | Traditional Coastal Masalas & Pure South Indian Foods",
+    title: "Kayal Samayal | Artisanal South Indian Foods & Heritage Masalas",
     description:
       "Handcrafted spices, masalas, and health mixes from Kayalpatnam heritage. No artificial colors, zero preservatives.",
     images: ["/assets/logo.jpg"],
@@ -88,7 +91,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${plusJakarta.variable} scroll-smooth`}
+      className={`${playfair.variable} ${plusJakarta.variable} scroll-smooth`}
     >
       <body className="min-h-screen bg-background text-foreground font-sans antialiased selection:bg-secondary/20 selection:text-secondary">
         <CartProvider>
