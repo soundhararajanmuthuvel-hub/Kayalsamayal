@@ -1,13 +1,11 @@
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import Story from "@/components/Story";
 import FeaturedProducts from "@/components/FeaturedProducts";
 import CategoriesGrid from "@/components/CategoriesGrid";
 import ProductShowcase from "@/components/ProductShowcase";
 import WhyUs from "@/components/WhyUs";
+import Story from "@/components/Story";
 import Testimonials from "@/components/Testimonials";
-import Newsletter from "@/components/Newsletter";
-import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -16,25 +14,25 @@ export default function Home() {
     "@graph": [
       {
         "@type": "WebSite",
-        "@id": "https://kayalsamayal-gamma.vercel.app/#website",
-        "url": "https://kayalsamayal-gamma.vercel.app",
+        "@id": "https://kayalsamayal.in/#website",
+        "url": "https://kayalsamayal.in",
         "name": "Kayal Samayal",
-        "description": "Buy authentic South Indian spices, traditional coastal masalas, organic podis, and health mixes from Kayalpatnam heritage.",
+        "description": "Authentic South Indian spices, traditional coastal masalas, organic podis, and health mixes from Kayalpatnam heritage.",
         "publisher": {
-          "@id": "https://kayalsamayal-gamma.vercel.app/#organization"
+          "@id": "https://kayalsamayal.in/#organization"
         }
       },
       {
         "@type": "LocalBusiness",
-        "@id": "https://kayalsamayal-gamma.vercel.app/#organization",
-        "name": "Kayal Samayal",
-        "image": "https://kayalsamayal-gamma.vercel.app/assets/logo.jpg",
-        "url": "https://kayalsamayal-gamma.vercel.app",
+        "@id": "https://kayalsamayal.in/#organization",
+        "name": "Kayal Samayal Masala",
+        "image": "https://kayalsamayal.in/assets/logo.jpg",
+        "url": "https://kayalsamayal.in",
         "telephone": "+919003860616",
         "priceRange": "₹₹",
         "address": {
           "@type": "PostalAddress",
-          "streetAddress": "No.504, Housing Board Ph1",
+          "streetAddress": "504, TNHB Phase 1",
           "addressLocality": "Tirupattur",
           "addressRegion": "Tamil Nadu",
           "postalCode": "635601",
@@ -44,19 +42,6 @@ export default function Home() {
           "@type": "GeoCoordinates",
           "latitude": "12.4962",
           "longitude": "78.9801"
-        },
-        "openingHoursSpecification": {
-          "@type": "OpeningHoursSpecification",
-          "dayOfWeek": [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday"
-          ],
-          "opens": "09:00",
-          "closes": "19:00"
         }
       }
     ]
@@ -68,19 +53,19 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="relative">
+      <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <Hero />
-        <Story />
-        <FeaturedProducts />
-        <CategoriesGrid />
-        <ProductShowcase />
-        <WhyUs />
-        <Testimonials />
-        <Newsletter />
-        <Contact />
+        <main className="flex-1">
+          <Hero />
+          <CategoriesGrid />
+          <FeaturedProducts />
+          <ProductShowcase />
+          <WhyUs />
+          <Story />
+          <Testimonials />
+        </main>
         <Footer />
-      </main>
+      </div>
     </>
   );
 }

@@ -2,77 +2,90 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { brand } from "@/lib/brand";
 
 export default function Story() {
   return (
-    <section id="story" className="relative texture-paper py-16 sm:py-24 overflow-hidden border-b border-cream-300">
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Two-column story preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <section className="py-16 sm:py-24 bg-background border-b border-border/60 overflow-hidden">
+      <div className="container-page">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
           
-          {/* Text column — spans 7 cols on lg */}
+          {/* Left: Brand Visual Element */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-7 space-y-5 text-center lg:text-left"
+            className="lg:col-span-5 relative"
           >
-            <p className="section-eyebrow">Our Heritage</p>
-            <h2 className="section-title">
-              Born on the Shores of <span className="gold-shimmer font-semibold">Kayalpatnam</span>
-            </h2>
-            <div className="divider-spice lg:mx-0 mb-4" />
-            <p className="font-body text-espresso-800 leading-relaxed text-base max-w-xl mx-auto lg:mx-0">
-              Kayalpatnam — the ancient port city of the Coromandel Coast — has long been a cradle of spice culture. Kayal Samayal was born from a deep respect for this heritage: the same slow-roasted traditions and honest ingredients passed down through generations.
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/about"
-                className="btn-primary text-sm font-bold min-h-[44px]"
-              >
-                Read Our Story
-              </Link>
+            <div className="relative mx-auto max-w-md overflow-hidden rounded-3xl border border-border/80 bg-surface p-6 shadow-xl">
+              <div className="aspect-[4/3] overflow-hidden rounded-2xl bg-card flex items-center justify-center p-6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/assets/logo.jpg"
+                  alt="Kayal Samayal Brand Heritage"
+                  className="w-40 h-40 rounded-full object-cover shadow-lg ring-4 ring-gold/40"
+                />
+              </div>
+
+              <div className="mt-6 rounded-2xl bg-card border border-border p-4 space-y-2 text-center">
+                <p className="font-display font-bold text-primary text-base">
+                  FSSAI Reg: {brand.fssai}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  GST: {brand.gst} • {brand.address.city}, {brand.address.state}
+                </p>
+              </div>
             </div>
           </motion.div>
 
-          {/* Decorative rotating spice wheel — spans 5 cols on lg */}
+          {/* Right: Narrative */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.15 }}
-            className="lg:col-span-5 flex items-center justify-center relative py-4 lg:py-0 select-none"
+            transition={{ duration: 0.6 }}
+            className="lg:col-span-7 space-y-6 text-center lg:text-left"
           >
-            <div className="relative w-56 h-56 sm:w-72 sm:h-72">
-              {/* Outer ring */}
-              <div className="absolute inset-0 rounded-full border-2 border-dashed border-gold-600/30 animate-spin-slow" />
-              {/* Inner circle */}
-              <div className="absolute inset-6 sm:inset-8 rounded-full bg-brand-purple shadow-2xl flex flex-col items-center justify-center p-4">
-                <span className="text-4xl sm:text-5xl mb-1.5">🫙</span>
-                <p className="font-display text-cream-100 text-center font-semibold text-xs sm:text-sm leading-snug">
-                  Est. with Love
-                  <br />
-                  <span className="gold-shimmer text-sm">Pure Taste</span>
-                </p>
-              </div>
-              {/* Orbiting spice dots */}
-              {["🌶️", "🫚", "🌿", "⭐", "🧄", "🫛"].map((emoji, i) => {
-                const angle = i * 60;
-                const rad = (angle * Math.PI) / 180;
-                const r = 110;
-                const cx = 50 + (r / 140) * 50 * Math.cos(rad);
-                const cy = 50 + (r / 140) * 50 * Math.sin(rad);
-                return (
-                  <div
-                    key={emoji}
-                    className="absolute text-lg sm:text-2xl transform -translate-x-1/2 -translate-y-1/2"
-                    style={{ left: `${cx}%`, top: `${cy}%` }}
-                  >
-                    {emoji}
-                  </div>
-                );
-              })}
+            <p className="section-eyebrow">Our Heritage & Roots</p>
+            <h2 className="section-title">
+              Crafting Pure Coastal Flavours Since Generations
+            </h2>
+            <div className="divider-spice lg:mx-0" />
+
+            <div className="space-y-4 text-muted-foreground text-sm sm:text-base leading-relaxed">
+              <p>
+                Rooted in the historic coastal spice trading heritage of <strong>Kayalpatnam, Tamil Nadu</strong>, Kayal Samayal was founded with a singular purpose: to bring uncompromised, homemade traditional taste to modern dining tables.
+              </p>
+              <p>
+                In an era dominated by bulk-manufactured spices loaded with fillers, salt, and artificial colors, we stand committed to <strong>100% whole spices</strong> slow-roasted to perfection, preserving their natural oils, depth, and therapeutic digestive properties.
+              </p>
+            </div>
+
+            {/* Checklist */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
+              {[
+                "No Added Starch or Fillers",
+                "Authentic Coastal Fish & Curry Blends",
+                "Homemade Sathu Maavu & Malts",
+                "Delivered Fresh Across India",
+              ].map((text, idx) => (
+                <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-leaf shrink-0" />
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 flex flex-wrap justify-center lg:justify-start gap-4">
+              <Link href="/about">
+                <Button variant="plum" size="touch" className="gap-2 font-bold">
+                  <span>Read Full Brand Story</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
             </div>
           </motion.div>
 

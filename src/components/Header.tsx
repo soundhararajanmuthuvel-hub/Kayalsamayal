@@ -1,20 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, X, ShoppingBag } from "lucide-react";
-import { useCart } from "@/context/CartContext";
 import Link from "next/link";
+import { Menu, X, ShoppingBag, Phone, ArrowRight } from "lucide-react";
+import { useCart } from "@/context/CartContext";
+import { brand, whatsappLink } from "@/lib/brand";
+import { Button } from "@/components/ui/button";
 
 const navLinks = [
   { label: "Home", href: "/" },
-  { label: "Products", href: "/products" },
-  { label: "About", href: "/about" },
+  { label: "All Products", href: "/products" },
   { label: "Health Mixes", href: "/health-mixes" },
+  { label: "About Us", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
-
-const WA_LINK =
-  "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%20like%20to%2520place%2520an%2520order.";
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -22,7 +21,7 @@ export default function Header() {
   const { cartCount, setIsCartOpen } = useCart();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -39,23 +38,43 @@ export default function Header() {
     };
   }, [menuOpen]);
 
-  const closeMenu = () => setMenuOpen(false);
-
   return (
     <>
+      {/* ── TOP ANNOUNCEMENT BAR ────────────────────────────────────── */}
+      <div className="bg-primary text-primary-foreground text-xs py-2 px-4 text-center font-medium tracking-wide border-b border-white/10 select-none">
+        <div className="container-page flex items-center justify-between text-[0.7rem] sm:text-xs">
+          <span className="hidden sm:inline-block text-gold">
+            ✦ Authentic Kayalpatnam Coastal Spices
+          </span>
+          <span className="mx-auto sm:mx-0">
+            Free shipping on orders above ₹{brand.freeShippingOver} | 100% Pure & Natural
+          </span>
+          <a
+            href={whatsappLink("Hi Kayal Samayal! I'd like to place an order.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden md:inline-flex items-center gap-1 text-gold hover:underline"
+          >
+            <Phone className="h-3 w-3" />
+            <span>Order on WhatsApp: {brand.phone}</span>
+          </a>
+        </div>
+      </div>
+
+      {/* ── MAIN HEADER ────────────────────────────────────────────── */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${
+        className={`sticky top-0 left-0 right-0 z-40 transition-all duration-300 ${
           scrolled
-            ? "bg-[#1a0f0a]/95 backdrop-blur-md shadow-lg border-b border-gold-600/20"
-            : "bg-transparent"
+            ? "bg-card/95 backdrop-blur-md shadow-sm border-b border-border/70 py-2.5"
+            : "bg-background/95 backdrop-blur-xs border-b border-border/40 py-3.5 sm:py-4"
         }`}
       >
-        <div className="w-full mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="flex items-center justify-between h-[60px] sm:h-[70px]">
+        <div className="container-page">
+          <div className="flex items-center justify-between">
             {/* Logo */}
             <Link
               href="/"
-              className="flex items-center gap-2 sm:gap-3 group min-w-0"
+              className="flex items-center gap-2.5 sm:gap-3 group min-w-0"
               aria-label="Kayal Samayal — Home"
             >
               <div className="relative flex-shrink-0">
@@ -63,94 +82,80 @@ export default function Header() {
                 <img
                   src="/assets/logo.jpg"
                   alt="Kayal Samayal Logo"
-                  className="w-9 h-9 sm:w-12 sm:h-12 rounded-full object-cover shadow-lg ring-2 ring-gold-600/40 group-hover:scale-105 transition-transform duration-300"
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover shadow-sm ring-2 ring-gold/40 group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
               <div className="min-w-0">
-                <div
-                  className={`font-display font-bold text-base sm:text-xl leading-tight transition-colors truncate ${
-                    scrolled ? "text-cream-100" : "text-cream-50"
-                  }`}
-                >
-                  Kayal Samayal
-                </div>
-                <div
-                  className={`hidden sm:block font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.15em] sm:tracking-[0.18em] uppercase transition-colors ${
-                    scrolled ? "text-gold-500" : "text-gold-400"
-                  }`}
-                >
-                  Pure · Traditional · Coastal
-                </div>
+                <span className="font-display font-bold text-lg sm:text-xl text-primary leading-tight block truncate">
+                  {brand.name}
+                </span>
+                <span className="font-sans text-[0.6rem] sm:text-[0.65rem] tracking-[0.16em] uppercase text-secondary font-bold block truncate">
+                  {brand.subtitle}
+                </span>
               </div>
             </Link>
 
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-8" aria-label="Main navigation">
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-8" aria-label="Main navigation">
               {navLinks.map((link) => (
-                <a
+                <Link
                   key={link.href}
                   href={link.href}
-                  className={`nav-link ${
-                    scrolled ? "text-cream-200 hover:text-gold-400" : "text-cream-100 hover:text-gold-400"
-                  }`}
+                  className="text-sm font-semibold text-foreground/80 hover:text-secondary transition-colors py-1"
                 >
                   {link.label}
-                </a>
+                </Link>
               ))}
             </nav>
 
-            {/* CTA + Hamburger */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* Shopping Cart Button */}
-              <Link
-                href="/cart"
-                className={`relative p-2.5 rounded-full transition-colors flex items-center justify-center min-h-[44px] min-w-[44px] ${
-                  scrolled ? "text-cream-100 hover:bg-white/10" : "text-cream-50 hover:bg-white/10"
-                }`}
-                aria-label="Open Cart"
+            {/* Header Right Actions */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Cart Button */}
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="relative flex items-center justify-center min-h-[44px] min-w-[44px] p-2.5 rounded-full text-primary hover:bg-accent/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                aria-label={`Open shopping cart with ${cartCount} items`}
               >
-                <ShoppingBag size={20} />
+                <ShoppingBag className="h-5 w-5" aria-hidden="true" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-gold-600 text-espresso-950 font-bold text-[0.65rem] w-5 h-5 rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-[0.65rem] font-black text-secondary-foreground shadow-xs animate-in zoom-in-75">
                     {cartCount}
                   </span>
                 )}
-              </Link>
+              </button>
 
+              {/* Order on WhatsApp CTA (Desktop) */}
               <a
-                id="header-whatsapp-order-btn"
-                href={WA_LINK}
+                href={whatsappLink("Hi Kayal Samayal! I'd like to place an order.")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden md:inline-flex items-center gap-2 btn-primary text-sm py-2.5 px-4"
+                className="hidden sm:inline-flex"
               >
-                <ShoppingBag size={15} />
-                Order Now
+                <Button variant="plum" size="sm" className="gap-1.5 font-bold shadow-xs">
+                  <span>Order Now</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
               </a>
-              {/* Hamburger — min 44×44px touch target */}
+
+              {/* Mobile Menu Toggle */}
               <button
-                id="mobile-menu-toggle"
-                className={`md:hidden flex items-center justify-center w-11 h-11 rounded-lg transition-colors ${
-                  scrolled
-                    ? "text-cream-100 hover:bg-white/10"
-                    : "text-cream-50 hover:bg-white/10"
-                }`}
+                type="button"
+                className="flex lg:hidden items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-xl text-primary hover:bg-accent/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
                 onClick={() => setMenuOpen(!menuOpen)}
                 aria-label={menuOpen ? "Close menu" : "Open menu"}
                 aria-expanded={menuOpen}
-                aria-controls="mobile-nav-drawer"
               >
-                {menuOpen ? <X size={22} /> : <Menu size={22} />}
+                {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile Menu Drawer */}
+      {/* ── MOBILE NAVIGATION DRAWER ────────────────────────────────── */}
       <div
-        id="mobile-nav-drawer"
-        className={`fixed inset-0 z-40 md:hidden transition-all duration-300 ${
+        className={`fixed inset-0 z-50 lg:hidden transition-opacity duration-300 ${
           menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         role="dialog"
@@ -159,54 +164,69 @@ export default function Header() {
       >
         {/* Backdrop */}
         <div
-          className="absolute inset-0 bg-espresso-950/80 backdrop-blur-sm"
-          onClick={closeMenu}
+          className="absolute inset-0 bg-primary/70 backdrop-blur-xs"
+          onClick={() => setMenuOpen(false)}
           aria-hidden="true"
         />
-        {/* Drawer panel */}
+
+        {/* Drawer Panel */}
         <div
-          className={`absolute top-0 right-0 h-full w-[min(18rem,85vw)] texture-dark shadow-2xl flex flex-col transition-transform duration-300 ${
+          className={`absolute top-0 right-0 h-full w-[min(20rem,85vw)] bg-card shadow-2xl flex flex-col transition-transform duration-300 ease-out border-l border-border ${
             menuOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
-          {/* Drawer header */}
-          <div className="flex justify-between items-center px-6 py-5 border-b border-gold-600/20">
-            <span className="font-display text-cream-100 font-bold text-lg">Menu</span>
+          {/* Drawer Header */}
+          <div className="flex items-center justify-between p-5 border-b border-border bg-surface">
+            <div className="flex items-center gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/assets/logo.jpg"
+                alt="Logo"
+                className="w-8 h-8 rounded-full object-cover ring-1 ring-gold"
+              />
+              <span className="font-display font-bold text-primary text-base">Kayal Samayal</span>
+            </div>
             <button
-              className="flex items-center justify-center w-11 h-11 text-cream-300 hover:text-cream-100 transition-colors rounded-lg hover:bg-white/10"
-              onClick={closeMenu}
+              type="button"
+              className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              onClick={() => setMenuOpen(false)}
               aria-label="Close menu"
             >
-              <X size={22} />
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Nav links — large tap targets */}
-          <nav className="flex flex-col gap-1 p-4 flex-1 overflow-y-auto" aria-label="Mobile navigation">
+          {/* Nav Links */}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1.5" aria-label="Mobile links">
             {navLinks.map((link) => (
-              <a
+              <Link
                 key={link.href}
                 href={link.href}
-                className="text-cream-200 hover:text-gold-400 font-body font-medium text-base py-3.5 px-4 rounded-xl hover:bg-white/5 transition-all min-h-[48px] flex items-center"
-                onClick={closeMenu}
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center justify-between min-h-[48px] px-4 py-3 rounded-xl text-base font-semibold text-foreground hover:bg-accent hover:text-secondary transition-all"
               >
-                {link.label}
-              </a>
+                <span>{link.label}</span>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             ))}
           </nav>
 
-          {/* Bottom CTA */}
-          <div className="px-5 pb-8 pt-4 border-t border-white/10">
+          {/* Drawer Footer */}
+          <div className="p-5 border-t border-border bg-surface space-y-3">
             <a
-              href={WA_LINK}
+              href={whatsappLink("Hi Kayal Samayal! I'd like to place an order.")}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-whatsapp w-full justify-center text-sm py-3.5"
-              onClick={closeMenu}
+              className="w-full block"
+              onClick={() => setMenuOpen(false)}
             >
-              <ShoppingBag size={16} />
-              Order on WhatsApp
+              <Button variant="whatsapp" size="touch" className="w-full gap-2 font-bold shadow-xs">
+                <span>Order on WhatsApp</span>
+              </Button>
             </a>
+            <p className="text-[0.7rem] text-center text-muted-foreground">
+              FSSAI: {brand.fssai} • Tirupattur
+            </p>
           </div>
         </div>
       </div>

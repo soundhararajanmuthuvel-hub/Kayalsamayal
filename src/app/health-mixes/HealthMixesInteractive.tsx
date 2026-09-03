@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, ShieldCheck, Heart, Sparkles, MessageCircle } from "lucide-react";
+import { CheckCircle2, Sparkles, MessageCircle, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { whatsappLink } from "@/lib/brand";
 
 interface HealthProduct {
   id: string;
@@ -11,7 +12,7 @@ interface HealthProduct {
   benefits: string[];
   ingredients: string[];
   usage: string;
-  waLink: string;
+  waMsg: string;
 }
 
 const healthProducts: HealthProduct[] = [
@@ -22,261 +23,181 @@ const healthProducts: HealthProduct[] = [
     benefits: [
       "Rich in natural antioxidants and Vitamin C",
       "Purifies blood and enhances natural skin glow",
-      "Boosts energy and physical stamina naturally",
-      "Helps maintain optimal hemoglobin levels",
+      "Boosts daily stamina and physical energy naturally",
+      "Helps maintain optimal healthy hemoglobin levels",
     ],
-    ingredients: ["Fresh Apple Extract", "Beetroot Extract", "Carrot Extract", "Premium Almonds", "Cashews", "Cardamom", "Natural Country Sugar"],
+    ingredients: ["Fresh Apple Extract", "Beetroot Extract", "Carrot Extract", "Premium Almonds", "Cashews", "Cardamom", "Natural Country Jaggery Sugar"],
     usage: "Add 1-2 tablespoons of ABC Malt to a cup of warm milk or water. Stir well. No need to boil. Drink warm.",
-    waLink: "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%2520like%2520to%2520order%2520ABC%2520Malt.",
+    waMsg: "Hi Kayal Samayal! I'd like to order ABC Malt.",
   },
   {
     id: "golden-milk",
     name: "Golden Milk Magic (Immunity Turmeric Mix)",
     emoji: "🥛",
     benefits: [
-      "Promotes strong immunity and infection resistance",
-      "Soothes sore throats, cold, and respiratory blockages",
-      "Improves natural sleep cycle and digestion",
-      "Anti-inflammatory properties from curcumin-rich turmeric",
+      "Promotes strong immunity and natural infection resistance",
+      "Soothes sore throats, colds, and respiratory blockages",
+      "Improves restful sleep cycles and calm digestion",
+      "Curcumin-rich whole coastal turmeric with black pepper",
     ],
     ingredients: ["Curcumin Turmeric", "Black Pepper", "Dry Ginger (Sukku)", "Cardamom", "Ayurvedic Herbs"],
-    usage: "Mix 1/2 teaspoon into a cup of hot milk. Boil for 1-2 minutes. Sweeten with country sugar or honey. Drink warm before sleep.",
-    waLink: "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%2520like%2520to%2520order%2520Golden%2520Milk%2520Magic.",
+    usage: "Mix 1/2 teaspoon into hot milk. Simmer for 1-2 minutes. Sweeten with country sugar or honey. Drink warm before sleep.",
+    waMsg: "Hi Kayal Samayal! I'd like to order Golden Milk Magic.",
   },
   {
     id: "kavunirich",
-    name: "Kavunirich (Black Rice Health Mix)",
+    name: "Kavunirich (Black Rice Heritage Mix)",
     emoji: "🌾",
     benefits: [
-      "Loaded with anthocyanin antioxidants",
-      "High dietary fiber content aids digestion",
+      "Rich in anthocyanin antioxidants",
+      "High dietary fiber content aids gut health",
       "Regulates blood pressure and metabolic rate",
-      "Maintains cardiovascular health",
+      "Ancient Tamil supergrain for longevity",
     ],
-    ingredients: ["Traditional Kavuni Rice", "Mapillai Samba Rice", "Whole Grains", "Cardamom"],
-    usage: "Add 2 tablespoons to water or buttermilk. Boil on low-medium flame for 5 minutes, stirring continuously. Serve as warm porridge.",
-    waLink: "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%2520like%2520to%2520order%2520Kavunirich.",
+    ingredients: ["Traditional Kavuni Rice", "Mappillai Samba Rice", "Whole Grains", "Cardamom"],
+    usage: "Add 2 tablespoons to water or buttermilk. Cook on low flame for 5 minutes stirring continuously. Enjoy as warm porridge.",
+    waMsg: "Hi Kayal Samayal! I'd like to order Kavunirich.",
   },
   {
     id: "sukku-coffee",
     name: "Sukku Malli Herbal Kaafi",
     emoji: "☕",
     benefits: [
-      "Provides instant relief from headaches, cold, and cough",
-      "Aids digestion and neutralizes acidity",
-      "Caffeine-free natural body energizer",
-      "Flushes out toxins from the liver",
+      "Provides relief from seasonal chills, headaches, and cough",
+      "Aids post-meal digestion and neutralizes acidity",
+      "100% caffeine-free natural body energizer",
+      "Traditional home remedy for all ages",
     ],
     ingredients: ["Dry Ginger (Sukku)", "Coriander Seeds (Malli)", "Black Pepper", "Cardamom", "Natural Herbs"],
-    usage: "Boil 1 teaspoon of Sukku Malli powder with a cup of water and palm jaggery for 3-5 minutes. Filter and drink hot.",
-    waLink: "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%2520like%2520to%2520order%2520Sukku%2520Malli%2520Kaafi.",
+    usage: "Boil 1 teaspoon with a cup of water and palm jaggery for 3 minutes. Strain and sip hot.",
+    waMsg: "Hi Kayal Samayal! I'd like to order Sukku Malli Kaafi.",
   },
   {
     id: "slim-sakthi",
-    name: "Slim Sakthi (Weight Management Mix)",
+    name: "Slim Sakthi (Metabolic Wellness Mix)",
     emoji: "🥗",
     benefits: [
-      "Enhances body metabolism and burns fat naturally",
-      "Suppresses unhealthy sweet cravings",
-      "Improves digestion and bowel movement",
-      "Low glycemic index keeps you full longer",
+      "Enhances natural metabolism and digestion",
+      "Curbs unhealthy sugar cravings naturally",
+      "High fiber and roasted millet protein",
+      "Low glycemic index keeps you energetic",
     ],
     ingredients: ["Roasted Millets", "Horsegram", "Flax Seeds", "Fenugreek", "Digestive Spices"],
-    usage: "Mix 2 spoons of Slim Sakthi in warm water or thin buttermilk. Drink twice daily before main meals.",
-    waLink: "https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I'd%2520like%2520to%2520order%2520Slim%2520Sakthi.",
+    usage: "Mix 2 spoons in warm water or thin buttermilk. Drink twice daily before main meals.",
+    waMsg: "Hi Kayal Samayal! I'd like to order Slim Sakthi.",
   },
 ];
 
 export default function HealthMixesInteractive() {
   const [activeTab, setActiveTab] = useState<string>("abc-malt");
 
+  const current = healthProducts.find((p) => p.id === activeTab) || healthProducts[0];
+
   return (
-    <section className="py-16 sm:py-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Desktop layout: Left Tabs, Right detailed panels */}
-      <div className="hidden lg:grid grid-cols-12 gap-8 items-start">
-        {/* Sidebar tabs */}
-        <div className="col-span-4 bg-white border border-cream-300 rounded-2xl p-4 shadow-xs space-y-2">
-          {healthProducts.map((p) => (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      {/* Left Column: Product Selection Tabs */}
+      <div className="lg:col-span-4 rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-[var(--shadow-card)] space-y-2">
+        <h3 className="font-display font-bold text-sm tracking-wider uppercase text-primary px-3 py-2 border-b border-border">
+          Traditional Nutrition Menu
+        </h3>
+        {healthProducts.map((p) => {
+          const isActive = p.id === activeTab;
+          return (
             <button
               key={p.id}
+              type="button"
               onClick={() => setActiveTab(p.id)}
-              className={`w-full text-left font-display font-bold text-sm sm:text-base px-4 py-3 rounded-xl transition-all duration-300 flex items-center gap-3 cursor-pointer ${
-                activeTab === p.id
-                  ? "bg-brand-purple text-cream-50 shadow-sm"
-                  : "bg-transparent text-espresso-900 hover:bg-cream-200/40"
+              className={`w-full text-left p-3.5 rounded-2xl transition-all flex items-center justify-between cursor-pointer ${
+                isActive
+                  ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                  : "hover:bg-accent text-foreground"
               }`}
             >
-              <span className="text-xl select-none">{p.emoji}</span>
-              <span>{p.name.split(" (")[0]}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{p.emoji}</span>
+                <span className="text-xs sm:text-sm font-semibold">{p.name}</span>
+              </div>
+              <ArrowRight className={`h-4 w-4 shrink-0 ${isActive ? "text-gold" : "text-muted-foreground opacity-50"}`} />
             </button>
-          ))}
-        </div>
-
-        {/* Detailed panel */}
-        <div className="col-span-8 bg-white border border-cream-300 rounded-2xl p-8 shadow-md min-h-[400px] flex flex-col justify-between">
-          <AnimatePresence mode="wait">
-            {healthProducts.map((p) => {
-              if (p.id !== activeTab) return null;
-              return (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.25 }}
-                  className="space-y-6"
-                >
-                  <div className="flex items-center gap-4 border-b border-cream-200 pb-4">
-                    <span className="text-4xl filter drop-shadow-sm select-none">{p.emoji}</span>
-                    <h2 className="font-display font-extrabold text-brand-purple text-xl sm:text-2xl">
-                      {p.name}
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    {/* Left: Benefits */}
-                    <div className="space-y-3">
-                      <h3 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
-                        <Heart size={14} className="text-brand-orange" /> Key Health Benefits
-                      </h3>
-                      <ul className="space-y-2.5">
-                        {p.benefits.map((b, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <CheckCircle size={14} className="text-brand-orange shrink-0 mt-0.5" />
-                            <span className="font-body text-espresso-900 text-sm leading-relaxed">{b}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Right: Ingredients & Usage */}
-                    <div className="space-y-5">
-                      <div className="space-y-2">
-                        <h3 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
-                          <Sparkles size={14} className="text-brand-orange" /> Main Ingredients
-                        </h3>
-                        <div className="flex flex-wrap gap-1.5">
-                          {p.ingredients.map((ing, idx) => (
-                            <span key={idx} className="bg-cream-100 border border-cream-200 text-brand-purple font-body text-[0.7rem] sm:text-xs font-semibold px-2.5 py-1 rounded-md">
-                              {ing}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <h3 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
-                          <ShieldCheck size={14} className="text-brand-orange" /> Usage Instructions
-                        </h3>
-                        <p className="font-body text-espresso-800 text-xs sm:text-sm leading-relaxed">
-                          {p.usage}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 border-t border-cream-200 flex justify-end">
-                    <a
-                      href={p.waLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-primary text-sm font-bold min-h-[44px]"
-                    >
-                      <MessageCircle size={16} /> Order on WhatsApp
-                    </a>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Mobile/Tablet layout: Vertical Accordion list */}
-      <div className="lg:hidden space-y-4">
-        {healthProducts.map((p) => {
-          const isOpen = activeTab === p.id;
-          return (
-            <div key={p.id} className="bg-white border border-cream-300 rounded-xl shadow-xs overflow-hidden">
-              <button
-                onClick={() => setActiveTab(isOpen ? "" : p.id)}
-                className="w-full text-left font-display font-extrabold text-brand-purple text-base sm:text-lg px-5 py-4 flex items-center justify-between cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl filter drop-shadow-sm select-none">{p.emoji}</span>
-                  <span>{p.name.split(" (")[0]}</span>
-                </div>
-                <span className="text-xl font-body font-bold text-brand-orange">{isOpen ? "−" : "+"}</span>
-              </button>
-
-              <AnimatePresence initial={false}>
-                {isOpen && (
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: "auto" }}
-                    exit={{ height: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-5 pb-5 border-t border-cream-200 pt-4 space-y-5 bg-cream-50/20">
-                      {/* Benefits */}
-                      <div className="space-y-2">
-                        <h4 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
-                          <Heart size={14} /> Benefits
-                        </h4>
-                        <ul className="space-y-2">
-                          {p.benefits.map((b, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <CheckCircle size={14} className="text-brand-orange shrink-0 mt-0.5" />
-                              <span className="font-body text-espresso-900 text-xs sm:text-sm leading-relaxed">{b}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Ingredients */}
-                      <div className="space-y-2">
-                        <h4 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
-                          <Sparkles size={14} /> Ingredients
-                        </h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {p.ingredients.map((ing, idx) => (
-                            <span key={idx} className="bg-white border border-cream-300 text-brand-purple font-body text-[0.7rem] px-2 py-0.5 rounded-md font-semibold">
-                              {ing}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Usage */}
-                      <div className="space-y-2">
-                        <h4 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
-                          <ShieldCheck size={14} /> Usage
-                        </h4>
-                        <p className="font-body text-espresso-800 text-xs leading-relaxed">
-                          {p.usage}
-                        </p>
-                      </div>
-
-                      {/* WhatsApp order link */}
-                      <div className="pt-4 border-t border-cream-200">
-                        <a
-                          href={p.waLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary w-full justify-center text-xs font-bold py-3 px-4 flex items-center gap-1.5 min-h-[44px]"
-                        >
-                          <MessageCircle size={14} /> Order on WhatsApp
-                        </a>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           );
         })}
       </div>
-    </section>
+
+      {/* Right Column: Detailed Benefits & Usage Panel */}
+      <div className="lg:col-span-8 rounded-3xl border border-border/80 bg-card p-6 sm:p-10 shadow-[var(--shadow-card)] space-y-6 animate-in fade-in">
+        
+        {/* Product Title Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <span className="text-4xl p-2 rounded-2xl bg-surface border border-border/60">{current.emoji}</span>
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-secondary">
+                100% Traditional Recipe
+              </span>
+              <h2 className="font-display font-bold text-xl sm:text-2xl text-primary">
+                {current.name}
+              </h2>
+            </div>
+          </div>
+
+          <a
+            href={whatsappLink(current.waMsg)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="whatsapp" size="sm" className="gap-1.5 font-bold shadow-xs">
+              <MessageCircle className="h-4 w-4" />
+              <span>Order on WhatsApp</span>
+            </Button>
+          </a>
+        </div>
+
+        {/* Benefits Grid */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
+            Key Health Benefits
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {current.benefits.map((b, idx) => (
+              <div key={idx} className="flex items-start gap-2.5 p-3 rounded-xl bg-surface border border-border/60 text-xs sm:text-sm text-foreground">
+                <CheckCircle2 className="h-4 w-4 text-leaf shrink-0 mt-0.5" />
+                <span>{b}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Ingredients */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
+            Clean Whole Ingredients
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {current.ingredients.map((ing, idx) => (
+              <span
+                key={idx}
+                className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary border border-border/60"
+              >
+                {ing}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* How to Prepare / Usage */}
+        <div className="rounded-2xl bg-surface border border-border/70 p-4 sm:p-5 space-y-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>How to Prepare & Consume</span>
+          </h3>
+          <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed font-medium">
+            {current.usage}
+          </p>
+        </div>
+
+      </div>
+
+    </div>
   );
 }

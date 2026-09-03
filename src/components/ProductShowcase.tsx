@@ -1,188 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Camera, CheckCircle, ChevronRight, ShoppingBag } from "lucide-react";
 import { products as localProducts, categories, type Category, type Product } from "@/data/products";
 import { getProducts } from "@/lib/api";
-import { useCart, getProductPrice } from "@/context/CartContext";
+import { ProductCard } from "@/components/shop/ProductCard";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
-/* ── Photo Coming Soon placeholder ──────────────────────────────────── */
-function PhotoPlaceholder({ name }: { name: string }) {
-  return (
-    <div className="photo-coming-soon w-full h-full rounded-t-xl">
-      <Camera size={24} className="text-cream-400 opacity-50" />
-      <span className="font-body text-xs text-espresso-800 opacity-60 text-center px-2 leading-tight">
-        Photo Coming Soon
-      </span>
-    </div>
-  );
-}
-
-/* ── Product Skeleton Card ────────────────────────────────────────── */
-function ProductSkeleton() {
-  return (
-    <div className="bg-white rounded-xl border border-cream-300 overflow-hidden flex flex-col h-[320px] sm:h-[380px] animate-pulse">
-      <div className="aspect-square bg-cream-200" />
-      <div className="p-3 sm:p-4 flex flex-col flex-1 space-y-2.5">
-        <div className="h-3 bg-cream-200 rounded w-1/4" />
-        <div className="h-5 bg-cream-200 rounded w-3/4" />
-        <div className="h-4 bg-cream-200 rounded w-full" />
-        <div className="h-4 bg-cream-200 rounded w-2/3" />
-        <div className="h-9 bg-cream-200 rounded w-full mt-auto" />
-      </div>
-    </div>
-  );
-}
-
-/* ── Product Card ─────────────────────────────────────────────────────── */
-function ProductCard({ product }: { product: Product }) {
-  const isPremium = product.tier === "premium";
-  const { addToCart } = useCart();
-  const price = getProductPrice(product);
-
-  const productJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": product.name,
-    "image": product.image ? `https://kayalsamayal-gamma.vercel.app${product.image}` : undefined,
-    "description": product.description,
-    "category": product.category,
-    "brand": {
-      "@type": "Brand",
-      "name": "Kayal Samayal"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": price,
-      "priceCurrency": "INR",
-      "availability": "https://schema.org/InStock",
-      "url": "https://kayalsamayal-gamma.vercel.app/#products"
-    }
-  };
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.88 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
-      className={`card-hover relative bg-white rounded-xl shadow-md overflow-hidden border flex flex-col ${
-        isPremium
-          ? "border-brand-orange/40 shadow-[0_4px_24px_rgba(217,106,32,0.1)]"
-          : "border-cream-300"
-      }`}
-    >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
-      {/* Premium ribbon */}
-      {isPremium && (
-        <div className="ribbon text-[0.6rem] sm:text-[0.65rem]">
-          ✦ PREMIUM
-        </div>
-      )}
-
-      {/* Image — 1:1 square, full product visible */}
-      <div className="aspect-square bg-brand-cream/30 relative overflow-hidden rounded-t-xl">
-        {product.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-contain p-2 transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <PhotoPlaceholder name={product.name} />
-        )}
-
-        {/* Tier badge overlay */}
-        <div className="absolute bottom-2 left-2">
-          <span className={isPremium ? "badge-premium" : "badge-regular"}>
-            {isPremium ? "✦ Premium" : "Regular"}
-          </span>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="p-3 sm:p-4 flex flex-col flex-1">
-        {/* Category tag */}
-        <p className="font-body text-[0.55rem] sm:text-[0.6rem] tracking-[0.12em] sm:tracking-[0.15em] uppercase text-brand-orange font-bold mb-1 leading-tight">
-          {product.category}
-        </p>
-
-        <div className="flex items-start justify-between gap-1.5 mb-1.5 sm:mb-2">
-          <h3 className="font-display font-bold text-brand-purple text-sm sm:text-base leading-snug">
-            {product.name}
-          </h3>
-          <span className="font-body text-xs font-bold text-brand-purple shrink-0 whitespace-nowrap bg-brand-cream px-2 py-0.5 rounded-lg border border-brand-cream-dark/65">
-            Rs. {price}
-          </span>
-        </div>
-
-        <p className="font-body text-espresso-800 text-xs leading-relaxed flex-1 mb-3 line-clamp-2 sm:line-clamp-3">
-          {product.description}
-        </p>
-
-        {/* Highlights — hidden on very small cards to save space */}
-        <ul className="space-y-0.5 sm:space-y-1 mb-3 sm:mb-4 hidden sm:block">
-          {product.highlights.map((h) => (
-            <li key={h} className="flex items-center gap-1.5">
-              <CheckCircle size={10} className="text-brand-orange shrink-0" />
-              <span className="font-body text-espresso-800 text-[0.65rem] sm:text-[0.7rem] truncate">{h}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* Action Button Pair: Add to Cart + WhatsApp */}
-        <div className="flex flex-col gap-1.5 mt-auto">
-          <button
-            onClick={() => addToCart(product)}
-            className="flex items-center justify-center gap-1.5 w-full bg-brand-purple hover:bg-brand-purple-light text-white text-xs font-bold py-2 sm:py-2.5 rounded-lg transition-colors min-h-[40px] cursor-pointer"
-          >
-            <ShoppingBag size={13} />
-            Add to Cart
-          </button>
-          
-          <a
-            id={`product-order-${product.id}`}
-            href={product.whatsappMessage}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-whatsapp w-full justify-center text-xs py-2 sm:py-2.5 min-h-[40px] flex items-center gap-1"
-          >
-            <MessageCircle size={13} />
-            Order on WhatsApp
-          </a>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ── Main Section ─────────────────────────────────────────────────────── */
 export default function ProductShowcase() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
+  const [activeCategory, setActiveCategory] = useState<Category>("Traditional Masalas");
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       try {
         const data = await getProducts();
-        if (data && data.length > 0) {
-          setProducts(data);
-        } else {
-          setProducts(localProducts);
-        }
-      } catch (err) {
-        console.error("Error loading products", err);
-        setError("Unable to load products right now. Please try again.");
-        setProducts(localProducts);
+        setAllProducts(data && data.length > 0 ? data : localProducts);
+      } catch {
+        setAllProducts(localProducts);
       } finally {
         setLoading(false);
       }
@@ -190,177 +27,76 @@ export default function ProductShowcase() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    const handleHash = () => {
-      const hash = window.location.hash;
-      if (hash.startsWith("#products-")) {
-        const catName = decodeURIComponent(hash.substring(10)).replace(/-/g, " ");
-        const matched = categories.find(c => c.toLowerCase() === catName.toLowerCase());
-        if (matched) {
-          setActiveCategory(matched);
-        } else if (catName.toLowerCase() === "all") {
-          setActiveCategory("All");
-        }
-      }
-    };
-    handleHash();
-    window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
-
-  const filtered =
-    activeCategory === "All"
-      ? products
-      : products.filter((p) => p.category === activeCategory);
-
-  const categoryCount = (cat: Category | "All") =>
-    cat === "All"
-      ? products.length
-      : products.filter((p) => p.category === cat).length;
+  const displayedProducts = allProducts.filter(
+    (p) => p.category === activeCategory
+  );
 
   return (
-    <section id="products" className="relative texture-jute py-16 sm:py-24 lg:py-32">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8 sm:mb-12">
-          <motion.p
-            className="section-eyebrow mb-3"
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            Our Products
-          </motion.p>
-          <motion.h2
-            className="section-title mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            Five Ranges of{" "}
-            <span className="gold-shimmer">Pure Tradition</span>
-          </motion.h2>
-          <motion.div
-            className="divider-spice mb-5 sm:mb-6"
-            initial={{ scaleX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          />
-          <motion.p
-            className="font-body text-espresso-800 max-w-xl mx-auto text-base px-2"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            Browse our complete range of masalas, podis, noodles, health mixes,
-            and legiyams — available in Regular and Premium tiers.
-          </motion.p>
-          
-          {error && (
-            <div className="mt-4 inline-block bg-yellow-50 text-yellow-800 text-xs px-3 py-1.5 rounded-lg border border-yellow-200">
-              {error}
-            </div>
-          )}
+    <section id="products" className="py-16 sm:py-24 bg-surface border-b border-border/60">
+      <div className="container-page">
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12 space-y-2">
+          <p className="section-eyebrow">Pure Spices & Foods</p>
+          <h2 className="section-title">
+            Our Traditional <span className="text-secondary font-display italic">Collection</span>
+          </h2>
+          <div className="divider-spice" />
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Browse our complete assortment by category or view our entire catalogue.
+          </p>
         </div>
 
-        {/* Category Filter Bar — horizontally scrollable on mobile */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.35 }}
-          className="mb-8 sm:mb-10"
-          role="tablist"
-          aria-label="Product categories"
-        >
-          <div className="flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:justify-center sm:overflow-x-visible scrollbar-none">
-            {(["All", ...categories] as (Category | "All")[]).map((cat) => (
+        {/* Category Tabs (Scrollable on Mobile) */}
+        <div className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-8 sm:mb-12 px-1">
+          {categories.map((cat) => {
+            const isActive = activeCategory === cat;
+            return (
               <button
                 key={cat}
-                id={`filter-${cat.replace(/\s+/g, "-").toLowerCase()}`}
-                role="tab"
-                aria-selected={activeCategory === cat}
+                type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`
-                  flex-shrink-0 inline-flex items-center gap-1.5 font-body text-sm font-medium
-                  px-4 py-2.5 rounded-full border min-h-[44px] whitespace-nowrap cursor-pointer
-                  transition-all duration-250
-                  ${
-                    activeCategory === cat
-                      ? "bg-brand-purple text-cream-100 border-brand-purple shadow-md"
-                      : "bg-white/80 text-espresso-800 border-cream-300 hover:border-brand-orange hover:text-brand-orange"
-                  }
-                `}
+                className={`whitespace-nowrap px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all min-h-[40px] cursor-pointer ${
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "bg-card text-foreground hover:bg-accent border border-border"
+                }`}
               >
                 {cat}
-                <span
-                  className={`text-[0.65rem] font-semibold rounded-full px-1.5 py-0.5 ${
-                    activeCategory === cat
-                      ? "bg-white/15 text-cream-200"
-                      : "bg-cream-200 text-espresso-800"
-                  }`}
-                >
-                  {categoryCount(cat)}
-                </span>
               </button>
+            );
+          })}
+        </div>
+
+        {/* Product Grid */}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-6 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="aspect-square bg-muted rounded-2xl animate-pulse" />
             ))}
           </div>
-        </motion.div>
-
-        {/* Product Grid — 2 col on mobile, 3 col on md, 4 col on xl */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
-            {Array.from({ length: 8 }).map((_, idx) => (
-              <ProductSkeleton key={idx} />
-            ))}
+        ) : displayedProducts.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-2xl border border-border p-8">
+            <span className="text-3xl">🏺</span>
+            <h3 className="font-display font-bold text-lg mt-2">No items in this category currently</h3>
+            <p className="text-xs text-muted-foreground mt-1">Check out our other authentic categories</p>
           </div>
         ) : (
-          <motion.div
-            layout
-            className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
-          >
-            <AnimatePresence mode="popLayout">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        )}
-
-        {/* Empty state */}
-        {!loading && filtered.length === 0 && (
-          <div className="text-center py-20 text-espresso-800">
-            <p className="font-display text-xl">No products found.</p>
+          <div className="grid grid-cols-2 gap-3.5 sm:gap-6 lg:grid-cols-4">
+            {displayedProducts.slice(0, 8).map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
         )}
 
-        {/* Bottom CTA */}
-        <motion.div
-          className="text-center mt-10 sm:mt-14"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <p className="font-body text-espresso-800 text-sm mb-4">
-            Can&#39;t find what you&#39;re looking for? Talk to us directly.
-          </p>
-          <a
-            id="products-whatsapp-enquiry-btn"
-            href="https://wa.me/919003860616?text=Hi%20Kayal%20Samayal!%20I%20have%20a%20product%20enquiry."
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-whatsapp inline-flex min-h-[48px]"
-          >
-            <MessageCircle size={16} />
-            WhatsApp Enquiry
-            <ChevronRight size={14} />
-          </a>
-        </motion.div>
+        {/* Bottom Link to Full Shop */}
+        <div className="mt-12 text-center">
+          <Link href="/products">
+            <Button variant="plum" size="pill" className="gap-2 font-bold shadow-md">
+              <span>View Full Shop Catalogue (35+ Items)</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
     </section>
   );

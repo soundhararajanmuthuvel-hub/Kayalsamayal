@@ -4,7 +4,18 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart, getProductPrice } from "@/context/CartContext";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ShieldCheck, Tag } from "lucide-react";
+import { QuantitySelector } from "@/components/shop/QuantitySelector";
+import { Button } from "@/components/ui/button";
+import { brand, formatINR } from "@/lib/brand";
+import {
+  Trash2,
+  ShoppingBag,
+  ArrowRight,
+  ShieldCheck,
+  Tag,
+  Truck,
+  CheckCircle,
+} from "lucide-react";
 import Link from "next/link";
 
 export default function CartPage() {
@@ -15,118 +26,146 @@ export default function CartPage() {
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
-    if (coupon.toUpperCase() === "WELCOME10") {
+    if (coupon.trim().toUpperCase() === "WELCOME10") {
       setAppliedDiscount(Math.round(cartSubtotal * 0.1));
       setCouponError("");
     } else {
-      setCouponError("Invalid coupon code. Try WELCOME10.");
+      setCouponError("Invalid coupon code. Try WELCOME10 for 10% off.");
       setAppliedDiscount(0);
     }
   };
 
-  const shipping = cartSubtotal >= 500 ? 0 : cartSubtotal > 0 ? 50 : 0;
+  const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
+  const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
   const grandTotal = cartSubtotal - appliedDiscount + shipping;
+  const neededForFreeShipping = brand.freeShippingOver - cartSubtotal;
 
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="relative bg-cream-50 pt-20">
+      <main className="flex-1 pb-16 sm:pb-24">
         
-        {/* Banner */}
-        <section className="bg-spice-gradient py-12 text-center text-cream-50 border-b border-gold-500/10">
-          <div className="max-w-7xl mx-auto px-4 space-y-2">
-            <h1 className="font-display font-black text-3xl sm:text-4xl leading-tight">
-              Your Cart
+        {/* Banner Section */}
+        <section className="bg-spice-gradient py-10 sm:py-14 text-primary-foreground border-b border-white/10">
+          <div className="container-page text-center space-y-2">
+            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold">
+              Your Shopping Cart
             </h1>
-            <div className="divider-spice mx-auto bg-gold-gradient" />
+            <p className="text-white/80 text-xs sm:text-sm">
+              {cartCount > 0
+                ? `You have ${cartCount} ${cartCount === 1 ? "item" : "items"} in your basket.`
+                : "Your basket is currently empty."}
+            </p>
           </div>
         </section>
 
-        {/* Content */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="container-page pt-8 sm:pt-12">
           {cart.length === 0 ? (
-            /* Empty Cart State */
-            <div className="bg-white border border-cream-300 rounded-3xl p-12 text-center space-y-4 max-w-md mx-auto">
-              <span className="text-5xl">🛒</span>
-              <h2 className="font-display font-bold text-brand-purple text-xl">Your cart is empty</h2>
-              <p className="font-body text-espresso-800 text-sm">
-                Add premium South Indian spices and health mixes to your cart to checkout.
+            /* Empty State */
+            <div className="max-w-md mx-auto text-center rounded-3xl border border-border/80 bg-card p-8 sm:p-12 shadow-[var(--shadow-card)] space-y-4">
+              <div className="h-16 w-16 mx-auto rounded-full bg-accent flex items-center justify-center text-primary">
+                <ShoppingBag className="h-8 w-8 text-secondary" />
+              </div>
+              <h2 className="font-display font-bold text-xl text-primary">Your Cart is Empty</h2>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Add authentic coastal spices, organic podis, or healthy noodle varieties to get started.
               </p>
-              <Link href="/products" className="btn-primary text-sm inline-flex min-h-[44px]">
-                Continue Shopping
-              </Link>
+              <div className="pt-2">
+                <Link href="/products">
+                  <Button variant="plum" size="touch" className="w-full font-bold">
+                    Start Shopping
+                  </Button>
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
-              {/* Left Column: Cart Items List */}
-              <div className="lg:col-span-8 bg-white border border-cream-300 rounded-3xl p-6 sm:p-8 space-y-6">
-                <h2 className="font-display font-bold text-brand-purple text-lg border-b border-cream-200 pb-4">
-                  Shopping Cart ({cartCount} {cartCount === 1 ? "item" : "items"})
-                </h2>
+              {/* Left Column: Cart Line Items */}
+              <div className="lg:col-span-8 rounded-3xl border border-border/80 bg-card p-5 sm:p-8 shadow-[var(--shadow-card)] space-y-6">
                 
-                <div className="divide-y divide-cream-200">
+                {/* Free Shipping Notice Bar */}
+                <div className="rounded-2xl bg-surface border border-border/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Truck className="h-4 w-4 text-secondary" />
+                      {isFreeShipping
+                        ? "🎉 Congratulations! You unlocked Free Shipping"
+                        : `Add ₹${neededForFreeShipping} more for Free Shipping`}
+                    </span>
+                    <span>{isFreeShipping ? "FREE" : `₹${brand.shippingFlat}`}</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-secondary transition-all duration-300"
+                      style={{
+                        width: `${Math.min(100, (cartSubtotal / brand.freeShippingOver) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Items List */}
+                <div className="divide-y divide-border/60">
                   {cart.map((item) => {
                     const price = getProductPrice(item.product);
-                    const subtotal = price * item.quantity;
+                    const lineTotal = price * item.quantity;
                     return (
-                      <div key={item.product.id} className="py-6 flex flex-col sm:flex-row items-center gap-4 sm:gap-6 group">
-                        
-                        {/* Image */}
-                        <div className="w-20 h-20 bg-brand-cream/35 border border-cream-300/60 rounded-xl overflow-hidden flex items-center justify-center p-2 shrink-0">
+                      <div
+                        key={item.product.id}
+                        className="py-5 sm:py-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6"
+                      >
+                        {/* Product Image */}
+                        <div className="h-20 w-20 shrink-0 rounded-2xl bg-surface border border-border/60 p-2 flex items-center justify-center overflow-hidden">
                           {item.product.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.product.image} alt={item.product.name} className="max-h-full object-contain" />
+                            <img
+                              src={item.product.image}
+                              alt={item.product.name}
+                              className="h-full w-full object-contain"
+                            />
                           ) : (
-                            <span className="text-xl">🌶️</span>
+                            <span className="text-2xl">🌶️</span>
                           )}
                         </div>
 
-                        {/* Details */}
-                        <div className="flex-1 text-center sm:text-left space-y-1">
-                          <span className="font-body text-[0.55rem] font-bold text-brand-orange uppercase tracking-wider">
+                        {/* Product Info */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
                             {item.product.category}
                           </span>
-                          <h3 className="font-display font-bold text-brand-purple text-base">
-                            {item.product.name}
+                          <h3 className="font-display font-bold text-foreground text-base leading-snug">
+                            <Link href={`/products/${item.product.id}`} className="hover:text-secondary">
+                              {item.product.name}
+                            </Link>
                           </h3>
-                          <p className="font-body text-xs text-espresso-800">
-                            Price: Rs. {price}
+                          <p className="text-xs text-muted-foreground font-semibold">
+                            Unit Price: {formatINR(price)}
                           </p>
                         </div>
 
-                        {/* Quantity Selector */}
-                        <div className="flex items-center border border-cream-300 rounded-lg overflow-hidden bg-cream-50">
-                          <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            className="p-2 hover:bg-cream-200 text-brand-purple transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus size={12} />
-                          </button>
-                          <span className="font-body text-sm font-bold text-brand-purple px-3">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            className="p-2 hover:bg-cream-200 text-brand-purple transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                            aria-label="Increase quantity"
-                          >
-                            <Plus size={12} />
-                          </button>
-                        </div>
+                        {/* Quantity and Line Total */}
+                        <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto pt-2 sm:pt-0">
+                          <QuantitySelector
+                            value={item.quantity}
+                            onChange={(q) => updateQuantity(item.product.id, q)}
+                            label={item.product.name}
+                            size="sm"
+                          />
 
-                        {/* Total Price & Delete button */}
-                        <div className="flex items-center gap-4 shrink-0 justify-between w-full sm:w-auto">
-                          <span className="font-display font-black text-brand-purple text-base sm:text-lg">
-                            Rs. {subtotal}
-                          </span>
+                          <div className="text-right min-w-[70px]">
+                            <span className="font-bold text-foreground text-base">
+                              {formatINR(lineTotal)}
+                            </span>
+                          </div>
+
                           <button
+                            type="button"
                             onClick={() => removeFromCart(item.product.id)}
-                            className="p-2 text-espresso-800 hover:text-red-500 transition-colors cursor-pointer"
-                            aria-label="Remove item"
+                            className="p-2 text-muted-foreground hover:text-destructive transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                            aria-label={`Remove ${item.product.name} from cart`}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
 
@@ -140,94 +179,93 @@ export default function CartPage() {
               <div className="lg:col-span-4 space-y-6">
                 
                 {/* Summary Box */}
-                <div className="bg-white border border-cream-300 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
-                  <h2 className="font-display font-bold text-brand-purple text-lg border-b border-cream-200 pb-4">
+                <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-7 shadow-[var(--shadow-card)] space-y-5">
+                  <h2 className="font-display font-bold text-lg text-primary pb-3 border-b border-border">
                     Order Summary
                   </h2>
 
-                  <div className="space-y-3.5 border-b border-cream-200 pb-4">
-                    <div className="flex justify-between font-body text-sm text-espresso-900">
+                  <div className="space-y-3 text-xs sm:text-sm">
+                    <div className="flex justify-between text-muted-foreground">
                       <span>Subtotal</span>
-                      <span className="font-bold">Rs. {cartSubtotal}</span>
+                      <span className="font-bold text-foreground">{formatINR(cartSubtotal)}</span>
                     </div>
 
                     {appliedDiscount > 0 && (
-                      <div className="flex justify-between font-body text-sm text-green-700 font-semibold">
+                      <div className="flex justify-between text-leaf font-semibold">
                         <span>Discount (10%)</span>
-                        <span>- Rs. {appliedDiscount}</span>
+                        <span>- {formatINR(appliedDiscount)}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between font-body text-sm text-espresso-900">
-                      <span>Estimated Shipping</span>
-                      <span className="font-bold">
-                        {shipping === 0 ? "FREE" : `Rs. ${shipping}`}
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Shipping Fee</span>
+                      <span className="font-bold text-foreground">
+                        {shipping === 0 ? "FREE" : formatINR(shipping)}
                       </span>
                     </div>
-                    {shipping > 0 && (
-                      <p className="font-body text-[0.65rem] text-brand-orange leading-snug">
-                        💡 Add spices worth Rs. {500 - cartSubtotal} more to get Free Shipping!
-                      </p>
-                    )}
                   </div>
 
-                  <div className="flex justify-between items-center text-brand-purple font-display">
-                    <span className="text-base font-bold">Total Amount</span>
-                    <span className="text-xl sm:text-2xl font-black text-brand-orange">
-                      Rs. {grandTotal}
+                  <div className="pt-3 border-t border-border flex justify-between items-center">
+                    <div>
+                      <span className="font-display font-bold text-base text-primary block">
+                        Grand Total
+                      </span>
+                      <span className="text-[0.7rem] text-muted-foreground">Inclusive of GST</span>
+                    </div>
+                    <span className="font-display font-extrabold text-2xl text-secondary">
+                      {formatINR(grandTotal)}
                     </span>
                   </div>
 
                   {/* Actions */}
-                  <div className="space-y-3 pt-2">
-                    <Link
-                      href="/checkout"
-                      className="btn-primary w-full justify-center text-sm font-bold py-3.5 px-6 rounded-xl flex items-center gap-1.5 min-h-[48px]"
-                    >
-                      <span>Proceed to Checkout</span>
-                      <ArrowRight size={16} />
+                  <div className="space-y-2.5 pt-2">
+                    <Link href="/checkout" className="block w-full">
+                      <Button variant="plum" size="touch" className="w-full gap-2 font-bold shadow-md">
+                        <span>Proceed to Checkout</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
                     </Link>
-                    <Link
-                      href="/products"
-                      className="btn-outline w-full justify-center text-sm font-bold py-3 px-6 rounded-xl border-2 border-brand-purple text-brand-purple hover:bg-brand-cream/20 text-center block"
-                    >
-                      Continue Shopping
+
+                    <Link href="/products" className="block w-full">
+                      <Button variant="outline" size="touch" className="w-full font-bold">
+                        Continue Shopping
+                      </Button>
                     </Link>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs font-body text-espresso-800 opacity-60 justify-center">
-                    <ShieldCheck size={14} className="text-green-600" />
-                    <span>100% Manual Payment Verification</span>
+                  <div className="flex items-center justify-center gap-1.5 text-[0.7rem] text-muted-foreground pt-1">
+                    <ShieldCheck className="h-4 w-4 text-leaf" />
+                    <span>Safe & Verified Manual UPI / COD Payment</span>
                   </div>
                 </div>
 
-                {/* Coupon Form */}
-                <div className="bg-white border border-cream-300 rounded-3xl p-6 shadow-xs space-y-4">
-                  <h3 className="font-display font-bold text-brand-purple text-sm flex items-center gap-1.5">
-                    <Tag size={16} className="text-brand-orange" />
-                    <span>Apply Coupon</span>
+                {/* Coupon Box */}
+                <div className="rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-3">
+                  <h3 className="font-display font-bold text-xs uppercase tracking-wider text-primary flex items-center gap-1.5">
+                    <Tag className="h-4 w-4 text-secondary" />
+                    <span>Have a Coupon?</span>
                   </h3>
-                  
+
                   <form onSubmit={handleApplyCoupon} className="flex gap-2">
                     <input
                       type="text"
                       placeholder="e.g. WELCOME10"
                       value={coupon}
                       onChange={(e) => setCoupon(e.target.value)}
-                      className="flex-1 font-body text-sm bg-cream-50 border border-cream-300 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-orange uppercase"
+                      className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs uppercase font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
                     />
-                    <button
-                      type="submit"
-                      className="btn-primary text-xs font-bold px-4 py-2 rounded-xl min-h-[38px] cursor-pointer"
-                    >
+                    <Button type="submit" variant="plum" size="sm" className="font-bold">
                       Apply
-                    </button>
+                    </Button>
                   </form>
+
                   {couponError && (
-                    <p className="font-body text-[0.7rem] text-red-500 font-semibold">{couponError}</p>
+                    <p className="text-[0.7rem] font-semibold text-destructive">{couponError}</p>
                   )}
                   {appliedDiscount > 0 && (
-                    <p className="font-body text-[0.7rem] text-green-700 font-bold">WELCOME10 Coupon applied!</p>
+                    <p className="text-[0.7rem] font-bold text-leaf flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> WELCOME10 applied successfully!
+                    </p>
                   )}
                 </div>
 
@@ -235,10 +273,10 @@ export default function CartPage() {
 
             </div>
           )}
-        </section>
+        </div>
 
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

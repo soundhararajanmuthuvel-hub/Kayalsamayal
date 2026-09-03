@@ -1,48 +1,49 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  display: "swap",
   weight: ["400", "500", "600", "700", "800", "900"],
-  style: ["normal", "italic"],
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
+  display: "swap",
   weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const viewport: Viewport = {
-  themeColor: "#2c221e",
+  themeColor: "#341424",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 5,
 };
 
 export const metadata: Metadata = {
-  title: "Kayal Samayal | Traditional Coastal Masalas & South Indian Foods",
+  metadataBase: new URL("https://kayalsamayal.in"),
+  title: "Kayal Samayal | Traditional Coastal Masalas & Pure South Indian Foods",
   description:
-    "Buy authentic South Indian spices, traditional coastal masalas, organic podis, and health mixes from Kayalpatnam heritage. No preservatives, pure flavour.",
+    "Buy authentic South Indian spices, traditional coastal masalas, organic podis, herbal mixes and health mixes from Kayalpatnam heritage. No preservatives, 100% pure taste.",
   keywords: [
     "Kayal Samayal",
+    "Kayalpattinam masala",
     "traditional masala",
     "coastal masala",
-    "Kayalpattinam masala",
     "South Indian masala",
     "traditional podi",
-    "South Indian podi",
     "health mixes",
     "traditional Indian food",
-    "coastal food products",
-    "authentic South Indian flavours",
     "fish curry masala",
     "biriyani masala",
-    "herbal malt",
+    "moringa noodles",
+    "nannari sukku",
   ],
   alternates: {
-    canonical: "https://kayalsamayal-gamma.vercel.app",
+    canonical: "https://kayalsamayal.in",
   },
   icons: {
     icon: "/assets/logo.jpg",
@@ -50,16 +51,16 @@ export const metadata: Metadata = {
     shortcut: "/assets/logo.jpg",
   },
   openGraph: {
-    title: "Kayal Samayal | Traditional Coastal Masalas & South Indian Foods",
+    title: "Kayal Samayal | Traditional Coastal Masalas & Pure South Indian Foods",
     description:
-      "Handcrafted spices, masalas, and health mixes rooted in Kayalpatnam coastal heritage. Pure, clean ingredients. Order online via WhatsApp & COD.",
+      "Handcrafted spices, masalas, and health mixes rooted in Kayalpatnam coastal heritage. Pure, clean ingredients. 35+ Varieties.",
     type: "website",
     locale: "en_IN",
     siteName: "Kayal Samayal",
-    url: "https://kayalsamayal-gamma.vercel.app",
+    url: "https://kayalsamayal.in",
     images: [
       {
-        url: "https://kayalsamayal-gamma.vercel.app/assets/logo.jpg",
+        url: "/assets/logo.jpg",
         width: 800,
         height: 800,
         alt: "Kayal Samayal - Authentic Heritage Spices",
@@ -68,15 +69,16 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kayal Samayal | Traditional Coastal Masalas & South Indian Foods",
+    title: "Kayal Samayal | Traditional Coastal Masalas & Pure South Indian Foods",
     description:
-      "Handcrafted spices, masalas, and health mixes from Kayalpatnam heritage. No additives, no preservatives. Pure coastal flavour.",
-    images: ["https://kayalsamayal-gamma.vercel.app/assets/logo.jpg"],
+      "Handcrafted spices, masalas, and health mixes from Kayalpatnam heritage. No artificial colors, zero preservatives.",
+    images: ["/assets/logo.jpg"],
   },
 };
 
 import { CartProvider } from "@/context/CartContext";
 import CartDrawer from "@/components/CartDrawer";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 
 export default function RootLayout({
   children,
@@ -86,12 +88,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${playfair.variable} ${plusJakarta.variable} scroll-smooth`}
+      className={`${fraunces.variable} ${plusJakarta.variable} scroll-smooth`}
     >
-      <body className="antialiased">
+      <body className="min-h-screen bg-background text-foreground font-sans antialiased selection:bg-secondary/20 selection:text-secondary">
         <CartProvider>
           {children}
           <CartDrawer />
+          <FloatingWhatsApp />
         </CartProvider>
       </body>
     </html>

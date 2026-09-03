@@ -3,14 +3,15 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart } from "@/context/CartContext";
-import { CheckCircle2, ShoppingBag, Printer, Mail, MessageSquare } from "lucide-react";
+import { brand, formatINR, whatsappLink } from "@/lib/brand";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, ShoppingBag, Printer, MessageCircle, Truck } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 
 export default function ThankYouPage() {
   const { lastOrderResponse, customerDetails } = useCart();
 
-  // Generate random order ID inside state initializer to keep render pure
   const [orderId] = useState(() => {
     return lastOrderResponse?.orderId || `KS-${Math.floor(100000 + Math.random() * 900000)}`;
   });
@@ -21,6 +22,7 @@ export default function ThankYouPage() {
       year: "numeric",
     });
   });
+
   const grandTotal = lastOrderResponse?.grandTotal || 0;
 
   const handlePrint = () => {
@@ -30,106 +32,111 @@ export default function ThankYouPage() {
   };
 
   return (
-    <>
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
-      <main className="relative bg-cream-50 pt-20">
+      <main className="flex-1 pb-16 sm:pb-24">
         
-        <section className="max-w-3xl mx-auto px-4 py-16 sm:py-24 text-center space-y-8">
-          
-          {/* Animated Success Badge */}
-          <div className="flex justify-center">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-50 flex items-center justify-center text-green-600 shadow-md">
-              <CheckCircle2 size={48} className="animate-pulse" />
+        {/* Banner Section */}
+        <section className="bg-spice-gradient py-12 sm:py-16 text-primary-foreground border-b border-white/10">
+          <div className="container-page text-center space-y-3">
+            <div className="h-16 w-16 mx-auto rounded-full bg-leaf/20 border border-leaf/40 flex items-center justify-center text-leaf">
+              <CheckCircle2 className="h-10 w-10 text-white" />
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <h1 className="font-display font-black text-brand-purple text-3xl sm:text-4xl">
-              Order Received!
+            <h1 className="font-display text-3xl sm:text-4xl font-extrabold">
+              Order Confirmed!
             </h1>
-            <p className="font-body text-espresso-800 text-sm sm:text-base max-w-md mx-auto leading-relaxed">
-              Thank you for your order. We are validating your transaction reference to prepare your dispatch coordinates.
+            <p className="text-white/80 text-xs sm:text-sm max-w-md mx-auto">
+              Thank you for shopping with Kayal Samayal. We are preparing your fresh batch.
             </p>
           </div>
+        </section>
 
-          {/* Details Summary Panel */}
-          <div className="bg-white border border-cream-300 rounded-3xl p-6 sm:p-8 shadow-xs text-left space-y-6">
-            <h2 className="font-display font-bold text-brand-purple text-lg border-b border-cream-200 pb-4">
-              Order Coordinates
-            </h2>
-
-            <div className="grid grid-cols-2 gap-4 border-b border-cream-200 pb-6 text-sm">
-              <div className="space-y-1">
-                <p className="font-body text-xs text-espresso-800/60 font-bold uppercase">Order Reference</p>
-                <p className="font-display font-bold text-brand-purple">{orderId}</p>
+        <div className="container-page pt-10 sm:pt-14 max-w-3xl mx-auto">
+          
+          {/* Order Details Card */}
+          <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-10 shadow-[var(--shadow-card)] space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-border">
+              <div>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Reference</span>
+                <p className="font-mono font-bold text-lg text-primary">{orderId}</p>
               </div>
-              <div className="space-y-1">
-                <p className="font-body text-xs text-espresso-800/60 font-bold uppercase">Order Date</p>
-                <p className="font-display font-bold text-brand-purple">{orderDate}</p>
-              </div>
-              {grandTotal > 0 && (
-                <div className="space-y-1">
-                  <p className="font-body text-xs text-espresso-800/60 font-bold uppercase">Grand Total</p>
-                  <p className="font-display font-bold text-brand-orange">Rs. {grandTotal}</p>
-                </div>
-              )}
-              <div className="space-y-1">
-                <p className="font-body text-xs text-espresso-800/60 font-bold uppercase">Payment Status</p>
-                <p className="font-display font-bold text-green-600">Pending Verification</p>
+              <div>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Date</span>
+                <p className="font-semibold text-sm text-foreground">{orderDate}</p>
               </div>
             </div>
 
-            {/* Shipping Info read-only */}
-            {customerDetails.name && (
-              <div className="space-y-2">
-                <h3 className="font-body text-xs font-bold uppercase tracking-wider text-brand-orange">Shipping Destination</h3>
-                <p className="font-body text-espresso-900 text-sm leading-relaxed">
-                  <span className="font-bold text-brand-purple">{customerDetails.name}</span><br />
-                  {customerDetails.address}, {customerDetails.city}, {customerDetails.state} – {customerDetails.pincode}<br />
-                  Mobile: {customerDetails.mobile} | Email: {customerDetails.email}
+            {/* Total and Payment Status */}
+            <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-surface border border-border/60">
+              <div>
+                <span className="text-xs font-bold text-muted-foreground uppercase">Amount</span>
+                <p className="font-display font-black text-xl text-secondary">
+                  {grandTotal > 0 ? formatINR(grandTotal) : "Confirmed"}
                 </p>
               </div>
+              <div>
+                <span className="text-xs font-bold text-muted-foreground uppercase">Payment Status</span>
+                <p className="font-bold text-xs sm:text-sm text-leaf flex items-center gap-1 mt-1">
+                  <CheckCircle2 className="h-4 w-4" /> Received & In Process
+                </p>
+              </div>
+            </div>
+
+            {/* Customer Details */}
+            {customerDetails.name && (
+              <div className="space-y-1 text-xs sm:text-sm text-muted-foreground pt-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground">Delivery To:</span>
+                <p className="font-bold text-foreground">{customerDetails.name}</p>
+                <p>{customerDetails.address}, {customerDetails.city}, {customerDetails.state} – {customerDetails.pincode}</p>
+                <p>Phone: {customerDetails.mobile} {customerDetails.email ? `• ${customerDetails.email}` : ""}</p>
+              </div>
             )}
-          </div>
 
-          {/* Next Steps messages */}
-          <div className="bg-cream-100/50 border border-cream-300 p-6 rounded-2xl space-y-4 max-w-xl mx-auto text-xs sm:text-sm">
-            <div className="flex items-start gap-3 text-left text-espresso-800">
-              <MessageSquare size={18} className="text-brand-orange shrink-0 mt-0.5" />
-              <p>
-                We have registered your mobile number <span className="font-semibold text-brand-purple">{customerDetails.mobile || "provided"}</span> to receive instant shipment tracker updates via WhatsApp.
+            {/* Next Steps Notification */}
+            <div className="rounded-2xl bg-accent p-4 text-xs text-primary flex items-start gap-3">
+              <Truck className="h-5 w-5 text-secondary shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                You will receive shipping and dispatch tracking updates directly on WhatsApp ({customerDetails.mobile || brand.phone}).
               </p>
             </div>
-            <div className="flex items-start gap-3 text-left text-espresso-800">
-              <Mail size={18} className="text-brand-orange shrink-0 mt-0.5" />
-              <p>
-                A copy of this invoice receipts summary details has been queued to compile and route to <span className="font-semibold text-brand-purple">{customerDetails.email || "your inbox"}</span>.
-              </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <a
+                href={whatsappLink(`Hello Kayal Samayal! I placed order #${orderId}. Please confirm packing status.`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+              >
+                <Button variant="whatsapp" size="touch" className="w-full gap-2 font-bold shadow-md">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Track on WhatsApp</span>
+                </Button>
+              </a>
+
+              <Button
+                variant="outline"
+                size="touch"
+                onClick={handlePrint}
+                className="flex-1 gap-2 font-bold"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Print Invoice</span>
+              </Button>
+
+              <Link href="/products" className="flex-1">
+                <Button variant="plum" size="touch" className="w-full gap-2 font-bold shadow-md">
+                  <ShoppingBag className="h-4 w-4" />
+                  <span>Continue Shopping</span>
+                </Button>
+              </Link>
             </div>
-          </div>
 
-          {/* Action CTAs */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-md mx-auto pt-4">
-            <Link
-              href="/products"
-              className="btn-primary w-full sm:w-auto text-sm font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-1.5 min-h-[48px]"
-            >
-              <ShoppingBag size={15} />
-              <span>Continue Shopping</span>
-            </Link>
-            <button
-              onClick={handlePrint}
-              className="btn-outline w-full sm:w-auto text-sm font-bold py-3 px-6 rounded-xl border-2 border-brand-purple text-brand-purple hover:bg-brand-cream/20 flex items-center justify-center gap-1.5 min-h-[48px] cursor-pointer"
-            >
-              <Printer size={15} />
-              <span>Print Invoice</span>
-            </button>
           </div>
-
-        </section>
+        </div>
 
       </main>
       <Footer />
-    </>
+    </div>
   );
 }
