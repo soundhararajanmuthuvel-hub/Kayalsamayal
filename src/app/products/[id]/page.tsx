@@ -93,7 +93,9 @@ export default function ProductDetailPage({ params }: PageProps) {
   }
 
   const price = getProductPrice(product);
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  const hasStock = product.stock !== undefined;
+  const isOutOfStock = hasStock && (product.stock ?? 0) <= 0;
+  const isLowStock = hasStock && (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5;
   const isPremium = product.tier === "premium";
 
   const handleAddToCart = () => {
@@ -148,9 +150,17 @@ export default function ProductDetailPage({ params }: PageProps) {
 
                 {/* Badges */}
                 <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
-                  {isPremium && (
+                  {isOutOfStock ? (
+                    <span className="inline-flex items-center rounded-full bg-destructive px-3 py-1 text-xs font-bold uppercase tracking-wider text-destructive-foreground shadow-sm">
+                      Out of stock
+                    </span>
+                  ) : isLowStock ? (
+                    <span className="inline-flex items-center rounded-full bg-amber-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider shadow-sm animate-pulse">
+                      Low Stock: Only {product.stock} pcs left
+                    </span>
+                  ) : isPremium ? (
                     <span className="badge-premium">✦ PREMIUM BLEND</span>
-                  )}
+                  ) : null}
                   <span className="inline-flex items-center gap-1 rounded-full bg-leaf/90 text-white px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
                     100% Pure
                   </span>

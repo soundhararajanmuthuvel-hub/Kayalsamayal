@@ -22,7 +22,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const cartItem = cart.find((item) => item.product.id === product.id);
   const inCart = cartItem ? cartItem.quantity : 0;
   const price = getProductPrice(product);
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+  const hasStock = product.stock !== undefined;
+  const isOutOfStock = hasStock && (product.stock ?? 0) <= 0;
+  const isLowStock = hasStock && (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5;
   const isPremium = product.tier === "premium";
 
   const handleAdd = () => {
@@ -69,23 +71,27 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </div>
         )}
 
-        {/* Badges */}
+        {/* Badges Left */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
-          {isPremium && (
+          {isOutOfStock ? (
+            <span className="inline-flex items-center rounded-full bg-destructive px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-destructive-foreground shadow-sm">
+              Out of stock
+            </span>
+          ) : isLowStock ? (
+            <span className="inline-flex items-center rounded-full bg-amber-600 text-white px-2.5 py-0.5 text-[0.65rem] font-bold tracking-wider uppercase shadow-sm animate-pulse">
+              Low Stock: Only {product.stock} left
+            </span>
+          ) : isPremium ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[0.65rem] font-bold tracking-wider uppercase text-primary-foreground shadow-sm">
               <Sparkles className="h-3 w-3 text-gold" />
               PREMIUM
             </span>
-          )}
+          ) : null}
         </div>
 
-        {/* Rating or stock */}
+        {/* Badges Right (Rating) */}
         <div className="absolute top-2.5 right-2.5 z-10">
-          {isOutOfStock ? (
-            <span className="rounded-full bg-destructive px-2.5 py-0.5 text-[0.65rem] font-bold text-destructive-foreground shadow-sm">
-              Out of stock
-            </span>
-          ) : (
+          {!isOutOfStock && (
             <span className="inline-flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-xs px-2 py-0.5 text-[0.7rem] font-bold text-foreground shadow-xs border border-border/60">
               <Star className="h-3 w-3 fill-gold text-gold" />
               <span>4.9</span>
