@@ -26,9 +26,9 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kayalsamayal.in"),
-  title: "Kayal Samayal | Artisanal South Indian Foods & Heritage Masalas",
+  title: "Kayal Samayal",
   description:
-    "Handcrafted South Indian masalas, authentic homemade podis, specialty millet noodles, and wellness health mixes prepared strictly with time-honoured heritage recipes. No artificial colours, zero preservatives.",
+    "Shop authentic Kayal Samayal masalas, podis, health mixes, noodles and traditional food products. 35+ varieties made with traditional recipes and quality ingredients.",
   keywords: [
     "Kayal Samayal",
     "Kayalpattinam masala",
@@ -49,33 +49,43 @@ export const metadata: Metadata = {
     canonical: "https://kayalsamayal.in",
   },
   icons: {
-    icon: "/assets/logo.jpg",
-    apple: "/assets/logo.jpg",
-    shortcut: "/assets/logo.jpg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-48x48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
+  manifest: "/site.webmanifest",
   openGraph: {
-    title: "Kayal Samayal | Artisanal South Indian Foods & Heritage Masalas",
+    title: "Kayal Samayal",
     description:
-      "Handcrafted South Indian masalas, authentic homemade podis, specialty millet noodles, and wellness health mixes. 35+ Authentic Varieties. FSSAI Certified.",
+      "Shop authentic Kayal Samayal masalas, podis, health mixes, noodles and traditional food products. 35+ varieties made with traditional recipes and quality ingredients.",
     type: "website",
     locale: "en_IN",
     siteName: "Kayal Samayal",
     url: "https://kayalsamayal.in",
     images: [
       {
-        url: "/assets/logo.jpg",
-        width: 800,
-        height: 800,
-        alt: "Kayal Samayal - Authentic Heritage Spices",
+        url: "/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "Kayal Samayal Logo",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kayal Samayal | Artisanal South Indian Foods & Heritage Masalas",
+    title: "Kayal Samayal",
     description:
-      "Handcrafted spices, masalas, and health mixes from Kayalpatnam heritage. No artificial colors, zero preservatives.",
-    images: ["/assets/logo.jpg"],
+      "Shop authentic Kayal Samayal masalas, podis, health mixes, noodles and traditional food products. 35+ varieties made with traditional recipes and quality ingredients.",
+    images: ["/icon-512x512.png"],
   },
 };
 

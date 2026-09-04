@@ -1,0 +1,29 @@
+{
+  "name": "Kayal Samayal",
+  "short_name": "Kayal Samayal",
+  "description": "Shop authentic Kayal Samayal masalas, podis, health mixes, noodles and traditional food products. 35+ varieties made with traditional recipes and quality ingredients.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FCF9F4",
+  "theme_color": "#2E152C",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
