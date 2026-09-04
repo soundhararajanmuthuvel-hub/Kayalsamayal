@@ -48,20 +48,19 @@ export default function Hero() {
                 </span>
               </motion.div>
 
-              {/* Headline */}
+              {/* Headline & H1 Entity */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.1 }}
-                className="space-y-1"
+                className="space-y-2"
               >
                 <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] text-primary">
-                  Traditional Taste.
-                  <br />
-                  <span className="italic font-display font-normal text-secondary block sm:inline">
-                    Pure Quality.
-                  </span>
+                  Kayal Samayal
                 </h1>
+                <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-snug text-secondary italic">
+                  Traditional Taste. Pure Quality.
+                </h2>
               </motion.div>
 
               {/* Editorial Lead Subheading */}
@@ -71,7 +70,7 @@ export default function Hero() {
                 transition={{ duration: 0.6, delay: 0.2 }}
                 className="text-muted-foreground text-sm sm:text-base lg:text-lg leading-relaxed max-w-xl"
               >
-                Handcrafted South Indian masalas, authentic homemade podis, specialty millet noodles, and wellness health mixes prepared strictly with time-honoured heritage recipes. No artificial fillers, just pure kitchen aromas.
+                Welcome to the official home of Kayal Samayal. We craft authentic South Indian masalas, homemade podis, specialty millet noodles, and wellness health mixes using time-honoured Kayalpatnam heritage recipes. 100% pure ingredients with zero preservatives.
               </motion.p>
 
               {/* Key Value Chips */}

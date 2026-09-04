@@ -71,10 +71,10 @@ export default function ProductsClient() {
               OUR COMPLETE CATALOGUE
             </span>
             <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold">
-              Traditional Masalas & Foods
+              Shop Kayal Samayal Products
             </h1>
             <p className="text-white/80 max-w-xl mx-auto text-xs sm:text-sm sm:text-base">
-              Over 35+ pure South Indian varieties stone ground in small batches with zero preservatives.
+              Explore 35+ pure South Indian traditional masalas, homemade podis, specialty noodles, and health mixes crafted with zero preservatives.
             </p>
           </div>
         </section>

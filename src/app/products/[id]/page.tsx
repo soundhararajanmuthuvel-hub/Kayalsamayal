@@ -26,10 +26,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = `${product.name} — Buy Pure Traditional Spice Online | Kayal Samayal`;
-  const description = product.description || `Buy authentic ${product.name} from Kayal Samayal. 100% pure, stone ground, no artificial colours or preservatives.`;
+  const title = `${product.name} | Kayal Samayal`;
+  const description =
+    product.description ||
+    `Buy authentic ${product.name} from Kayal Samayal. 100% pure, stone ground, no artificial colours or preservatives.`;
   const canonicalUrl = `https://kayalsamayal.in/products/${product.id}`;
-  const imageUrl = product.image ? `https://kayalsamayal.in${product.image}` : "https://kayalsamayal.in/assets/logo.jpg";
+  const imageUrl = product.image
+    ? `https://kayalsamayal.in${product.image}`
+    : "https://kayalsamayal.in/icon-512x512.png";
 
   return {
     title,
@@ -41,10 +45,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       url: canonicalUrl,
+      siteName: "Kayal Samayal",
       images: [
         {
           url: imageUrl,
-          alt: product.name,
+          alt: `${product.name} by Kayal Samayal`,
         },
       ],
     },
@@ -69,41 +74,81 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const product = pool.find((p) => p.id === resolved.id);
 
-  const productSchema = product
+  const productJsonLd = product
     ? {
         "@context": "https://schema.org",
-        "@type": "Product",
-        "name": product.name,
-        "image": product.image ? `https://kayalsamayal.in${product.image}` : "https://kayalsamayal.in/assets/logo.jpg",
-        "description": product.description,
-        "brand": {
-          "@type": "Brand",
-          "name": "Kayal Samayal",
-        },
-        "offers": {
-          "@type": "Offer",
-          "url": `https://kayalsamayal.in/products/${product.id}`,
-          "priceCurrency": "INR",
-          "price": product.price || 100,
-          "availability":
-            product.stock !== undefined && product.stock <= 0
-              ? "https://schema.org/OutOfStock"
-              : "https://schema.org/InStock",
-          "itemCondition": "https://schema.org/NewCondition",
-          "seller": {
-            "@type": "Organization",
-            "name": "Kayal Samayal Masala",
+        "@graph": [
+          {
+            "@type": "Product",
+            "@id": `https://kayalsamayal.in/products/${product.id}#product`,
+            "name": product.name,
+            "image": product.image
+              ? `https://kayalsamayal.in${product.image}`
+              : "https://kayalsamayal.in/icon-512x512.png",
+            "description": product.description,
+            "sku": product.id,
+            "brand": {
+              "@type": "Brand",
+              "name": "Kayal Samayal",
+            },
+            "offers": {
+              "@type": "Offer",
+              "url": `https://kayalsamayal.in/products/${product.id}`,
+              "priceCurrency": "INR",
+              "price": product.price || 100,
+              "priceValidUntil": "2027-12-31",
+              "availability":
+                product.stock !== undefined && product.stock <= 0
+                  ? "https://schema.org/OutOfStock"
+                  : "https://schema.org/InStock",
+              "itemCondition": "https://schema.org/NewCondition",
+              "seller": {
+                "@type": "Organization",
+                "name": "Kayal Samayal Masala",
+                "url": "https://kayalsamayal.in",
+              },
+            },
           },
-        },
+          {
+            "@type": "BreadcrumbList",
+            "@id": `https://kayalsamayal.in/products/${product.id}#breadcrumb`,
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://kayalsamayal.in",
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Products",
+                "item": "https://kayalsamayal.in/products",
+              },
+              {
+                "@type": "ListItem",
+                "position": 3,
+                "name": product.category,
+                "item": `https://kayalsamayal.in/category/${product.category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`,
+              },
+              {
+                "@type": "ListItem",
+                "position": 4,
+                "name": product.name,
+                "item": `https://kayalsamayal.in/products/${product.id}`,
+              },
+            ],
+          },
+        ],
       }
     : null;
 
   return (
     <>
-      {productSchema && (
+      {productJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
         />
       )}
       <ProductDetailClient params={params} />

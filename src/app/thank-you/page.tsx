@@ -9,6 +9,7 @@ import { CheckCircle2, ShoppingBag, Printer, MessageCircle, Truck } from "lucide
 import Link from "next/link";
 import React, { useState } from "react";
 
+
 export default function ThankYouPage() {
   const { lastOrderResponse, customerDetails } = useCart();
 

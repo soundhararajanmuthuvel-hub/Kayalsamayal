@@ -43,10 +43,10 @@ export default function ContactClient() {
               DIRECT CUSTOMER SUPPORT
             </span>
             <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold">
-              Get in Touch with Us
+              Contact Kayal Samayal
             </h1>
             <p className="text-white/80 max-w-xl mx-auto text-xs sm:text-sm sm:text-base">
-              Have questions about our blends, bulk orders, or shipping? We are here to help you.
+              Have questions about our authentic blends, bulk orders, or shipping from Tirupattur? We are here to help you.
             </p>
           </div>
         </section>

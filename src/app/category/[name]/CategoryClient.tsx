@@ -56,10 +56,10 @@ export default function CategoryClient({ params }: PageProps) {
         <section className="bg-spice-gradient py-12 sm:py-16 text-primary-foreground border-b border-white/10">
           <div className="container-page text-center space-y-3">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
-              CATEGORY ARCHIVE
+              KAYAL SAMAYAL CATEGORY ARCHIVE
             </span>
             <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold capitalize">
-              {categoryName || "Traditional Range"}
+              Kayal Samayal {categoryName || "Traditional Range"}
             </h1>
             <div className="divider-spice" />
             <p className="text-white/80 text-xs sm:text-sm max-w-xl mx-auto">

@@ -2,17 +2,26 @@ import type { Metadata } from "next";
 import ProductsClient from "./ProductsClient";
 
 export const metadata: Metadata = {
-  title: "All Products — Traditional Masalas, Podis & Health Mixes | Kayal Samayal",
+  title: "Shop Kayal Samayal Products | Masalas, Podi & Traditional Foods",
   description:
-    "Explore our complete catalogue of 35+ traditional homemade spices, coastal masalas, spicy idli podis, millet noodles, and herbal health mixes from Kayalpatnam.",
+    "Explore authentic Kayal Samayal food products. 35+ traditional homemade spices, coastal masalas, spicy podis, and health mixes crafted with pure ingredients.",
   alternates: {
     canonical: "https://kayalsamayal.in/products",
   },
   openGraph: {
-    title: "All Products — Traditional Masalas, Podis & Health Mixes | Kayal Samayal",
+    title: "Shop Kayal Samayal Products | Masalas, Podi & Traditional Foods",
     description:
-      "Explore 35+ authentic South Indian masalas, organic podis, millet noodles, and health mixes. Stone ground, no preservatives.",
+      "Explore authentic Kayal Samayal food products. 35+ traditional homemade spices, coastal masalas, spicy podis, and health mixes crafted with pure ingredients.",
     url: "https://kayalsamayal.in/products",
+    siteName: "Kayal Samayal",
+    images: [
+      {
+        url: "https://kayalsamayal.in/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "Shop Kayal Samayal Products",
+      },
+    ],
   },
 };
 

@@ -10,17 +10,35 @@ import Testimonials from "@/components/Testimonials";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Kayal Samayal | Authentic Coastal Masalas & Pure South Indian Foods",
+  title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
   description:
-    "Buy authentic South Indian spices, traditional coastal masalas, organic podis, herbal mixes and health mixes from Kayalpatnam heritage. 100% pure, zero preservatives.",
+    "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
   alternates: {
     canonical: "https://kayalsamayal.in",
   },
   openGraph: {
-    title: "Kayal Samayal | Authentic Coastal Masalas & Pure South Indian Foods",
+    title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
     description:
-      "Handcrafted spices, masalas, and health mixes rooted in Kayalpatnam coastal heritage. Pure, clean ingredients. 35+ Varieties.",
+      "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
     url: "https://kayalsamayal.in",
+    siteName: "Kayal Samayal",
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: "https://kayalsamayal.in/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "Kayal Samayal - Traditional South Indian Foods",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
+    description:
+      "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
+    images: ["https://kayalsamayal.in/icon-512x512.png"],
   },
 };
 
@@ -33,23 +51,33 @@ export default function Home() {
         "@id": "https://kayalsamayal.in/#website",
         "url": "https://kayalsamayal.in",
         "name": "Kayal Samayal",
-        "description": "Authentic South Indian spices, traditional coastal masalas, organic podis, and health mixes from Kayalpatnam heritage.",
+        "alternateName": ["Kayal Samayal Masala", "Kayal Samayal Foods"],
+        "description":
+          "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods.",
         "publisher": {
           "@id": "https://kayalsamayal.in/#organization",
         },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://kayalsamayal.in/products?search={search_term_string}",
+          },
+          "query-input": "required name=search_term_string",
+        },
       },
       {
-        "@type": "Organization",
+        "@type": ["Organization", "LocalBusiness"],
         "@id": "https://kayalsamayal.in/#organization",
-        "name": "Kayal Samayal Masala",
+        "name": "Kayal Samayal",
         "legalName": "Kayal Samayal Masala",
         "url": "https://kayalsamayal.in",
-        "logo": "https://kayalsamayal.in/assets/logo.jpg",
-        "image": "https://kayalsamayal.in/assets/logo.jpg",
+        "logo": "https://kayalsamayal.in/icon-512x512.png",
+        "image": "https://kayalsamayal.in/icon-512x512.png",
         "telephone": "+919003860616",
-        "email": "kayalsamayal@gmail.com",
+        "email": "kpmsamayal@gmail.com",
         "taxID": "33IKWPS3211P1ZB",
-        "identifier": "22423509000118",
+        "priceRange": "₹₹",
         "address": {
           "@type": "PostalAddress",
           "streetAddress": "504, TNHB Phase 1",
@@ -57,6 +85,11 @@ export default function Home() {
           "addressRegion": "Tamil Nadu",
           "postalCode": "635601",
           "addressCountry": "IN",
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 12.4925,
+          "longitude": 78.5638,
         },
         "sameAs": [
           "https://wa.me/919003860616",

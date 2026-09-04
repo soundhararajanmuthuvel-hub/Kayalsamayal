@@ -14,11 +14,26 @@ import {
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "About Kayal Samayal | Authentic Coastal South Indian Heritage",
+  title: "About Kayal Samayal | Traditional Taste & Pure Quality",
   description:
-    "Discover the story of Kayal Samayal, our FSSAI-certified traditional spices, stone grinding methods, and 35+ pure food varieties from Kayalpatnam.",
+    "Learn about Kayal Samayal Masala, our Tirupattur kitchen, traditional Kayalpatnam heritage recipes, FSSAI certified standards, and pure spice craft.",
   alternates: {
     canonical: "https://kayalsamayal.in/about",
+  },
+  openGraph: {
+    title: "About Kayal Samayal | Traditional Taste & Pure Quality",
+    description:
+      "Learn about Kayal Samayal Masala, our Tirupattur kitchen, traditional Kayalpatnam heritage recipes, FSSAI certified standards, and pure spice craft.",
+    url: "https://kayalsamayal.in/about",
+    siteName: "Kayal Samayal",
+    images: [
+      {
+        url: "https://kayalsamayal.in/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "About Kayal Samayal",
+      },
+    ],
   },
 };
 
@@ -58,7 +73,7 @@ export default function AboutPage() {
               OUR HERITAGE & MISSION
             </span>
             <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight">
-              Preserving Authentic Coastal South Indian Flavours
+              About Kayal Samayal
             </h1>
             <div className="divider-spice" />
             <p className="text-white/85 text-sm sm:text-base leading-relaxed">
