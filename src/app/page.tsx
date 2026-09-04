@@ -14,19 +14,19 @@ export const metadata: Metadata = {
   description:
     "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
   alternates: {
-    canonical: "https://kayalsamayal.in",
+    canonical: "https://www.kayalsamayal.in",
   },
   openGraph: {
     title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
     description:
       "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
-    url: "https://kayalsamayal.in",
+    url: "https://www.kayalsamayal.in",
     siteName: "Kayal Samayal",
     locale: "en_IN",
     type: "website",
     images: [
       {
-        url: "https://kayalsamayal.in/icon-512x512.png",
+        url: "https://www.kayalsamayal.in/icon-512x512.png",
         width: 512,
         height: 512,
         alt: "Kayal Samayal - Traditional South Indian Foods",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
     description:
       "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
-    images: ["https://kayalsamayal.in/icon-512x512.png"],
+    images: ["https://www.kayalsamayal.in/icon-512x512.png"],
   },
 };
 
@@ -48,32 +48,32 @@ export default function Home() {
     "@graph": [
       {
         "@type": "WebSite",
-        "@id": "https://kayalsamayal.in/#website",
-        "url": "https://kayalsamayal.in",
+        "@id": "https://www.kayalsamayal.in/#website",
+        "url": "https://www.kayalsamayal.in",
         "name": "Kayal Samayal",
         "alternateName": ["Kayal Samayal Masala", "Kayal Samayal Foods"],
         "description":
           "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods.",
         "publisher": {
-          "@id": "https://kayalsamayal.in/#organization",
+          "@id": "https://www.kayalsamayal.in/#organization",
         },
         "potentialAction": {
           "@type": "SearchAction",
           "target": {
             "@type": "EntryPoint",
-            "urlTemplate": "https://kayalsamayal.in/products?search={search_term_string}",
+            "urlTemplate": "https://www.kayalsamayal.in/products?search={search_term_string}",
           },
           "query-input": "required name=search_term_string",
         },
       },
       {
         "@type": ["Organization", "LocalBusiness"],
-        "@id": "https://kayalsamayal.in/#organization",
+        "@id": "https://www.kayalsamayal.in/#organization",
         "name": "Kayal Samayal",
         "legalName": "Kayal Samayal Masala",
-        "url": "https://kayalsamayal.in",
-        "logo": "https://kayalsamayal.in/icon-512x512.png",
-        "image": "https://kayalsamayal.in/icon-512x512.png",
+        "url": "https://www.kayalsamayal.in",
+        "logo": "https://www.kayalsamayal.in/icon-512x512.png",
+        "image": "https://www.kayalsamayal.in/icon-512x512.png",
         "telephone": "+919003860616",
         "email": "kpmsamayal@gmail.com",
         "taxID": "33IKWPS3211P1ZB",

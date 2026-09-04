@@ -3,7 +3,7 @@ import { products as localProducts, categories } from "@/data/products";
 import { getProducts } from "@/lib/api";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://kayalsamayal.in";
+  const baseUrl = "https://www.kayalsamayal.in";
   const now = new Date();
 
   // 1. Static Core Public Pages
@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  // 3. Dynamic Products
+  // 3. Dynamic Products from Google Sheets API / Local Data
   let productList = localProducts;
   try {
     const remoteProducts = await getProducts();
@@ -63,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const productPages: MetadataRoute.Sitemap = productList
-    .filter((p) => p.active !== false)
+    .filter((p) => p.active !== false && p.id && p.name && p.id !== "12")
     .map((p) => ({
       url: `${baseUrl}/products/${p.id}`,
       lastModified: now,

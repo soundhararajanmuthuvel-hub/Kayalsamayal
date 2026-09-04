@@ -36,16 +36,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: categoryTitle,
     description: categoryDescription,
     alternates: {
-      canonical: `https://kayalsamayal.in/category/${canonicalSlug}`,
+      canonical: `https://www.kayalsamayal.in/category/${canonicalSlug}`,
     },
     openGraph: {
       title: categoryTitle,
       description: categoryDescription,
-      url: `https://kayalsamayal.in/category/${canonicalSlug}`,
+      url: `https://www.kayalsamayal.in/category/${canonicalSlug}`,
       siteName: "Kayal Samayal",
       images: [
         {
-          url: "https://kayalsamayal.in/icon-512x512.png",
+          url: "https://www.kayalsamayal.in/icon-512x512.png",
           width: 512,
           height: 512,
           alt: `Kayal Samayal ${titleName}`,
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title: categoryTitle,
       description: categoryDescription,
-      images: ["https://kayalsamayal.in/icon-512x512.png"],
+      images: ["https://www.kayalsamayal.in/icon-512x512.png"],
     },
   };
 }
@@ -80,19 +80,19 @@ export default async function CategoryPage({ params }: PageProps) {
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://kayalsamayal.in",
+        "item": "https://www.kayalsamayal.in",
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Products",
-        "item": "https://kayalsamayal.in/products",
+        "item": "https://www.kayalsamayal.in/products",
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": `Kayal Samayal ${titleName}`,
-        "item": `https://kayalsamayal.in/category/${canonicalSlug}`,
+        "item": `https://www.kayalsamayal.in/category/${canonicalSlug}`,
       },
     ],
   };

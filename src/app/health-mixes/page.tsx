@@ -8,17 +8,17 @@ export const metadata: Metadata = {
   description:
     "Discover authentic Kayal Samayal health mixes, ABC Malt, Golden Milk, Sathu Maavu, and herbal drinks prepared natively without white sugar or chemicals.",
   alternates: {
-    canonical: "https://kayalsamayal.in/health-mixes",
+    canonical: "https://www.kayalsamayal.in/health-mixes",
   },
   openGraph: {
     title: "Kayal Samayal Health Mixes & Malts | Traditional Food Products",
     description:
       "Discover authentic Kayal Samayal health mixes, ABC Malt, Golden Milk, Sathu Maavu, and herbal drinks prepared natively without white sugar or chemicals.",
-    url: "https://kayalsamayal.in/health-mixes",
+    url: "https://www.kayalsamayal.in/health-mixes",
     siteName: "Kayal Samayal",
     images: [
       {
-        url: "https://kayalsamayal.in/icon-512x512.png",
+        url: "https://www.kayalsamayal.in/icon-512x512.png",
         width: 512,
         height: 512,
         alt: "Kayal Samayal Health Mixes",

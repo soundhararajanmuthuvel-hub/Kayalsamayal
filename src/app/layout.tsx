@@ -25,7 +25,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kayalsamayal.in"),
+  metadataBase: new URL("https://www.kayalsamayal.in"),
   title: "Kayal Samayal",
   description:
     "Shop authentic Kayal Samayal masalas, podis, health mixes, noodles and traditional food products. 35+ varieties made with traditional recipes and quality ingredients.",
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     "Gunpowder idli podi",
   ],
   alternates: {
-    canonical: "https://kayalsamayal.in",
+    canonical: "https://www.kayalsamayal.in",
   },
   icons: {
     icon: [
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
     siteName: "Kayal Samayal",
-    url: "https://kayalsamayal.in",
+    url: "https://www.kayalsamayal.in",
     images: [
       {
         url: "/icon-512x512.png",

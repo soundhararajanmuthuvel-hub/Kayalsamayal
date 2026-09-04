@@ -17,7 +17,7 @@ export const brand = {
     pincode: "635601",
     country: "India",
   },
-  site: "https://kayalsamayal.in",
+  site: "https://www.kayalsamayal.in",
   freeShippingOver: 500,
   shippingFlat: 50,
 };

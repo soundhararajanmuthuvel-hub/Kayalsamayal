@@ -6,17 +6,17 @@ export const metadata: Metadata = {
   description:
     "Contact Kayal Samayal Masala in Tirupattur, Tamil Nadu. Order directly on WhatsApp (+91 9003860616) or inquire about bulk traditional food orders.",
   alternates: {
-    canonical: "https://kayalsamayal.in/contact",
+    canonical: "https://www.kayalsamayal.in/contact",
   },
   openGraph: {
     title: "Contact Kayal Samayal | Tirupattur, Tamil Nadu",
     description:
       "Contact Kayal Samayal Masala in Tirupattur, Tamil Nadu. Order directly on WhatsApp (+91 9003860616) or inquire about bulk traditional food orders.",
-    url: "https://kayalsamayal.in/contact",
+    url: "https://www.kayalsamayal.in/contact",
     siteName: "Kayal Samayal",
     images: [
       {
-        url: "https://kayalsamayal.in/icon-512x512.png",
+        url: "https://www.kayalsamayal.in/icon-512x512.png",
         width: 512,
         height: 512,
         alt: "Contact Kayal Samayal",

@@ -18,17 +18,17 @@ export const metadata: Metadata = {
   description:
     "Learn about Kayal Samayal Masala, our Tirupattur kitchen, traditional Kayalpatnam heritage recipes, FSSAI certified standards, and pure spice craft.",
   alternates: {
-    canonical: "https://kayalsamayal.in/about",
+    canonical: "https://www.kayalsamayal.in/about",
   },
   openGraph: {
     title: "About Kayal Samayal | Traditional Taste & Pure Quality",
     description:
       "Learn about Kayal Samayal Masala, our Tirupattur kitchen, traditional Kayalpatnam heritage recipes, FSSAI certified standards, and pure spice craft.",
-    url: "https://kayalsamayal.in/about",
+    url: "https://www.kayalsamayal.in/about",
     siteName: "Kayal Samayal",
     images: [
       {
-        url: "https://kayalsamayal.in/icon-512x512.png",
+        url: "https://www.kayalsamayal.in/icon-512x512.png",
         width: 512,
         height: 512,
         alt: "About Kayal Samayal",

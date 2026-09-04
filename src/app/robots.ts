@@ -14,6 +14,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: "https://kayalsamayal.in/sitemap.xml",
+    sitemap: "https://www.kayalsamayal.in/sitemap.xml",
   };
 }

@@ -102,10 +102,15 @@ function mapProduct(raw: any): Product {
   }
 
   const activeVal = raw["Active"] ?? raw["active"];
-  const active = activeVal === true
+  let active = activeVal === true
     || String(activeVal).toLowerCase() === "true"
     || activeVal === 1
     || String(activeVal).toLowerCase() === "yes";
+
+  // Filter out any internal sample/test rows
+  if (id === "12" && name.toLowerCase() === "sample") {
+    active = false;
+  }
 
   const tier: Tier = tierStr === "premium" ? "premium" : "regular";
 
