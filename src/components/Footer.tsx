@@ -34,9 +34,11 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/assets/logo.jpg"
+                src="/logo-card.png"
                 alt="Kayal Samayal Logo"
-                className="w-12 h-12 rounded-full object-cover ring-2 ring-gold shadow-md"
+                width={400}
+                height={400}
+                className="w-12 h-12 rounded-full object-contain p-1 bg-white/95 ring-2 ring-gold shadow-md"
               />
               <div>
                 <span className="font-display font-bold text-xl text-white block leading-tight">

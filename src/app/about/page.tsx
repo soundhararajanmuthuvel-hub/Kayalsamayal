@@ -88,12 +88,16 @@ export default function AboutPage() {
             
             <div className="lg:col-span-5 flex justify-center">
               <div className="rounded-3xl border border-border bg-card p-6 shadow-xl max-w-sm text-center space-y-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/assets/logo.jpg"
-                  alt="Kayal Samayal Brand Heritage"
-                  className="w-44 h-44 rounded-full object-cover mx-auto ring-4 ring-gold/40 shadow-md"
-                />
+                <div className="flex items-center justify-center p-4 bg-surface rounded-2xl border border-border/60">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo.png"
+                    alt="Kayal Samayal Brand Heritage"
+                    width={357}
+                    height={214}
+                    className="w-56 h-auto max-h-36 object-contain filter drop-shadow-sm"
+                  />
+                </div>
                 <div>
                   <h2 className="font-display font-bold text-lg text-primary">{brand.legalName}</h2>
                   <p className="text-xs text-secondary font-bold tracking-wider uppercase mt-0.5">

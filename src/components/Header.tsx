@@ -74,25 +74,18 @@ export default function Header() {
             {/* Logo */}
             <Link
               href="/"
-              className="flex items-center gap-2.5 sm:gap-3 group min-w-0"
+              className="flex items-center group shrink-0"
               aria-label="Kayal Samayal — Home"
             >
-              <div className="relative flex-shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/assets/logo.jpg"
-                  alt="Kayal Samayal Logo"
-                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover shadow-sm ring-2 ring-gold/40 group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <div className="min-w-0">
-                <span className="font-display font-bold text-lg sm:text-xl text-primary leading-tight block truncate">
-                  {brand.name}
-                </span>
-                <span className="font-sans text-[0.6rem] sm:text-[0.65rem] tracking-[0.16em] uppercase text-secondary font-bold block truncate">
-                  {brand.subtitle}
-                </span>
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-header.png"
+                alt="Kayal Samayal"
+                width={357}
+                height={214}
+                priority-hint="high"
+                className="w-[125px] sm:w-[145px] md:w-[155px] lg:w-[170px] h-auto max-h-12 sm:max-h-14 md:max-h-16 object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+              />
             </Link>
 
             {/* Desktop Navigation */}
@@ -177,14 +170,15 @@ export default function Header() {
         >
           {/* Drawer Header */}
           <div className="flex items-center justify-between p-5 border-b border-border bg-surface">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/assets/logo.jpg"
-                alt="Logo"
-                className="w-8 h-8 rounded-full object-cover ring-1 ring-gold"
+                src="/logo.png"
+                alt="Kayal Samayal"
+                width={357}
+                height={214}
+                className="w-32 h-auto max-h-11 object-contain"
               />
-              <span className="font-display font-bold text-primary text-base">Kayal Samayal</span>
             </div>
             <button
               type="button"
