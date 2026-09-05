@@ -238,7 +238,27 @@ function setupDatabaseSheets() {
       ["free_shipping_threshold", "500",            "Cart subtotal threshold for free shipping (INR)",   new Date()],
       ["default_gst",             "0.05",           "Standard GST rate (0.05 = 5%)",                     new Date()],
       ["upi_id",                  "",               "UPI ID for receiving payments — CONFIGURE BEFORE GOING LIVE", new Date()],
-      ["admin_email",             "",               "Owner email for order notifications — CONFIGURE BEFORE GOING LIVE", new Date()]
+      ["admin_email",             "",               "Owner email for order notifications — CONFIGURE BEFORE GOING LIVE", new Date()],
+      // ── Instagram Reels / Video Section (Homepage) ───────────────────────────
+      // VIDEO URL: host your own mp4 on Google Drive, Cloudinary, Bunny CDN, etc.
+      // Thumbnail: /assets/path.jpg in /public or a full https URL. Leave blank for branded fallback.
+      // Product ID: exact product ID from products.ts or the Products sheet (triggers Shop Now overlay).
+      ["instagram_reel_1_url",        "", "Reel 1 — mp4/webm video URL (from any host; NOT an Instagram scrape)",  new Date()],
+      ["instagram_reel_1_caption",    "", "Reel 1 — short caption shown on the card (optional)",                    new Date()],
+      ["instagram_reel_1_thumbnail",  "", "Reel 1 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
+      ["instagram_reel_1_product_id", "", "Reel 1 — Product ID for Shop Now overlay (optional, e.g. abc-malt-regular)", new Date()],
+      ["instagram_reel_2_url",        "", "Reel 2 — mp4/webm video URL",                                             new Date()],
+      ["instagram_reel_2_caption",    "", "Reel 2 — short caption (optional)",                                       new Date()],
+      ["instagram_reel_2_thumbnail",  "", "Reel 2 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
+      ["instagram_reel_2_product_id", "", "Reel 2 — Product ID for Shop Now overlay (optional)",                    new Date()],
+      ["instagram_reel_3_url",        "", "Reel 3 — mp4/webm video URL",                                             new Date()],
+      ["instagram_reel_3_caption",    "", "Reel 3 — short caption (optional)",                                       new Date()],
+      ["instagram_reel_3_thumbnail",  "", "Reel 3 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
+      ["instagram_reel_3_product_id", "", "Reel 3 — Product ID for Shop Now overlay (optional)",                    new Date()],
+      ["instagram_reel_4_url",        "", "Reel 4 — mp4/webm video URL",                                             new Date()],
+      ["instagram_reel_4_caption",    "", "Reel 4 — short caption (optional)",                                       new Date()],
+      ["instagram_reel_4_thumbnail",  "", "Reel 4 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
+      ["instagram_reel_4_product_id", "", "Reel 4 — Product ID for Shop Now overlay (optional)",                    new Date()]
     ];
 
     allSettings.forEach(function(row) {

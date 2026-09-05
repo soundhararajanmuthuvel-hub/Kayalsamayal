@@ -6,6 +6,7 @@ import CategoriesGrid from "@/components/CategoriesGrid";
 import ProductShowcase from "@/components/ProductShowcase";
 import WhyUs from "@/components/WhyUs";
 import Story from "@/components/Story";
+import InstagramReels from "@/components/InstagramReels";
 import Testimonials from "@/components/Testimonials";
 import Footer from "@/components/Footer";
 
@@ -113,6 +114,7 @@ export default function Home() {
           <ProductShowcase />
           <WhyUs />
           <Story />
+          <InstagramReels />
           <Testimonials />
         </main>
         <Footer />
