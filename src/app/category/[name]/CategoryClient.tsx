@@ -10,6 +10,10 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
+function slugifyCategory(cat: string) {
+  return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 interface PageProps {
   params: Promise<{ name: string }>;
 }
@@ -23,13 +27,13 @@ export default function CategoryClient({ params }: PageProps) {
   useEffect(() => {
     async function loadData() {
       try {
-        const decoded = decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
-        // Match against known categories
+        const canonicalSlug = resolvedParams.name.toLowerCase();
+        // Match against known categories using slug
         const matched = categories.find(
-          (c) => c.toLowerCase() === decoded.toLowerCase()
+          (c) => slugifyCategory(c) === canonicalSlug
         );
 
-        const currentCat = matched || decoded;
+        const currentCat = matched || decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
         setCategoryName(currentCat);
 
         const data = await getProducts();

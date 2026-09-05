@@ -41,11 +41,31 @@ function getSheetSafely(ss, preferredName, alternativeNames) {
 
 /**
  * Read a single value from the Settings sheet by key.
+ * Uses dynamic header detection so it works whether header is on Row 1 or Row 2.
  */
 function getSettingValue(ss, key) {
   try {
     var sheet = getSheetSafely(ss, TABS.SETTINGS);
     if (!sheet) return null;
+
+    if (typeof findSettingsHeaderRow === "function") {
+      var headerInfo = findSettingsHeaderRow(sheet, 10);
+      if (headerInfo) {
+        var lastRow = sheet.getLastRow();
+        var startDataRow = headerInfo.headerRowNumber + 1;
+        if (lastRow >= startDataRow) {
+          var numRows = lastRow - headerInfo.headerRowNumber;
+          var displayValues = sheet.getRange(startDataRow, 1, numRows, sheet.getLastColumn()).getDisplayValues();
+          for (var i = 0; i < displayValues.length; i++) {
+            var rowKey = String(displayValues[i][headerInfo.keyCol] || "").trim();
+            if (rowKey === key) {
+              return String(displayValues[i][headerInfo.valCol] || "").trim();
+            }
+          }
+        }
+      }
+    }
+
     var data = getSheetRowsAsJSON(sheet);
     var row = data.filter(function(r) { return String(r["Key"] || "").trim() === key; })[0];
     return row ? String(row["Value"] || "").trim() : null;
@@ -301,6 +321,26 @@ function doGet(e) {
       var sSheet = getSheetSafely(ss, TABS.SETTINGS);
       if (!sSheet) return jsonResponse({ success: true, data: {} });
       var settingsMap = {};
+
+      if (typeof findSettingsHeaderRow === "function") {
+        var sHeaderInfo = findSettingsHeaderRow(sSheet, 10);
+        if (sHeaderInfo) {
+          var sLastRow = sSheet.getLastRow();
+          var sStartRow = sHeaderInfo.headerRowNumber + 1;
+          if (sLastRow >= sStartRow) {
+            var sNumRows = sLastRow - sHeaderInfo.headerRowNumber;
+            var sDisplayValues = sSheet.getRange(sStartRow, 1, sNumRows, sSheet.getLastColumn()).getDisplayValues();
+            for (var si = 0; si < sDisplayValues.length; si++) {
+              var sKey = String(sDisplayValues[si][sHeaderInfo.keyCol] || "").trim();
+              if (sKey) {
+                settingsMap[sKey] = sDisplayValues[si][sHeaderInfo.valCol];
+              }
+            }
+            return jsonResponse({ success: true, data: settingsMap });
+          }
+        }
+      }
+
       getSheetRowsAsJSON(sSheet).forEach(function(row) {
         if (row["Key"]) {
           settingsMap[row["Key"]] = row["Value"];

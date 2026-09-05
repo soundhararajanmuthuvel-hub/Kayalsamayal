@@ -61,8 +61,11 @@ export default function CheckoutPage() {
     async function loadSettings() {
       try {
         const settings = await getSettings();
-        if (settings && settings.upiId) {
-          setUpiId(settings.upiId);
+        if (settings) {
+          const loadedUpi = settings.upi_id || settings.upiId;
+          if (loadedUpi && loadedUpi.trim()) {
+            setUpiId(loadedUpi.trim());
+          }
         }
       } catch (err) {
         console.error("Settings load error:", err);

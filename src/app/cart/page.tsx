@@ -162,7 +162,7 @@ export default function CartPage() {
                           <button
                             type="button"
                             onClick={() => removeFromCart(item.product.id)}
-                            className="p-2 text-muted-foreground hover:text-destructive transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                            className="p-2 text-muted-foreground hover:text-destructive transition-colors min-h-[44px] min-w-[44px] rounded-lg flex items-center justify-center cursor-pointer"
                             aria-label={`Remove ${item.product.name} from cart`}
                           >
                             <Trash2 className="h-4 w-4" />

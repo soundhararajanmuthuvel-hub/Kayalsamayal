@@ -18,7 +18,6 @@ const categories = [
   { label: "Specialty Noodles", href: "/category/specialty-noodles" },
   { label: "Health Mixes & Malts", href: "/category/health-mixes-malts" },
   { label: "PeruKalam Legiyam", href: "/category/perukalam-legiyam" },
-  { label: "Specialty Powders", href: "/category/specialty-powders" },
 ];
 
 export default function Footer() {
@@ -64,12 +63,12 @@ export default function Footer() {
             <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
               Quick Links
             </h3>
-            <ul className="space-y-2 text-xs sm:text-sm">
+            <ul className="space-y-1 text-xs sm:text-sm">
               {navLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-white/80 hover:text-gold transition-colors inline-block py-1"
+                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-1.5 min-h-[36px]"
                   >
                     {link.label}
                   </Link>
@@ -83,12 +82,12 @@ export default function Footer() {
             <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
               Product Range
             </h3>
-            <ul className="space-y-2 text-xs sm:text-sm">
+            <ul className="space-y-1 text-xs sm:text-sm">
               {categories.map((cat) => (
                 <li key={cat.href}>
                   <Link
                     href={cat.href}
-                    className="text-white/80 hover:text-gold transition-colors inline-block py-1"
+                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-1.5 min-h-[36px]"
                   >
                     {cat.label}
                   </Link>

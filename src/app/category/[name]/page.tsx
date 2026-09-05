@@ -14,16 +14,15 @@ interface PageProps {
   params: Promise<{ name: string }>;
 }
 
+function slugifyCategory(cat: string) {
+  return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolved = await params;
-  const decoded = decodeURIComponent(resolved.name).replace(/-/g, " ");
-  const matched = categories.find(
-    (c) =>
-      c.toLowerCase() === decoded.toLowerCase()
-  );
-
-  const titleName = matched || decoded;
   const canonicalSlug = resolved.name.toLowerCase();
+  const matched = categories.find((c) => slugifyCategory(c) === canonicalSlug);
+  const titleName = matched || decodeURIComponent(resolved.name).replace(/-/g, " ");
 
   // Category specific title strategy
   let categoryTitle = `Kayal Samayal ${titleName} | Authentic South Indian Products`;
@@ -70,13 +69,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CategoryPage({ params }: PageProps) {
   const resolved = await params;
-  const decoded = decodeURIComponent(resolved.name).replace(/-/g, " ");
-  const matched = categories.find(
-    (c) =>
-      c.toLowerCase() === decoded.toLowerCase()
-  );
-  const titleName = matched || decoded;
   const canonicalSlug = resolved.name.toLowerCase();
+  const matched = categories.find((c) => slugifyCategory(c) === canonicalSlug);
+  const titleName = matched || decodeURIComponent(resolved.name).replace(/-/g, " ");
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
