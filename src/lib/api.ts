@@ -299,43 +299,6 @@ export async function updateOrder(
   }
 }
 
-// ── INSTAGRAM REELS ───────────────────────────────────────────────────────────
-
-export interface ReelItem {
-  /** Generic video URL (mp4/webm from any host) — configurable per reel */
-  url: string;
-  caption?: string;
-  /** Poster/thumbnail image shown before video loads */
-  thumbnail?: string;
-  /** Optional product ID — triggers the Shop Now overlay on the video card */
-  productId?: string;
-}
-
-/**
- * Reads up to 4 Instagram Reel configurations from the Settings sheet.
- * Keys: instagram_reel_1_url, instagram_reel_1_caption, instagram_reel_1_thumbnail … (×4)
- * Returns [] on any error — the homepage must never depend on this.
- */
-export async function getInstagramReels(): Promise<ReelItem[]> {
-  try {
-    const settings = await getSettings();
-    const reels: ReelItem[] = [];
-    for (let i = 1; i <= 4; i++) {
-      const url = (settings[`instagram_reel_${i}_url`] || "").trim();
-      if (!url) continue;
-      reels.push({
-        url,
-        caption:   (settings[`instagram_reel_${i}_caption`]   || "").trim() || undefined,
-        thumbnail: (settings[`instagram_reel_${i}_thumbnail`]  || "").trim() || undefined,
-        productId: (settings[`instagram_reel_${i}_product_id`] || "").trim() || undefined,
-      });
-    }
-    return reels;
-  } catch {
-    return [];
-  }
-}
-
 // ── GET ORDER ─────────────────────────────────────────────────────────────────
 
 export async function getOrder(

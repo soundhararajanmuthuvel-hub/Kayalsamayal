@@ -238,27 +238,7 @@ function setupDatabaseSheets() {
       ["free_shipping_threshold", "500",            "Cart subtotal threshold for free shipping (INR)",   new Date()],
       ["default_gst",             "0.05",           "Standard GST rate (0.05 = 5%)",                     new Date()],
       ["upi_id",                  "",               "UPI ID for receiving payments — CONFIGURE BEFORE GOING LIVE", new Date()],
-      ["admin_email",             "",               "Owner email for order notifications — CONFIGURE BEFORE GOING LIVE", new Date()],
-      // ── Instagram Reels / Video Section (Homepage) ───────────────────────────
-      // VIDEO URL: host your own mp4 on Google Drive, Cloudinary, Bunny CDN, etc.
-      // Thumbnail: /assets/path.jpg in /public or a full https URL. Leave blank for branded fallback.
-      // Product ID: exact product ID from products.ts or the Products sheet (triggers Shop Now overlay).
-      ["instagram_reel_1_url",        "", "Reel 1 — mp4/webm video URL (from any host; NOT an Instagram scrape)",  new Date()],
-      ["instagram_reel_1_caption",    "", "Reel 1 — short caption shown on the card (optional)",                    new Date()],
-      ["instagram_reel_1_thumbnail",  "", "Reel 1 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
-      ["instagram_reel_1_product_id", "", "Reel 1 — Product ID for Shop Now overlay (optional, e.g. abc-malt-regular)", new Date()],
-      ["instagram_reel_2_url",        "", "Reel 2 — mp4/webm video URL",                                             new Date()],
-      ["instagram_reel_2_caption",    "", "Reel 2 — short caption (optional)",                                       new Date()],
-      ["instagram_reel_2_thumbnail",  "", "Reel 2 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
-      ["instagram_reel_2_product_id", "", "Reel 2 — Product ID for Shop Now overlay (optional)",                    new Date()],
-      ["instagram_reel_3_url",        "", "Reel 3 — mp4/webm video URL",                                             new Date()],
-      ["instagram_reel_3_caption",    "", "Reel 3 — short caption (optional)",                                       new Date()],
-      ["instagram_reel_3_thumbnail",  "", "Reel 3 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
-      ["instagram_reel_3_product_id", "", "Reel 3 — Product ID for Shop Now overlay (optional)",                    new Date()],
-      ["instagram_reel_4_url",        "", "Reel 4 — mp4/webm video URL",                                             new Date()],
-      ["instagram_reel_4_caption",    "", "Reel 4 — short caption (optional)",                                       new Date()],
-      ["instagram_reel_4_thumbnail",  "", "Reel 4 — poster/thumbnail URL or /assets/path.jpg (optional)",           new Date()],
-      ["instagram_reel_4_product_id", "", "Reel 4 — Product ID for Shop Now overlay (optional)",                    new Date()]
+      ["admin_email",             "",               "Owner email for order notifications — CONFIGURE BEFORE GOING LIVE", new Date()]
     ];
 
     allSettings.forEach(function(row) {
@@ -322,7 +302,9 @@ function doGet(e) {
       if (!sSheet) return jsonResponse({ success: true, data: {} });
       var settingsMap = {};
       getSheetRowsAsJSON(sSheet).forEach(function(row) {
-        if (row["Key"]) settingsMap[row["Key"]] = row["Value"];
+        if (row["Key"]) {
+          settingsMap[row["Key"]] = row["Value"];
+        }
       });
       return jsonResponse({ success: true, data: settingsMap });
     }
@@ -1260,4 +1242,969 @@ function testSampleOrder() {
 
   Logger.log(JSON.stringify(verification, null, 2));
   return verification;
+}
+
+/**
+ * Known Settings keys used to validate or infer the Key column if the header text is missing.
+ */
+var KNOWN_SETTINGS_KEYS = [
+  "whatsapp_number",
+  "shipping_charge",
+  "free_shipping_threshold",
+  "default_gst",
+  "business_name",
+  "upi_id",
+  "admin_email"
+];
+
+/**
+ * Diagnostic helper: prints first rowsToCheck rows (columns A to maxCol) for debugging.
+ */
+function dumpSettingsSheetPreview(sheet, rowsToCheck, maxCol) {
+  try {
+    var rCount = Math.min(sheet.getLastRow(), rowsToCheck || 10);
+    var cCount = Math.min(sheet.getLastColumn(), maxCol || 4);
+    if (rCount === 0 || cCount === 0) {
+      Logger.log("[dumpSettingsSheetPreview] Sheet is empty.");
+      return;
+    }
+    var preview = sheet.getRange(1, 1, rCount, cCount).getValues();
+    Logger.log("=== SETTINGS SHEET RAW PREVIEW (Rows 1 to " + rCount + ") ===");
+    for (var i = 0; i < preview.length; i++) {
+      Logger.log("Row " + (i + 1) + ": " + JSON.stringify(preview[i]));
+    }
+    Logger.log("=============================================================");
+  } catch (err) {
+    Logger.log("dumpSettingsSheetPreview error: " + err.toString());
+  }
+}
+
+/**
+ * Helper: Locate the header row in the Settings sheet dynamically.
+ * Supports:
+ *   A) Explicit: row with 'Key' and 'Value'
+ *   B) Inferred: row with 'Value', where the column to the left contains recognizable setting keys
+ * Scans the first scanLimit rows (default 10).
+ */
+function findSettingsHeaderRow(sheet, scanLimit) {
+  var limit = scanLimit || 10;
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow === 0 || lastCol === 0) return null;
+
+  var rowsToCheck = Math.min(lastRow, limit);
+  // Use getDisplayValues() to ensure visible header text is retrieved cleanly
+  var scanData = sheet.getRange(1, 1, rowsToCheck, lastCol).getDisplayValues();
+
+  // First pass: look for explicit 'Key' and 'Value'
+  for (var r = 0; r < scanData.length; r++) {
+    var rowValues = scanData[r];
+    var keyCol = -1;
+    var valCol = -1;
+    var descCol = -1;
+    var updatedCol = -1;
+
+    for (var c = 0; c < rowValues.length; c++) {
+      var cellText = String(rowValues[c] || "").trim().toLowerCase();
+      if (cellText === "key") keyCol = c;
+      if (cellText === "value") valCol = c;
+      if (cellText === "description") descCol = c;
+      if (cellText === "updated at" || cellText === "updated_at" || cellText === "updatedat") updatedCol = c;
+    }
+
+    if (keyCol !== -1 && valCol !== -1) {
+      return {
+        headerRowNumber: r + 1, // 1-based
+        keyCol: keyCol,          // 0-based
+        valCol: valCol,          // 0-based
+        descCol: descCol,        // 0-based
+        updatedCol: updatedCol,  // 0-based
+        headerValues: rowValues,
+        inferredKey: false
+      };
+    }
+  }
+
+  // Second pass: 'Value' is found, but 'Key' header is missing/blank.
+  // Check the column immediately to its left (e.g. Value in B -> check col A).
+  for (var r2 = 0; r2 < scanData.length; r2++) {
+    var rowValues2 = scanData[r2];
+    var valCol2 = -1;
+    var descCol2 = -1;
+    var updatedCol2 = -1;
+
+    for (var c2 = 0; c2 < rowValues2.length; c2++) {
+      var text2 = String(rowValues2[c2] || "").trim().toLowerCase();
+      if (text2 === "value") valCol2 = c2;
+      if (text2 === "description") descCol2 = c2;
+      if (text2 === "updated at" || text2 === "updated_at" || text2 === "updatedat") updatedCol2 = c2;
+    }
+
+    if (valCol2 > 0) {
+      var candidateKeyCol = valCol2 - 1;
+      var startCheckRow = r2 + 2; // 1-based row immediately below r2
+      var checkCount = Math.min(lastRow - (r2 + 1), 15);
+      var matchCount = 0;
+
+      if (checkCount > 0) {
+        var sampleCells = sheet.getRange(startCheckRow, candidateKeyCol + 1, checkCount, 1).getDisplayValues();
+        for (var s = 0; s < sampleCells.length; s++) {
+          var valStr = String(sampleCells[s][0] || "").trim().toLowerCase();
+          if (KNOWN_SETTINGS_KEYS.indexOf(valStr) !== -1 ||
+              valStr.indexOf("instagram_reel_") === 0 ||
+              valStr.indexOf("shipping_") === 0 ||
+              valStr.indexOf("whatsapp_") === 0) {
+            matchCount++;
+          }
+        }
+      }
+
+      if (matchCount >= 1) {
+        Logger.log("[findSettingsHeaderRow] Inferred Key column at column " + String.fromCharCode(65 + candidateKeyCol) + " (index " + candidateKeyCol + ") adjacent to Value column at " + String.fromCharCode(65 + valCol2) + " (index " + valCol2 + ") at row " + (r2 + 1) + ". Setting key matches: " + matchCount);
+        return {
+          headerRowNumber: r2 + 1,
+          keyCol: candidateKeyCol,
+          valCol: valCol2,
+          descCol: descCol2,
+          updatedCol: updatedCol2,
+          headerValues: rowValues2,
+          inferredKey: true
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Diagnostic Read-Only Function:
+ * Inspects Settings sheet without modifying any data.
+ * Dynamically detects the header row in the first 10 rows.
+ * Reads data rows using getDisplayValues() to capture visible strings, errors, and URLs.
+ */
+function verifySettingsSheet() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getSheetSafely(ss, TABS.SETTINGS);
+
+  if (!sheet) {
+    Logger.log("Settings sheet not found.");
+    return { success: false, message: "Settings sheet not found." };
+  }
+
+  var headerInfo = findSettingsHeaderRow(sheet, 10);
+  if (!headerInfo) {
+    Logger.log("Required columns Key and Value not found in first 10 rows.");
+    Logger.log("Running diagnostic fallback preview of Settings sheet (columns A:D):");
+    dumpSettingsSheetPreview(sheet, 10, 4);
+    return {
+      success: false,
+      message: "Required columns Key and Value not found in first 10 rows. See Execution Log for raw preview."
+    };
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var startDataRow = headerInfo.headerRowNumber + 1; // 1-based data start row
+
+  var keyColLetter = String.fromCharCode(65 + headerInfo.keyCol);
+  var valColLetter = String.fromCharCode(65 + headerInfo.valCol);
+
+  if (lastRow < startDataRow) {
+    Logger.log("=========================================");
+    Logger.log("SETTINGS STRUCTURE");
+    Logger.log("Header row: " + headerInfo.headerRowNumber);
+    Logger.log("Key column: " + keyColLetter);
+    Logger.log("Value column: " + valColLetter);
+    Logger.log("Key detection: " + (headerInfo.inferredKey ? "INFERRED" : "EXPLICIT"));
+    Logger.log("Settings sheet contains header row at row " + headerInfo.headerRowNumber + " but no data rows.");
+    Logger.log("=========================================");
+    return {
+      success: true,
+      detectedHeaderRow: headerInfo.headerRowNumber,
+      keyColumn: keyColLetter,
+      valueColumn: valColLetter,
+      keyDetection: headerInfo.inferredKey ? "INFERRED" : "EXPLICIT",
+      totalSettingsDataRows: 0,
+      message: "No data rows below header"
+    };
+  }
+
+  var numDataRows = lastRow - headerInfo.headerRowNumber;
+  var displayData = sheet.getRange(startDataRow, 1, numDataRows, lastCol).getDisplayValues();
+
+  var keyCounts = {};
+  var duplicateKeys = [];
+  var first5Keys = [];
+  var whatsappValues = [];
+  var upiValues = [];
+  var adminEmailValues = [];
+
+  for (var idx = 0; idx < displayData.length; idx++) {
+    var actualRowNumber = startDataRow + idx;
+    var row = displayData[idx];
+    var k = String(row[headerInfo.keyCol] || "").trim();
+    if (!k) continue;
+
+    keyCounts[k] = (keyCounts[k] || 0) + 1;
+
+    if (first5Keys.length < 5 && first5Keys.indexOf(k) === -1) {
+      first5Keys.push(k);
+    }
+
+    var vStr = String(row[headerInfo.valCol] !== undefined && row[headerInfo.valCol] !== null ? row[headerInfo.valCol] : "").trim();
+
+    if (k === "whatsapp_number") {
+      whatsappValues.push({ row: actualRowNumber, value: vStr });
+    }
+    if (k === "upi_id") {
+      upiValues.push({ row: actualRowNumber, value: vStr });
+    }
+    if (k === "admin_email") {
+      adminEmailValues.push({ row: actualRowNumber, value: vStr });
+    }
+  }
+
+  for (var keyName in keyCounts) {
+    if (keyCounts[keyName] > 1) {
+      duplicateKeys.push({ key: keyName, occurrences: keyCounts[keyName] });
+    }
+  }
+
+  var whatsappReportStatus = whatsappValues.length > 0 ? whatsappValues.map(function(w) { return w.value; }).join(", ") : "NOT CONFIGURED";
+  var upiReportStatus = upiValues.some(function(u) { return u.value !== ""; }) ? "CONFIGURED" : "NOT CONFIGURED";
+  var adminEmailReportStatus = adminEmailValues.some(function(a) { return a.value !== ""; }) ? "CONFIGURED" : "NOT CONFIGURED";
+
+  Logger.log("=========================================");
+  Logger.log("SETTINGS STRUCTURE");
+  Logger.log("Header row: " + headerInfo.headerRowNumber);
+  Logger.log("Key column: " + keyColLetter);
+  Logger.log("Value column: " + valColLetter);
+  Logger.log("Key detection: " + (headerInfo.inferredKey ? "INFERRED" : "EXPLICIT"));
+  Logger.log("");
+  Logger.log("GENERAL SETTINGS STATUS");
+  Logger.log("Data rows read: " + displayData.length + " (rows " + startDataRow + " to " + lastRow + ")");
+  Logger.log("Unique keys count: " + Object.keys(keyCounts).length);
+  Logger.log("Duplicate keys found: " + duplicateKeys.length);
+  if (duplicateKeys.length > 0) {
+    duplicateKeys.forEach(function(d) {
+      Logger.log("  DUPLICATE: " + d.key + " (appears " + d.occurrences + " times)");
+    });
+  }
+  Logger.log("whatsapp_number: " + whatsappReportStatus);
+  Logger.log("upi_id: " + (upiValues.length > 0 ? upiValues.map(function(u) { return u.value || "<empty>"; }).join(", ") : "NOT CONFIGURED") + " (" + upiReportStatus + ")");
+  Logger.log("admin_email: " + (adminEmailValues.length > 0 ? adminEmailValues.map(function(a) { return a.value || "<empty>"; }).join(", ") : "NOT CONFIGURED") + " (" + adminEmailReportStatus + ")");
+  Logger.log("=========================================");
+
+  return {
+    success: true,
+    detectedHeaderRow: headerInfo.headerRowNumber,
+    keyColumn: keyColLetter,
+    valueColumn: valColLetter,
+    keyDetection: headerInfo.inferredKey ? "INFERRED" : "EXPLICIT",
+    first5DetectedKeys: first5Keys,
+    totalSettingsDataRows: displayData.length,
+    uniqueKeysCount: Object.keys(keyCounts).length,
+    duplicateKeys: duplicateKeys,
+    duplicateKeysCount: duplicateKeys.length,
+    whatsappNumberEntries: whatsappValues,
+    whatsappNumberStatus: whatsappReportStatus,
+    upiIdConfigured: upiReportStatus === "CONFIGURED",
+    upiIdEntries: upiValues,
+    adminEmailConfigured: adminEmailReportStatus === "CONFIGURED",
+    adminEmailEntries: adminEmailValues
+  };
+}
+
+/**
+ * SAFE Maintenance Function:
+ * Repairs Settings sheet by deduplicating rows and resolving formula issues.
+ *
+ * Steps:
+ * 1. Detect structure dynamically (Header row 1, Key=A, Value=B, Description=C, Updated At=D).
+ * 2. Deduplicate rows: combine duplicate rows for each key, preferring non-empty values,
+ *    non-empty descriptions, and Updated At.
+ * 3. Convert whatsapp_number formula ("+91 9003860616") into literal text "+91 9003860616".
+ * 4. Verify upi_id and admin_email remain unconfigured without inventing values.
+ * 5. Validate in memory: ensure all required core keys exist and none are lost.
+ * 6. Write consolidated rows and clear surplus rows.
+ * 7. Log comprehensive diagnostic report.
+ */
+function repairSettingsSheet() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getSheetSafely(ss, TABS.SETTINGS);
+
+  if (!sheet) {
+    Logger.log("Settings sheet not found. Safe exit.");
+    return { success: false, message: "Settings sheet not found." };
+  }
+
+  var headerInfo = findSettingsHeaderRow(sheet, 10);
+  if (!headerInfo) {
+    Logger.log("Critical headers missing: Key or Value column could not be found in first 10 rows.");
+    Logger.log("Running diagnostic fallback preview of Settings sheet (columns A:D):");
+    dumpSettingsSheetPreview(sheet, 10, 4);
+    return { success: false, message: "Key or Value column not found. See Execution Log for preview." };
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var startDataRow = headerInfo.headerRowNumber + 1;
+
+  if (lastRow < startDataRow) {
+    Logger.log("Settings sheet contains header row at row " + headerInfo.headerRowNumber + " but no data rows.");
+    return { success: true, message: "Settings sheet has no data rows to repair." };
+  }
+
+  var numDataRows = lastRow - headerInfo.headerRowNumber;
+  var dataRange = sheet.getRange(startDataRow, 1, numDataRows, lastCol);
+
+  var rawDataRows = dataRange.getValues();
+  var displayDataRows = dataRange.getDisplayValues();
+  var formulaRows = dataRange.getFormulas();
+
+  var rowsBeforeCount = rawDataRows.length;
+  var keyCol = headerInfo.keyCol;
+  var valCol = headerInfo.valCol;
+  var descCol = headerInfo.descCol !== -1 ? headerInfo.descCol : 2;
+  var updatedCol = headerInfo.updatedCol !== -1 ? headerInfo.updatedCol : 3;
+
+  var keyGroups = {};
+  var keyOrder = [];
+  var whatsappFormulaConverted = false;
+  var whatsappFinalValue = "";
+
+  for (var idx = 0; idx < rawDataRows.length; idx++) {
+    var rawRow = rawDataRows[idx];
+    var displayRow = displayDataRows[idx];
+    var formulaRow = formulaRows[idx];
+    var sourceRowNum = startDataRow + idx;
+
+    var key = String(displayRow[keyCol] || "").trim();
+    if (!key) continue;
+
+    if (!keyGroups[key]) {
+      keyGroups[key] = [];
+      keyOrder.push(key);
+    }
+
+    var valDisplay = String(displayRow[valCol] !== undefined && displayRow[valCol] !== null ? displayRow[valCol] : "").trim();
+    var valRaw = rawRow[valCol];
+    var valFormula = formulaRow[valCol];
+
+    var descDisplay = descCol !== -1 ? String(displayRow[descCol] !== undefined && displayRow[descCol] !== null ? displayRow[descCol] : "").trim() : "";
+    var descRaw = descCol !== -1 ? rawRow[descCol] : "";
+    var updatedRaw = updatedCol !== -1 ? rawRow[updatedCol] : null;
+
+    keyGroups[key].push({
+      originalRowIndex: sourceRowNum,
+      key: key,
+      valDisplay: valDisplay,
+      valRaw: valRaw,
+      valFormula: valFormula,
+      descDisplay: descDisplay,
+      descRaw: descRaw,
+      updatedAt: updatedRaw
+    });
+  }
+
+  var duplicateKeysFound = [];
+  var consolidatedRows = [];
+  var uniqueKeysCount = keyOrder.length;
+
+  keyOrder.forEach(function(key) {
+    var entries = keyGroups[key];
+    if (entries.length > 1) {
+      duplicateKeysFound.push({ key: key, count: entries.length });
+    }
+
+    var chosenValueRaw = "";
+    var chosenValueDisplay = "";
+
+    for (var i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].valDisplay !== "") {
+        chosenValueRaw = entries[i].valRaw;
+        chosenValueDisplay = entries[i].valDisplay;
+        break;
+      }
+    }
+
+    var chosenDescription = "";
+    for (var d = entries.length - 1; d >= 0; d--) {
+      var dStr = entries[d].descDisplay;
+      if (dStr !== "") {
+        chosenDescription = entries[d].descRaw || dStr;
+        break;
+      }
+    }
+
+    var chosenUpdatedAt = null;
+    if (updatedCol !== -1) {
+      for (var u = entries.length - 1; u >= 0; u--) {
+        if (entries[u].updatedAt) {
+          chosenUpdatedAt = entries[u].updatedAt;
+          break;
+        }
+      }
+    }
+
+    if (key === "whatsapp_number") {
+      for (var w = 0; w < entries.length; w++) {
+        var fStr = String(entries[w].valFormula || "");
+        var dStr2 = String(entries[w].valDisplay || "");
+        if (fStr.indexOf("9003860616") !== -1 || dStr2 === "#ERROR!" || fStr.indexOf("+91") !== -1) {
+          whatsappFormulaConverted = true;
+          break;
+        }
+      }
+      chosenValueRaw = "+91 9003860616";
+      chosenValueDisplay = "+91 9003860616";
+      whatsappFinalValue = chosenValueRaw;
+    }
+
+    var newRow = new Array(lastCol);
+    for (var c = 0; c < lastCol; c++) {
+      newRow[c] = "";
+    }
+
+    newRow[keyCol] = key;
+    newRow[valCol] = chosenValueRaw;
+    if (descCol !== -1 && descCol < lastCol) {
+      newRow[descCol] = chosenDescription;
+    }
+    if (updatedCol !== -1 && updatedCol < lastCol) {
+      newRow[updatedCol] = chosenUpdatedAt || new Date();
+    }
+
+    consolidatedRows.push(newRow);
+  });
+
+  var consolidatedKeyMap = {};
+  consolidatedRows.forEach(function(r) {
+    consolidatedKeyMap[String(r[keyCol]).trim()] = r;
+  });
+
+  var missingKeys = [];
+  KNOWN_SETTINGS_KEYS.forEach(function(k) {
+    if (!consolidatedKeyMap[k]) {
+      missingKeys.push(k);
+    }
+  });
+
+  if (missingKeys.length > 0) {
+    Logger.log("[repairSettingsSheet] Validation failed: Expected keys are missing from consolidated set: " + JSON.stringify(missingKeys));
+    return {
+      success: false,
+      message: "Pre-write validation failed: missing keys " + JSON.stringify(missingKeys)
+    };
+  }
+
+  var rowsAfterCount = consolidatedRows.length;
+  var rowsRemovedCount = rowsBeforeCount - rowsAfterCount;
+
+  sheet.getRange(startDataRow, 1, numDataRows, lastCol).clearContent();
+  sheet.getRange(startDataRow, 1, rowsAfterCount, lastCol).setValues(consolidatedRows);
+
+  var whatsappRowIndex = -1;
+  for (var cr = 0; cr < consolidatedRows.length; cr++) {
+    if (String(consolidatedRows[cr][keyCol]).trim() === "whatsapp_number") {
+      whatsappRowIndex = startDataRow + cr;
+      break;
+    }
+  }
+  if (whatsappRowIndex !== -1) {
+    var whatsappCell = sheet.getRange(whatsappRowIndex, valCol + 1);
+    whatsappCell.setNumberFormat("@");
+    whatsappCell.setValue("+91 9003860616");
+  }
+
+  var upiRow = consolidatedKeyMap["upi_id"];
+  var upiVal = upiRow ? String(upiRow[valCol] || "").trim() : "";
+  var adminRow = consolidatedKeyMap["admin_email"];
+  var adminVal = adminRow ? String(adminRow[valCol] || "").trim() : "";
+
+  Logger.log("=========================================");
+  Logger.log("SETTINGS REPAIR COMPLETED");
+  Logger.log("=========================================");
+  Logger.log("Header row: " + headerInfo.headerRowNumber);
+  Logger.log("Key column: " + String.fromCharCode(65 + keyCol));
+  Logger.log("Value column: " + String.fromCharCode(65 + valCol));
+  Logger.log("Description column: " + (descCol !== -1 ? String.fromCharCode(65 + descCol) : "None"));
+  Logger.log("");
+  Logger.log("Rows before: " + rowsBeforeCount);
+  Logger.log("Unique keys: " + uniqueKeysCount);
+  Logger.log("Duplicate keys removed: " + duplicateKeysFound.length);
+  Logger.log("");
+  Logger.log("WhatsApp formula converted: " + (whatsappFormulaConverted ? "YES (formula converted to literal text)" : "NO"));
+  Logger.log("WhatsApp final value: " + (whatsappFinalValue || "+91 9003860616"));
+  Logger.log("");
+  Logger.log("UPI ID configured: " + (upiVal !== "" ? "YES" : "NO (NOT CONFIGURED)"));
+  Logger.log("Admin Email configured: " + (adminVal !== "" ? "YES" : "NO (NOT CONFIGURED)"));
+  Logger.log("");
+  Logger.log("Rows after: " + rowsAfterCount);
+  Logger.log("Remaining duplicate keys: 0");
+  Logger.log("=========================================");
+
+  return {
+    success: true,
+    headerRow: headerInfo.headerRowNumber,
+    keyColumn: String.fromCharCode(65 + keyCol),
+    valueColumn: String.fromCharCode(65 + valCol),
+    descriptionColumn: descCol !== -1 ? String.fromCharCode(65 + descCol) : null,
+    rowsBefore: rowsBeforeCount,
+    uniqueKeys: uniqueKeysCount,
+    duplicateKeysRemoved: duplicateKeysFound.length,
+    whatsappFormulaConverted: whatsappFormulaConverted,
+    whatsappFinalValue: whatsappFinalValue || "+91 9003860616",
+    upiIdConfigured: upiVal !== "",
+    adminEmailConfigured: adminVal !== "",
+    rowsAfter: rowsAfterCount,
+    remainingDuplicates: 0
+  };
+}
+
+/**
+ * READ-ONLY Diagnostic Function:
+ * Inspects Settings cells across columns A:D.
+ */
+function inspectSettingsCells() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getSheetSafely(ss, TABS.SETTINGS);
+
+  if (!sheet) {
+    Logger.log("Settings sheet not found.");
+    return { success: false, message: "Settings sheet not found." };
+  }
+
+  var startRow = 2;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < startRow) {
+    Logger.log("No data rows to inspect.");
+    return { success: true, inspectedRowsCount: 0 };
+  }
+
+  var numRows = lastRow - startRow + 1;
+  var numCols = Math.min(sheet.getLastColumn(), 4);
+
+  var range = sheet.getRange(startRow, 1, numRows, numCols);
+  var displayValues = range.getDisplayValues();
+  var rawValues = range.getValues();
+  var formulas = range.getFormulas();
+
+  var targetSummaryKeys = [
+    "whatsapp_number",
+    "shipping_charge",
+    "free_shipping_threshold",
+    "default_gst",
+    "business_name",
+    "upi_id",
+    "admin_email"
+  ];
+
+  var summaryEntries = [];
+
+  Logger.log("=============================================================");
+  Logger.log("INSPECT SETTINGS CELLS (Rows " + startRow + " to " + lastRow + ", Columns A:D)");
+  Logger.log("=============================================================");
+
+  for (var i = 0; i < numRows; i++) {
+    var rowNum = startRow + i;
+
+    var aDisplay = displayValues[i][0];
+    var aRaw = rawValues[i][0];
+    var aFormula = formulas[i][0];
+
+    var bDisplay = displayValues[i][1];
+    var bRaw = rawValues[i][1];
+    var bFormula = formulas[i][1];
+
+    var cDisplay = numCols >= 3 ? displayValues[i][2] : "";
+    var dDisplay = numCols >= 4 ? displayValues[i][3] : "";
+
+    Logger.log("ROW " + rowNum);
+    Logger.log("A display = " + JSON.stringify(aDisplay));
+    Logger.log("A raw = " + JSON.stringify(aRaw));
+    Logger.log("A formula = " + JSON.stringify(aFormula));
+    Logger.log("B display = " + JSON.stringify(bDisplay));
+    Logger.log("B raw = " + JSON.stringify(bRaw));
+    Logger.log("B formula = " + JSON.stringify(bFormula));
+    Logger.log("C display = " + JSON.stringify(cDisplay));
+    Logger.log("D display = " + JSON.stringify(dDisplay));
+    Logger.log("-------------------------------------------------------------");
+
+    var keyClean = String(aDisplay || "").trim();
+    if (targetSummaryKeys.indexOf(keyClean) !== -1) {
+      summaryEntries.push({
+        key: keyClean,
+        row: rowNum,
+        displayValue: bDisplay,
+        rawValue: bRaw,
+        formula: bFormula
+      });
+    }
+  }
+
+  Logger.log("=============================================================");
+  Logger.log("TARGET KEYS SUMMARY");
+  Logger.log("key | row | displayValue | rawValue | formula");
+  Logger.log("=============================================================");
+
+  summaryEntries.forEach(function(entry) {
+    Logger.log(
+      entry.key + " | row " + entry.row + " | " +
+      JSON.stringify(entry.displayValue) + " | " +
+      JSON.stringify(entry.rawValue) + " | " +
+      JSON.stringify(entry.formula)
+    );
+  });
+
+  Logger.log("=============================================================");
+
+  return {
+    success: true,
+    inspectedRowsCount: numRows,
+    summaryEntries: summaryEntries
+  };
+}
+
+/**
+ * SAFE Maintenance Function:
+ * Removes ONLY Instagram/Reels-specific keys from the Settings sheet.
+ *
+ * Requirements:
+ * 1. Open the Settings sheet.
+ * 2. Find and remove ONLY the 16 exact Instagram keys:
+ *    instagram_reel_1_url ... instagram_reel_4_product_id
+ * 3. Does NOT delete any other Settings keys.
+ * 4. Before writing, logs exactly which rows will be removed.
+ * 5. Validates that ONLY Instagram keys are targeted.
+ * 6. If any non-Instagram key is about to be removed, ABORT without modifying anything.
+ * 7. After successful removal, prints detailed metrics and remaining settings.
+ * 8. Does NOT run automatically.
+ */
+function removeInstagramSettings() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getSheetSafely(ss, TABS.SETTINGS);
+
+  if (!sheet) {
+    Logger.log("Settings sheet not found. Safe exit.");
+    return { success: false, message: "Settings sheet not found." };
+  }
+
+  var headerInfo = findSettingsHeaderRow(sheet, 10);
+  if (!headerInfo) {
+    Logger.log("Could not locate Settings header row.");
+    return { success: false, message: "Settings header row not found." };
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var startDataRow = headerInfo.headerRowNumber + 1;
+
+  if (lastRow < startDataRow) {
+    Logger.log("Settings sheet has no data rows.");
+    return { success: true, message: "No data rows in Settings sheet." };
+  }
+
+  var numDataRows = lastRow - headerInfo.headerRowNumber;
+  var dataRange = sheet.getRange(startDataRow, 1, numDataRows, lastCol);
+  var dataRows = dataRange.getValues();
+  var displayRows = dataRange.getDisplayValues();
+
+  var rowsBeforeCount = dataRows.length;
+  var keyCol = headerInfo.keyCol;
+
+  // The exact 16 Instagram keys permitted for removal
+  var instagramKeysToRemove = {
+    "instagram_reel_1_url": true,
+    "instagram_reel_1_caption": true,
+    "instagram_reel_1_thumbnail": true,
+    "instagram_reel_1_product_id": true,
+    "instagram_reel_2_url": true,
+    "instagram_reel_2_caption": true,
+    "instagram_reel_2_thumbnail": true,
+    "instagram_reel_2_product_id": true,
+    "instagram_reel_3_url": true,
+    "instagram_reel_3_caption": true,
+    "instagram_reel_3_thumbnail": true,
+    "instagram_reel_3_product_id": true,
+    "instagram_reel_4_url": true,
+    "instagram_reel_4_caption": true,
+    "instagram_reel_4_thumbnail": true,
+    "instagram_reel_4_product_id": true
+  };
+
+  var preservedRows = [];
+  var rowsToBeRemoved = [];
+  var nonInstagramRowsViolated = [];
+
+  for (var idx = 0; idx < dataRows.length; idx++) {
+    var rawRow = dataRows[idx];
+    var dispRow = displayRows[idx];
+    var actualRowNum = startDataRow + idx;
+    var key = String(dispRow[keyCol] || "").trim();
+
+    if (instagramKeysToRemove[key]) {
+      rowsToBeRemoved.push({
+        row: actualRowNum,
+        key: key,
+        value: dispRow[headerInfo.valCol]
+      });
+    } else {
+      // Check if row is mistakenly tagged for removal
+      if (key.indexOf("instagram_reel_") === 0 && !instagramKeysToRemove[key]) {
+        nonInstagramRowsViolated.push({ row: actualRowNum, key: key });
+      }
+      preservedRows.push(rawRow);
+    }
+  }
+
+  // Log rows scheduled for removal before touching sheet
+  Logger.log("=========================================");
+  Logger.log("REMOVE INSTAGRAM SETTINGS — PRE-RUN ANALYSIS");
+  Logger.log("=========================================");
+  Logger.log("Rows before: " + rowsBeforeCount);
+  Logger.log("Instagram rows detected for removal: " + rowsToBeRemoved.length);
+
+  rowsToBeRemoved.forEach(function(r) {
+    Logger.log("  Target for removal -> Row " + r.row + " | Key: " + r.key + " | Value: " + JSON.stringify(r.value));
+  });
+
+  // SAFETY VALIDATION: ensure only exact Instagram keys are targeted
+  if (nonInstagramRowsViolated.length > 0) {
+    Logger.log("CRITICAL ABORT: Unknown key matching pattern found: " + JSON.stringify(nonInstagramRowsViolated));
+    return {
+      success: false,
+      message: "Aborted: Non-standard key matched removal check."
+    };
+  }
+
+  for (var i = 0; i < rowsToBeRemoved.length; i++) {
+    if (!instagramKeysToRemove[rowsToBeRemoved[i].key]) {
+      Logger.log("CRITICAL ABORT: Key '" + rowsToBeRemoved[i].key + "' is NOT an allowed Instagram key! Aborting write.");
+      return {
+        success: false,
+        message: "Aborted: Attempted to remove non-Instagram key '" + rowsToBeRemoved[i].key + "'."
+      };
+    }
+  }
+
+  // Perform write: clear existing data rows and write preserved rows
+  sheet.getRange(startDataRow, 1, numDataRows, lastCol).clearContent();
+
+  var rowsAfterCount = preservedRows.length;
+  if (rowsAfterCount > 0) {
+    sheet.getRange(startDataRow, 1, rowsAfterCount, lastCol).setValues(preservedRows);
+  }
+
+  // Collect remaining keys for reporting
+  var remainingKeys = preservedRows.map(function(r) {
+    return String(r[keyCol] || "").trim();
+  }).filter(function(k) { return k !== ""; });
+
+  Logger.log("=========================================");
+  Logger.log("REMOVE INSTAGRAM SETTINGS — EXECUTION REPORT");
+  Logger.log("=========================================");
+  Logger.log("Rows before: " + rowsBeforeCount);
+  Logger.log("Instagram rows found: " + rowsToBeRemoved.length);
+  Logger.log("Instagram rows removed: " + rowsToBeRemoved.length);
+  Logger.log("Rows after: " + rowsAfterCount);
+  Logger.log("Remaining non-Instagram settings count: " + remainingKeys.length);
+  Logger.log("Remaining non-Instagram settings: " + JSON.stringify(remainingKeys));
+  Logger.log("=========================================");
+
+  return {
+    success: true,
+    rowsBefore: rowsBeforeCount,
+    instagramRowsFound: rowsToBeRemoved.length,
+    instagramRowsRemoved: rowsToBeRemoved.length,
+    rowsAfter: rowsAfterCount,
+    remainingSettings: remainingKeys
+  };
+}
+
+/**
+ * SAFE READ-ONLY DIAGNOSTIC FUNCTION:
+ * Inspects remaining Settings rows for duplicates after Instagram removal.
+ * Does NOT modify, delete, clear, consolidate, or rewrite any data in the sheet.
+ *
+ * Requirements:
+ * 1. Read-only only.
+ * 2. Finds header row dynamically via findSettingsHeaderRow().
+ * 3. Prints every remaining setting with row number, key, Column B value, Column C description.
+ * 4. Groups duplicate keys together.
+ * 5. Identifies which duplicate row contains the non-empty / correct value.
+ * 6. Pays special attention to the 7 core settings:
+ *    business_name, whatsapp_number, shipping_charge, free_shipping_threshold, default_gst, upi_id, admin_email.
+ * 7. Does NOT invent values for upi_id or admin_email.
+ */
+function inspectRemainingSettingsDuplicates() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = getSheetSafely(ss, TABS.SETTINGS);
+
+  if (!sheet) {
+    Logger.log("ERROR: Settings sheet not found.");
+    return { success: false, message: "Settings sheet not found." };
+  }
+
+  var headerInfo = findSettingsHeaderRow(sheet, 10);
+  if (!headerInfo) {
+    Logger.log("ERROR: Header row could not be detected in first 10 rows.");
+    return { success: false, message: "Header row not found." };
+  }
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  var startDataRow = headerInfo.headerRowNumber + 1;
+
+  if (lastRow < startDataRow) {
+    Logger.log("Settings sheet has no data rows below header row " + headerInfo.headerRowNumber);
+    return { success: true, message: "No data rows" };
+  }
+
+  var numDataRows = lastRow - headerInfo.headerRowNumber;
+  var keyCol = headerInfo.keyCol;
+  var valCol = headerInfo.valCol;
+  var descCol = headerInfo.descCol !== -1 ? headerInfo.descCol : 2; // Default to Column C (index 2)
+
+  var rawValues = sheet.getRange(startDataRow, 1, numDataRows, lastCol).getValues();
+  var displayValues = sheet.getRange(startDataRow, 1, numDataRows, lastCol).getDisplayValues();
+  var formulas = sheet.getRange(startDataRow, 1, numDataRows, lastCol).getFormulas();
+
+  // Group settings by key
+  var groupedByKey = {};
+  var orderedKeys = [];
+  var totalRows = 0;
+
+  for (var idx = 0; idx < numDataRows; idx++) {
+    var actualRowNum = startDataRow + idx;
+    var rawRow = rawValues[idx];
+    var dispRow = displayValues[idx];
+    var formulaRow = formulas[idx];
+
+    var key = String(dispRow[keyCol] || "").trim();
+    if (!key) continue;
+
+    totalRows++;
+    if (!groupedByKey[key]) {
+      groupedByKey[key] = [];
+      orderedKeys.push(key);
+    }
+
+    var valDisp = String(dispRow[valCol] !== undefined && dispRow[valCol] !== null ? dispRow[valCol] : "").trim();
+    var valRaw = rawRow[valCol] !== undefined && rawRow[valCol] !== null ? rawRow[valCol] : "";
+    var valFormula = formulaRow[valCol] || "";
+    var descDisp = String(dispRow[descCol] !== undefined && dispRow[descCol] !== null ? dispRow[descCol] : "").trim();
+    var descRaw = rawRow[descCol] !== undefined && rawRow[descCol] !== null ? rawRow[descCol] : "";
+
+    groupedByKey[key].push({
+      row: actualRowNum,
+      key: key,
+      valDisplay: valDisp,
+      valRaw: valRaw,
+      valFormula: valFormula,
+      descDisplay: descDisp,
+      descRaw: descRaw
+    });
+  }
+
+  var duplicateKeys = [];
+  for (var k = 0; k < orderedKeys.length; k++) {
+    var checkKey = orderedKeys[k];
+    if (groupedByKey[checkKey].length > 1) {
+      duplicateKeys.push(checkKey);
+    }
+  }
+
+  // Print exact formatted report
+  Logger.log("=========================================");
+  Logger.log("REMAINING SETTINGS DUPLICATE DIAGNOSTIC");
+  Logger.log("=========================================");
+  Logger.log("Total rows: " + totalRows);
+  Logger.log("Unique keys: " + orderedKeys.length);
+  Logger.log("Duplicate keys: " + duplicateKeys.length + " (" + duplicateKeys.join(", ") + ")");
+  Logger.log("-----------------------------------------");
+
+  var recommendations = {};
+
+  orderedKeys.forEach(function(kName) {
+    var entries = groupedByKey[kName];
+    Logger.log("Key: " + kName + " (Found in " + entries.length + " rows)");
+
+    // Determine recommendation
+    // Standard rule: pick row that has non-empty valid value and description
+    var bestRow = null;
+
+    if (kName === "whatsapp_number") {
+      // whatsapp_number often had #ERROR! due to formula evaluation =+91... or valid raw phone
+      for (var w = 0; w < entries.length; w++) {
+        var wEntry = entries[w];
+        var isErr = wEntry.valDisplay === "#ERROR!";
+        var hasPhoneInFormula = wEntry.valFormula.indexOf("9003860616") !== -1;
+        var hasPhoneInDisp = wEntry.valDisplay.indexOf("9003860616") !== -1;
+        if (!isErr && hasPhoneInDisp) {
+          bestRow = wEntry.row;
+          break;
+        } else if (hasPhoneInFormula || isErr) {
+          // Candidate row that holds the phone formula
+          if (!bestRow) bestRow = wEntry.row;
+        }
+      }
+      if (!bestRow && entries.length > 0) bestRow = entries[0].row;
+    } else {
+      // Pick row with non-empty display value
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        if (e.valDisplay !== "") {
+          bestRow = e.row;
+          break;
+        }
+      }
+      // If neither or all are empty (e.g. upi_id, admin_email), default to first occurrence with non-empty description
+      if (!bestRow) {
+        for (var j = 0; j < entries.length; j++) {
+          if (entries[j].descDisplay !== "") {
+            bestRow = entries[j].row;
+            break;
+          }
+        }
+      }
+      if (!bestRow && entries.length > 0) {
+        bestRow = entries[0].row;
+      }
+    }
+
+    recommendations[kName] = bestRow;
+
+    entries.forEach(function(entry) {
+      var isRec = (entry.row === bestRow) ? " <--- RECOMMENDED TO KEEP" : "";
+      var formulaTag = entry.valFormula ? " [Formula: " + entry.valFormula + "]" : "";
+      Logger.log("  Row: " + entry.row);
+      Logger.log("  Value: " + (entry.valDisplay === "" ? "<empty>" : entry.valDisplay) + formulaTag);
+      Logger.log("  Description: " + (entry.descDisplay === "" ? "<empty>" : entry.descDisplay));
+      if (isRec) {
+        Logger.log("  Status:" + isRec);
+      }
+    });
+
+    Logger.log("  Recommended row to keep: Row " + bestRow);
+    Logger.log("-----------------------------------------");
+  });
+
+  Logger.log("=========================================");
+  Logger.log("SUMMARY RECOMMENDATIONS TO PRESERVE");
+  Logger.log("=========================================");
+  orderedKeys.forEach(function(kName) {
+    Logger.log("  " + kName + " -> Row " + recommendations[kName]);
+  });
+  Logger.log("=========================================");
+
+  return {
+    success: true,
+    totalRows: totalRows,
+    uniqueKeysCount: orderedKeys.length,
+    duplicateKeysCount: duplicateKeys.length,
+    duplicateKeys: duplicateKeys,
+    recommendations: recommendations
+  };
 }
