@@ -118,12 +118,21 @@ export default function CartPage() {
                         {/* Product Image */}
                         <div className="h-20 w-20 shrink-0 rounded-2xl bg-surface border border-border/60 p-2 flex items-center justify-center overflow-hidden">
                           {item.product.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={item.product.image}
-                              alt={item.product.name}
-                              className="h-full w-full object-contain"
-                            />
+                            <picture>
+                              <source
+                                srcSet={item.product.image.replace(/\.jpg$/, ".webp")}
+                                type="image/webp"
+                              />
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.product.image}
+                                alt={item.product.name}
+                                width={80}
+                                height={80}
+                                loading="lazy"
+                                className="h-full w-full object-contain"
+                              />
+                            </picture>
                           ) : (
                             <span className="text-2xl">🌶️</span>
                           )}

@@ -77,15 +77,18 @@ export default function Header() {
               className="flex items-center group shrink-0"
               aria-label="Kayal Samayal — Home"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo-header.png"
-                alt="Kayal Samayal"
-                width={357}
-                height={214}
-                priority-hint="high"
-                className="w-[125px] sm:w-[145px] md:w-[155px] lg:w-[170px] h-auto max-h-12 sm:max-h-14 md:max-h-16 object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-              />
+              <picture>
+                <source srcSet="/logo-header.webp" type="image/webp" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo-header.png"
+                  alt="Kayal Samayal"
+                  width={357}
+                  height={214}
+                  fetchPriority="high"
+                  className="w-[125px] sm:w-[145px] md:w-[155px] lg:w-[170px] h-auto max-h-12 sm:max-h-14 md:max-h-16 object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                />
+              </picture>
             </Link>
 
             {/* Desktop Navigation */}

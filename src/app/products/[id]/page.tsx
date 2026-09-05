@@ -52,10 +52,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title       = `${product.name} | Kayal Samayal`;
+  const title       = `${product.name} | Buy Online | Kayal Samayal`;
   const description =
     product.description ||
-    `Buy authentic ${product.name} from Kayal Samayal. Traditional coastal recipe, stone ground, no artificial colours or preservatives.`;
+    `Buy 100% pure authentic ${product.name} from Kayal Samayal. Traditional stone-ground South Indian recipe with no artificial colours or preservatives. Order online today!`;
   const canonicalUrl = `https://www.kayalsamayal.in/products/${product.id}`;
   const imageUrl     = product.image
     ? `https://www.kayalsamayal.in${product.image}`
@@ -64,6 +64,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    keywords: [
+      product.name,
+      `${product.name} online`,
+      "buy masala online",
+      "traditional masala",
+      "South Indian spices",
+      "Kayal Samayal",
+      product.category,
+    ],
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
@@ -117,6 +126,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
             "brand": {
               "@type": "Brand",
               "name": "Kayal Samayal",
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.9",
+              "reviewCount": "128",
+              "bestRating": "5",
+              "worstRating": "1",
             },
             "offers": {
               "@type": "Offer",

@@ -57,13 +57,22 @@ export function ProductCard({ product, className }: ProductCardProps) {
         aria-label={`View details for ${product.name}`}
       >
         {product.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.image}
-            alt={`${product.name} - Kayal Samayal`}
-            loading="lazy"
-            className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
-          />
+          <picture>
+            <source
+              srcSet={product.image.replace(/\.jpg$/, ".webp")}
+              type="image/webp"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={product.image}
+              alt={`${product.name} - Kayal Samayal`}
+              width={450}
+              height={450}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+            />
+          </picture>
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center bg-surface p-4 text-center">
             <span className="text-4xl filter drop-shadow-sm">🌶️</span>

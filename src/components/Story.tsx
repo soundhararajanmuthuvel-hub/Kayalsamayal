@@ -24,8 +24,11 @@ export default function Story() {
               <div className="relative h-[380px] sm:h-[420px] rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3stZ6qSXFNfgQA7FmwkCboXVB3BrCuEoEqIqfIl5ndyB9GL5bi2GrvjRBOw1xUAaPuAfPB9ME33T_VU1uFrfIyu200BQkablkmp8Q8Rm6jqnZhgBboYic0xpK9JGTnNkBOe7vM30zEHS3DBggV1_W07WNN2fy2c3RCUW9yLtosK7f4v1I50aN3zdfa9sJVZbE5rQMwJoYWe6D5aNQdJ7Z_EszOIIY469dQvbLp4igN5XsOAHnLPq8"
+                  src="/assets/story-tradition.webp"
                   alt="Traditional grandmother sun-drying spices"
+                  width={720}
+                  height={800}
+                  loading="lazy"
                   className="w-full h-full object-cover rounded-2xl filter brightness-95"
                 />
                 

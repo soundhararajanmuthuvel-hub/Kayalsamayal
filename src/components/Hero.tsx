@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
   Check,
   ArrowRight,
@@ -36,50 +35,30 @@ export default function Hero() {
             {/* Left Column: Copy & Value Proposition */}
             <div className="lg:col-span-7 flex flex-col items-start space-y-5 text-left">
               {/* Heritage Micro Pill */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 bg-card px-3.5 py-1.5 rounded-full shadow-xs border border-border"
-              >
+              <div className="inline-flex items-center gap-2 bg-card px-3.5 py-1.5 rounded-full shadow-xs border border-border">
                 <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                 <span className="text-[0.68rem] font-bold text-primary uppercase tracking-wider font-sans">
                   Artisanal Tamil Heritage • Small Batch Crafted
                 </span>
-              </motion.div>
+              </div>
 
-              {/* Headline & H1 Entity */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="space-y-2"
-              >
+              {/* Headline & H1 Entity — Immediately painted for instant LCP */}
+              <div className="space-y-2">
                 <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] text-primary">
                   Kayal Samayal
                 </h1>
-                <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-snug text-secondary italic">
-                  Traditional Taste. Pure Quality.
+                <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-snug text-secondary">
+                  100% Pure Traditional Masala &amp; South Indian Spices Online
                 </h2>
-              </motion.div>
+              </div>
 
-              {/* Editorial Lead Subheading */}
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-muted-foreground text-sm sm:text-base lg:text-lg leading-relaxed max-w-xl"
-              >
-                Welcome to the official home of Kayal Samayal. We craft authentic South Indian masalas, homemade podis, specialty millet noodles, and wellness health mixes using time-honoured Kayalpatnam heritage recipes. 100% pure ingredients with zero preservatives.
-              </motion.p>
+              {/* Editorial Lead Subheading — Instant paint (no delay) */}
+              <p className="text-muted-foreground text-sm sm:text-base lg:text-lg leading-relaxed max-w-xl">
+                Welcome to Kayal Samayal. Order 100% pure homemade traditional masalas, aromatic podis, specialty noodles, and wellness health mixes crafted with heritage stone-ground recipes, slow sun-dried spices, and zero preservatives.
+              </p>
 
               {/* Key Value Chips */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.25 }}
-                className="flex flex-wrap gap-2 pt-1"
-              >
+              <div className="flex flex-wrap gap-2 pt-1">
                 {trustPillars.map((pillar, idx) => (
                   <span
                     key={idx}
@@ -89,15 +68,10 @@ export default function Hero() {
                     <span>{pillar}</span>
                   </span>
                 ))}
-              </motion.div>
+              </div>
 
               {/* Action CTA Group */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="flex flex-wrap items-center gap-3.5 pt-2 w-full sm:w-auto"
-              >
+              <div className="flex flex-wrap items-center gap-3.5 pt-2 w-full sm:w-auto">
                 <Link href="/products" className="w-full sm:w-auto">
                   <Button
                     variant="secondary"
@@ -121,15 +95,10 @@ export default function Hero() {
                     <span>Explore 35+ Varieties</span>
                   </Button>
                 </a>
-              </motion.div>
+              </div>
 
               {/* Quick Micro Social Proof */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex items-center gap-3 pt-2 text-muted-foreground text-xs"
-              >
+              <div className="flex items-center gap-3 pt-2 text-muted-foreground text-xs">
                 <div className="flex -space-x-2">
                   <span className="w-7 h-7 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-[0.65rem] shadow-xs">
                     4.9★
@@ -139,24 +108,22 @@ export default function Hero() {
                   </span>
                 </div>
                 <p>
-                  Loved by <span className="font-bold text-foreground">12,800+ homes</span> across Tamil Nadu, Bengaluru & Pan-India
+                  Loved by <span className="font-bold text-foreground">12,800+ homes</span> across Tamil Nadu, Bengaluru &amp; Pan-India
                 </p>
-              </motion.div>
+              </div>
             </div>
 
             {/* Right Column: Visual Showcase Frame */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="lg:col-span-5 relative mt-6 lg:mt-0"
-            >
+            <div className="lg:col-span-5 relative mt-6 lg:mt-0">
               <div className="relative bg-card p-4 sm:p-5 rounded-3xl border border-border shadow-xl overflow-hidden group">
                 <div className="relative w-full h-[360px] sm:h-[420px] rounded-2xl overflow-hidden bg-surface flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0teReeioyJvJBbsoBQZ0Vy2KEASHe_gtoem_hVL-MB1799Pvql0jHQ7dnw3Sz2fZpds0ux9_m8Mp3r_weauf3h97Ok-FbAv8tsNuvcgTlYhgNMVw9SNByDdITFGvxUYF82sPXKXCoB92_CudGBRXXUsDBLxBYUcTVxfSyO5Si6xXjCElSh1kAS8tMViVQhrhRTSKklqp69ocUK6SWlAh4qBgDoQwqT6CSnp59wHWY0J9oROswDi_V"
+                    src="/assets/hero-spices.webp"
                     alt="Authentic traditional spices prepared under natural sunlight"
+                    width={720}
+                    height={800}
+                    fetchPriority="high"
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out filter brightness-95"
                   />
                   
@@ -208,7 +175,7 @@ export default function Hero() {
                   {brand.fssai}
                 </span>
               </div>
-            </motion.div>
+            </div>
 
           </div>
         </div>

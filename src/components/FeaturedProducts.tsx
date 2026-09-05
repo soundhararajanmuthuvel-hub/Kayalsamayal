@@ -7,8 +7,20 @@ import { products as localProducts, type Product } from "@/data/products";
 import { getProducts } from "@/lib/api";
 import { ProductCard } from "@/components/shop/ProductCard";
 
+const initialFeatured = localProducts
+  .filter(
+    (p) =>
+      p.tier === "premium" ||
+      p.image?.includes("fish") ||
+      p.image?.includes("biriyani") ||
+      p.image?.includes("abc")
+  )
+  .slice(0, 4);
+
 export default function FeaturedProducts() {
-  const [featured, setFeatured] = useState<Product[]>([]);
+  const [featured, setFeatured] = useState<Product[]>(
+    initialFeatured.length > 0 ? initialFeatured : localProducts.slice(0, 4)
+  );
 
   useEffect(() => {
     async function loadData() {
@@ -17,12 +29,17 @@ export default function FeaturedProducts() {
         const pool = data && data.length > 0 ? data : localProducts;
         // Select popular signature bestsellers
         const items = pool
-          .filter((p) => p.tier === "premium" || p.image?.includes("fish") || p.image?.includes("biriyani") || p.image?.includes("abc"))
+          .filter(
+            (p) =>
+              p.tier === "premium" ||
+              p.image?.includes("fish") ||
+              p.image?.includes("biriyani") ||
+              p.image?.includes("abc")
+          )
           .slice(0, 4);
         setFeatured(items.length > 0 ? items : pool.slice(0, 4));
       } catch (err) {
         console.error(err);
-        setFeatured(localProducts.slice(0, 4));
       }
     }
     loadData();

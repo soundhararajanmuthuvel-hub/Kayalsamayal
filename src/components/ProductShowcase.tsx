@@ -10,18 +10,17 @@ import { ArrowRight } from "lucide-react";
 
 export default function ProductShowcase() {
   const [activeCategory, setActiveCategory] = useState<Category>("Traditional Masalas");
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allProducts, setAllProducts] = useState<Product[]>(localProducts);
 
   useEffect(() => {
     async function loadData() {
       try {
         const data = await getProducts();
-        setAllProducts(data && data.length > 0 ? data : localProducts);
+        if (data && data.length > 0) {
+          setAllProducts(data);
+        }
       } catch {
-        setAllProducts(localProducts);
-      } finally {
-        setLoading(false);
+        // Keeps local fallback
       }
     }
     loadData();
@@ -68,13 +67,7 @@ export default function ProductShowcase() {
         </div>
 
         {/* Product Grid */}
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3.5 sm:gap-6 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="aspect-square bg-muted rounded-2xl animate-pulse" />
-            ))}
-          </div>
-        ) : displayedProducts.length === 0 ? (
+        {displayedProducts.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-2xl border border-border p-8">
             <span className="text-3xl">🏺</span>
             <h3 className="font-display font-bold text-lg mt-2">No items in this category currently</h3>

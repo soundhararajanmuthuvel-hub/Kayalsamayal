@@ -6,7 +6,7 @@ const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["600", "700"],
   style: ["normal", "italic"],
 });
 
@@ -14,7 +14,7 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
   display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700"],
 });
 
 export const viewport: Viewport = {
@@ -30,14 +30,24 @@ export const metadata: Metadata = {
   description:
     "Shop authentic Kayal Samayal masalas, podis, health mixes, noodles and traditional food products. 35+ varieties made with traditional recipes and quality ingredients.",
   keywords: [
-    "Kayal Samayal",
-    "Kayalpattinam masala",
+    "masala",
     "traditional masala",
-    "coastal masala",
     "South Indian masala",
+    "homemade masala",
+    "South Indian spices",
+    "organic spices India",
+    "Kayal Samayal",
+    "Kayal Samayal masala",
+    "Kayalpattinam masala",
+    "coastal masala",
     "traditional podi",
+    "podi recipes",
     "health mixes",
+    "health mixes Tamil Nadu",
     "traditional Indian food",
+    "pure masala without preservatives",
+    "handmade spice blends",
+    "Tirupattur traditional spices",
     "fish curry masala",
     "biriyani masala",
     "moringa noodles",

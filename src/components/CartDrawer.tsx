@@ -118,12 +118,21 @@ export default function CartDrawer() {
                   <div key={item.product.id} className="py-4 flex gap-4 items-center">
                     <div className="h-16 w-16 shrink-0 rounded-xl bg-surface border border-border/60 p-1 flex items-center justify-center overflow-hidden">
                       {item.product.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.product.image}
-                          alt={item.product.name}
-                          className="h-full w-full object-contain"
-                        />
+                        <picture>
+                          <source
+                            srcSet={item.product.image.replace(/\.jpg$/, ".webp")}
+                            type="image/webp"
+                          />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.product.image}
+                            alt={item.product.name}
+                            width={64}
+                            height={64}
+                            loading="lazy"
+                            className="h-full w-full object-contain"
+                          />
+                        </picture>
                       ) : (
                         <span className="text-xl">🌶️</span>
                       )}

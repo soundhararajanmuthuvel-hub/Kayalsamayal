@@ -140,12 +140,21 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
             <div className="lg:col-span-6 flex flex-col items-center">
               <div className="relative aspect-square w-full max-w-[460px] overflow-hidden rounded-2xl bg-surface border border-border/60 flex items-center justify-center p-8 shadow-xs">
                 {product.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-contain filter drop-shadow-md"
-                  />
+                  <picture>
+                    <source
+                      srcSet={product.image.replace(/\.jpg$/, ".webp")}
+                      type="image/webp"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      width={460}
+                      height={460}
+                      fetchPriority="high"
+                      className="h-full w-full object-contain filter drop-shadow-md"
+                    />
+                  </picture>
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center p-4">
                     <span className="text-6xl filter drop-shadow-md">🌶️</span>

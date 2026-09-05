@@ -21,7 +21,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function Testimonials() {
-  const [reviews, setReviews] = useState<Testimonial[]>([]);
+  const [reviews, setReviews] = useState<Testimonial[]>(localTestimonials);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
@@ -30,9 +30,11 @@ export default function Testimonials() {
     async function loadReviews() {
       try {
         const data = await getReviews();
-        setReviews(data && data.length > 0 ? data : localTestimonials);
+        if (data && data.length > 0) {
+          setReviews(data);
+        }
       } catch {
-        setReviews(localTestimonials);
+        // Keeps local fallback
       }
     }
     loadReviews();
@@ -116,7 +118,7 @@ export default function Testimonials() {
                   type="button"
                   onClick={prevSlide}
                   aria-label="Previous customer review"
-                  className="flex h-10 w-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full border border-border text-foreground hover:bg-accent transition-colors"
+                  className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border text-foreground hover:bg-accent transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -124,7 +126,7 @@ export default function Testimonials() {
                   type="button"
                   onClick={nextSlide}
                   aria-label="Next customer review"
-                  className="flex h-10 w-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full border border-border text-foreground hover:bg-accent transition-colors"
+                  className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border text-foreground hover:bg-accent transition-colors cursor-pointer"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
@@ -133,17 +135,21 @@ export default function Testimonials() {
           </div>
 
           {/* Dots Indicator */}
-          <div className="flex justify-center gap-1.5 mt-6">
+          <div className="flex justify-center items-center gap-1 mt-6">
             {reviews.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
                 aria-label={`Go to review ${idx + 1}`}
-                className={`h-2 rounded-full transition-all cursor-pointer ${
-                  currentIndex === idx ? "w-6 bg-secondary" : "w-2 bg-border hover:bg-muted-foreground"
-                }`}
-              />
+                className="flex items-center justify-center min-h-[44px] min-w-[28px] p-2 cursor-pointer"
+              >
+                <span
+                  className={`h-2 rounded-full transition-all block ${
+                    currentIndex === idx ? "w-6 bg-secondary" : "w-2 bg-border hover:bg-muted-foreground"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </div>

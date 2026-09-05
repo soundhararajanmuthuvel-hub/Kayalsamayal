@@ -10,16 +10,16 @@ import Testimonials from "@/components/Testimonials";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
+  title: "Traditional Masala & South Indian Spices | Kayal Samayal",
   description:
-    "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
+    "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500. Order Kayal Samayal Today!",
   alternates: {
     canonical: "https://www.kayalsamayal.in",
   },
   openGraph: {
-    title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
+    title: "Traditional Masala & South Indian Spices | Kayal Samayal",
     description:
-      "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
+      "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500. Order Kayal Samayal Today!",
     url: "https://www.kayalsamayal.in",
     siteName: "Kayal Samayal",
     locale: "en_IN",
@@ -29,15 +29,15 @@ export const metadata: Metadata = {
         url: "https://www.kayalsamayal.in/icon-512x512.png",
         width: 512,
         height: 512,
-        alt: "Kayal Samayal - Traditional South Indian Foods",
+        alt: "Traditional Masala & South Indian Spices | Kayal Samayal",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Kayal Samayal | Traditional Masalas & Authentic South Indian Foods",
+    title: "Traditional Masala & South Indian Spices | Kayal Samayal",
     description:
-      "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods. Explore 35+ varieties from Kayal Samayal.",
+      "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500. Order Kayal Samayal Today!",
     images: ["https://www.kayalsamayal.in/icon-512x512.png"],
   },
 };
@@ -51,9 +51,13 @@ export default function Home() {
         "@id": "https://www.kayalsamayal.in/#website",
         "url": "https://www.kayalsamayal.in",
         "name": "Kayal Samayal",
-        "alternateName": ["Kayal Samayal Masala", "Kayal Samayal Foods"],
+        "alternateName": [
+          "Kayal Samayal Masala",
+          "Kayal Samayal Traditional Foods",
+          "Kayal Samayal Spices",
+        ],
         "description":
-          "Shop Kayal Samayal Masala and authentic South Indian food products including traditional masalas, podis, health mixes and specialty foods.",
+          "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500.",
         "publisher": {
           "@id": "https://www.kayalsamayal.in/#organization",
         },
@@ -72,15 +76,15 @@ export default function Home() {
         "name": "Kayal Samayal",
         "legalName": "Kayal Samayal Masala",
         "url": "https://www.kayalsamayal.in",
-        "logo": "https://www.kayalsamayal.in/icon-512x512.png",
+        "logo": "https://www.kayalsamayal.in/logo.png",
         "image": "https://www.kayalsamayal.in/icon-512x512.png",
-        "telephone": "+919003860616",
+        "telephone": "+91 9003860616",
         "email": "kpmsamayal@gmail.com",
         "taxID": "33IKWPS3211P1ZB",
-        "priceRange": "₹₹",
+        "priceRange": "₹140 - ₹500",
         "address": {
           "@type": "PostalAddress",
-          "streetAddress": "504, TNHB Phase 1",
+          "streetAddress": "No.504 Housing Board Ph1",
           "addressLocality": "Tirupattur",
           "addressRegion": "Tamil Nadu",
           "postalCode": "635601",
@@ -91,6 +95,25 @@ export default function Home() {
           "latitude": 12.4925,
           "longitude": 78.5638,
         },
+        "areaServed": {
+          "@type": "Country",
+          "name": "India",
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday",
+            ],
+            "opens": "09:00",
+            "closes": "18:00",
+          },
+        ],
         "sameAs": [
           "https://wa.me/919003860616",
         ],

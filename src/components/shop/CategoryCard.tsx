@@ -31,13 +31,22 @@ export function CategoryCard({
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-surface flex items-center justify-center p-3">
         {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image}
-            alt={`${name} from Kayal Samayal`}
-            loading="lazy"
-            className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-          />
+          <picture>
+            <source
+              srcSet={image.replace(/\.jpg$/, ".webp")}
+              type="image/webp"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image}
+              alt={`${name} from Kayal Samayal`}
+              width={450}
+              height={338}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+            />
+          </picture>
         ) : (
           <div className="flex flex-col items-center justify-center gap-2">
             <span className="text-4xl filter drop-shadow-sm">{emoji}</span>
