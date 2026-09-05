@@ -14,7 +14,6 @@ import { whatsappLink, brand } from "@/lib/brand";
 import {
   ShoppingBag,
   MessageCircle,
-  Star,
   CheckCircle2,
   ShieldCheck,
   Truck,
@@ -26,14 +25,19 @@ import { useRouter } from "next/navigation";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  /** Pre-fetched product from the server component — enables SSR and removes loading flash. */
+  initialProduct?: import("@/data/products").Product | null;
 }
 
-export default function ProductDetailClient({ params }: PageProps) {
+export default function ProductDetailClient({ params, initialProduct }: PageProps) {
   const resolvedParams = React.use(params);
   const router = useRouter();
-  const [product, setProduct] = useState<Product | null>(null);
+  // Initialise with server-provided data so the component renders immediately.
+  // useEffect below fetches fresh API data (updated prices / stock).
+  const [product, setProduct] = useState<Product | null>(initialProduct ?? null);
   const [related, setRelated] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Skip loading spinner when initialProduct already provides content.
+  const [loading, setLoading] = useState(!initialProduct);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
 
@@ -59,7 +63,8 @@ export default function ProductDetailClient({ params }: PageProps) {
     loadData();
   }, [resolvedParams.id]);
 
-  if (loading) {
+  // Only show spinner when we have no product at all (initialProduct was null AND API still loading)
+  if (loading && !product) {
     return (
       <div className="flex min-h-screen flex-col bg-background">
         <Header />
@@ -188,15 +193,11 @@ export default function ProductDetailClient({ params }: PageProps) {
             <div className="lg:col-span-6 space-y-6 flex flex-col justify-between">
               
               <div className="space-y-4">
-                {/* Category & Rating */}
+                {/* Category badge */}
                 <div className="flex items-center justify-between">
                   <span className="rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary">
                     {product.category}
                   </span>
-                  <div className="flex items-center gap-1 text-xs font-bold text-foreground">
-                    <Star className="h-4 w-4 fill-gold text-gold" />
-                    <span>4.9 / 5.0 (Customer Reviews)</span>
-                  </div>
                 </div>
 
                 {/* Product Name */}

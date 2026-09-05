@@ -3,9 +3,35 @@ import { products as localProducts } from "@/data/products";
 import { getProducts } from "@/lib/api";
 import ProductDetailClient from "./ProductDetailClient";
 
+// ── Incremental Static Regeneration ──────────────────────────────────────────
+// Pages pre-rendered at build; revalidated on-demand when ≥60 s stale.
+// This ensures Googlebot always gets server-rendered HTML with current prices.
+export const revalidate = 60;
+
+// ── Pre-render all active product pages at build time ─────────────────────────
+// Build output changes from ƒ (Dynamic) → ○ (Static) for all 35 products.
+export async function generateStaticParams() {
+  try {
+    const data = await getProducts();
+    const pool = data && data.length > 0 ? data : localProducts;
+    return pool
+      .filter((p) => p.active !== false && p.id)
+      .map((p) => ({ id: p.id }));
+  } catch {
+    // Fallback to local seed data on build-time API error
+    return localProducts
+      .filter((p) => p.active !== false && p.id)
+      .map((p) => ({ id: p.id }));
+  }
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
+
+// ── Metadata ──────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolved = await params;
@@ -26,32 +52,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const title = `${product.name} | Kayal Samayal`;
+  const title       = `${product.name} | Kayal Samayal`;
   const description =
     product.description ||
-    `Buy authentic ${product.name} from Kayal Samayal. 100% pure, stone ground, no artificial colours or preservatives.`;
+    `Buy authentic ${product.name} from Kayal Samayal. Traditional coastal recipe, stone ground, no artificial colours or preservatives.`;
   const canonicalUrl = `https://www.kayalsamayal.in/products/${product.id}`;
-  const imageUrl = product.image
+  const imageUrl     = product.image
     ? `https://www.kayalsamayal.in${product.image}`
     : "https://www.kayalsamayal.in/icon-512x512.png";
 
   return {
     title,
     description,
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title,
       description,
       url: canonicalUrl,
       siteName: "Kayal Samayal",
-      images: [
-        {
-          url: imageUrl,
-          alt: `${product.name} by Kayal Samayal`,
-        },
-      ],
+      images: [{ url: imageUrl, alt: `${product.name} by Kayal Samayal` }],
     },
     twitter: {
       card: "summary_large_image",
@@ -61,6 +80,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
   };
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const resolved = await params;
@@ -72,7 +93,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
     pool = localProducts;
   }
 
-  const product = pool.find((p) => p.id === resolved.id);
+  const product = pool.find((p) => p.id === resolved.id) ?? null;
+
+  // Only emit price in schema when we have a real, non-zero price.
+  // Never fabricate a fallback price in structured data.
+  const hasRealPrice = (product?.price ?? 0) > 0;
+  const isInStock    =
+    product?.stock === undefined || (product?.stock ?? 0) > 0;
 
   const productJsonLd = product
     ? {
@@ -94,13 +121,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
             "offers": {
               "@type": "Offer",
               "url": `https://www.kayalsamayal.in/products/${product.id}`,
-              "priceCurrency": "INR",
-              "price": product.price || 100,
-              "priceValidUntil": "2027-12-31",
-              "availability":
-                product.stock !== undefined && product.stock <= 0
-                  ? "https://schema.org/OutOfStock"
-                  : "https://schema.org/InStock",
+              // Conditionally include price — only when genuinely available
+              ...(hasRealPrice
+                ? {
+                    "priceCurrency": "INR",
+                    "price": product.price,
+                    "priceValidUntil": "2027-12-31",
+                  }
+                : {}),
+              "availability": isInStock
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
               "itemCondition": "https://schema.org/NewCondition",
               "seller": {
                 "@type": "Organization",
@@ -129,7 +160,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 "@type": "ListItem",
                 "position": 3,
                 "name": product.category,
-                "item": `https://www.kayalsamayal.in/category/${product.category.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`,
+                "item": `https://www.kayalsamayal.in/category/${product.category
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-")
+                  .replace(/(^-|-$)/g, "")}`,
               },
               {
                 "@type": "ListItem",
@@ -145,13 +179,53 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   return (
     <>
+      {/* Product + Breadcrumb structured data — server-rendered for Googlebot */}
       {productJsonLd && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
         />
       )}
-      <ProductDetailClient params={params} />
+
+      {/*
+       * Server-rendered product summary.
+       *
+       * WHY: ProductDetailClient uses useEffect to fetch live product data,
+       * which means without this block the initial HTML would be an empty
+       * loading spinner — Googlebot would see no product content at all.
+       *
+       * This sr-only block emits the essential product signals (H1, price,
+       * description, availability) in the initial server HTML. The full
+       * interactive experience rendered by ProductDetailClient is identical
+       * and visible to human users after React hydration.
+       *
+       * NOTE: The client component also receives `initialProduct` so it can
+       * render immediately on first paint without a loading spinner.
+       */}
+      {product && (
+        <div className="sr-only">
+          <h1>{product.name} — Kayal Samayal</h1>
+          {hasRealPrice && (
+            <p>
+              Price: ₹{product.price} INR.{" "}
+              {isInStock ? "In Stock." : "Currently out of stock."}
+            </p>
+          )}
+          <p>{product.description}</p>
+          {product.highlights?.length > 0 && (
+            <ul>
+              {product.highlights.map((h, i) => (
+                <li key={i}>{h}</li>
+              ))}
+            </ul>
+          )}
+          <p>Category: {product.category}</p>
+          <p>Brand: Kayal Samayal — authentic South Indian products from Kayalpatnam.</p>
+        </div>
+      )}
+
+      {/* Full interactive product page — hydrates immediately with initialProduct */}
+      <ProductDetailClient params={params} initialProduct={product} />
     </>
   );
 }

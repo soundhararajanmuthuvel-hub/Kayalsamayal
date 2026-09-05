@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 import { categories } from "@/data/products";
 import CategoryClient from "./CategoryClient";
 
+// Pre-render all 5 category pages at build time (○ Static instead of ƒ Dynamic)
+export function generateStaticParams() {
+  return categories.map((cat) => ({
+    name: cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+  }));
+}
+
+
 interface PageProps {
   params: Promise<{ name: string }>;
 }

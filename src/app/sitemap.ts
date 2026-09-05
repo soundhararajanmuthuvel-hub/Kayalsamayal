@@ -63,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const productPages: MetadataRoute.Sitemap = productList
-    .filter((p) => p.active !== false && p.id && p.name && p.id !== "12")
+    .filter((p) => p.active !== false && p.id && p.name)
     .map((p) => ({
       url: `${baseUrl}/products/${p.id}`,
       lastModified: now,
