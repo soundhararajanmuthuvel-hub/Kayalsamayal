@@ -11,8 +11,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const decoded = decodeURIComponent(resolved.name).replace(/-/g, " ");
   const matched = categories.find(
     (c) =>
-      c.toLowerCase() === decoded.toLowerCase() ||
-      c.toLowerCase().includes(decoded.toLowerCase().split(" ")[0])
+      c.toLowerCase() === decoded.toLowerCase()
   );
 
   const titleName = matched || decoded;
@@ -66,8 +65,7 @@ export default async function CategoryPage({ params }: PageProps) {
   const decoded = decodeURIComponent(resolved.name).replace(/-/g, " ");
   const matched = categories.find(
     (c) =>
-      c.toLowerCase() === decoded.toLowerCase() ||
-      c.toLowerCase().includes(decoded.toLowerCase().split(" ")[0])
+      c.toLowerCase() === decoded.toLowerCase()
   );
   const titleName = matched || decoded;
   const canonicalSlug = resolved.name.toLowerCase();

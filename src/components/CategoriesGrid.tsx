@@ -40,19 +40,12 @@ const categoryList = [
     image: "/assets/kindiya-kaayam.jpg",
     emoji: "🍯",
   },
-  {
-    name: "Specialty Powders",
-    slug: "specialty-powders",
-    tagline: "Nannari sukku & herbal teas for daily wellness",
-    image: "/assets/nannari-sukku-powder.jpg",
-    emoji: "🌱",
-  },
 ];
 
 export default function CategoriesGrid() {
   const getCount = (catName: string) => {
     return localProducts.filter(
-      (p) => p.category.toLowerCase().includes(catName.toLowerCase().split(" ")[0])
+      (p) => p.category === catName
     ).length;
   };
 

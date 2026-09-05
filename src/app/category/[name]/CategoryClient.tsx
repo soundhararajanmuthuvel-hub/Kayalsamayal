@@ -26,7 +26,7 @@ export default function CategoryClient({ params }: PageProps) {
         const decoded = decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
         // Match against known categories
         const matched = categories.find(
-          (c) => c.toLowerCase() === decoded.toLowerCase() || c.toLowerCase().includes(decoded.toLowerCase().split(" ")[0])
+          (c) => c.toLowerCase() === decoded.toLowerCase()
         );
 
         const currentCat = matched || decoded;
@@ -35,7 +35,7 @@ export default function CategoryClient({ params }: PageProps) {
         const data = await getProducts();
         const pool = data && data.length > 0 ? data : localProducts;
         const items = pool.filter(
-          (p) => p.category.toLowerCase().includes(decoded.toLowerCase().split(" ")[0])
+          (p) => p.category.toLowerCase() === currentCat.toLowerCase()
         );
         setProducts(items);
       } catch (err) {
