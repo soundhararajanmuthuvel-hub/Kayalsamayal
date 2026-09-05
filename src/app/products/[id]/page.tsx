@@ -127,22 +127,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
               "@type": "Brand",
               "name": "Kayal Samayal",
             },
-            "aggregateRating": {
-              "@type": "AggregateRating",
-              "ratingValue": "4.9",
-              "reviewCount": "128",
-              "bestRating": "5",
-              "worstRating": "1",
-            },
             "offers": {
               "@type": "Offer",
               "url": `https://www.kayalsamayal.in/products/${product.id}`,
-              // Conditionally include price — only when genuinely available
+              // Conditionally include price — only when genuinely available from real product data
               ...(hasRealPrice
                 ? {
                     "priceCurrency": "INR",
                     "price": product.price,
-                    "priceValidUntil": "2027-12-31",
                   }
                 : {}),
               "availability": isInStock
