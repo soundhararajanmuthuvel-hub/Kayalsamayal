@@ -11,8 +11,7 @@ import { Search, SlidersHorizontal, X, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function ProductsClient() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(localProducts);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [selectedTier, setSelectedTier] = useState<string>("All");
@@ -23,11 +22,11 @@ export default function ProductsClient() {
     async function loadData() {
       try {
         const data = await getProducts();
-        setProducts(data && data.length > 0 ? data : localProducts);
+        if (data && data.length > 0) {
+          setProducts(data);
+        }
       } catch {
-        setProducts(localProducts);
-      } finally {
-        setLoading(false);
+        // Keeps local fallback
       }
     }
     loadData();
@@ -268,7 +267,7 @@ export default function ProductsClient() {
               {/* Grid Component */}
               <ProductGrid
                 products={filteredProducts}
-                loading={loading}
+                loading={false}
                 emptyMessage="No products match your active search or filters."
               />
 

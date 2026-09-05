@@ -185,7 +185,7 @@ export default function Header() {
             </div>
             <button
               type="button"
-              className="flex items-center justify-center min-h-[40px] min-w-[40px] rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               onClick={() => setMenuOpen(false)}
               aria-label="Close menu"
             >

@@ -254,6 +254,17 @@
   color: var(--primary);
 }
 
+/* Ensure composited animations for Lighthouse / PageSpeed */
+.animate-pulse {
+  will-change: opacity;
+  transform: translateZ(0);
+}
+
+.animate-ping {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,

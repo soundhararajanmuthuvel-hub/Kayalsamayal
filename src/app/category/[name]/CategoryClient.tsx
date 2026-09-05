@@ -20,36 +20,32 @@ interface PageProps {
 
 export default function CategoryClient({ params }: PageProps) {
   const resolvedParams = React.use(params);
-  const [categoryName, setCategoryName] = useState<string>("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const canonicalSlug = resolvedParams.name.toLowerCase();
+  const matched = categories.find((c) => slugifyCategory(c) === canonicalSlug);
+  const initialCat = matched || decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
+  const initialItems = localProducts.filter(
+    (p) => p.category.toLowerCase() === initialCat.toLowerCase()
+  );
+
+  const categoryName = initialCat;
+  const [products, setProducts] = useState<Product[]>(initialItems);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const canonicalSlug = resolvedParams.name.toLowerCase();
-        // Match against known categories using slug
-        const matched = categories.find(
-          (c) => slugifyCategory(c) === canonicalSlug
-        );
-
-        const currentCat = matched || decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
-        setCategoryName(currentCat);
-
         const data = await getProducts();
-        const pool = data && data.length > 0 ? data : localProducts;
-        const items = pool.filter(
-          (p) => p.category.toLowerCase() === currentCat.toLowerCase()
-        );
-        setProducts(items);
+        if (data && data.length > 0) {
+          const items = data.filter(
+            (p) => p.category.toLowerCase() === initialCat.toLowerCase()
+          );
+          setProducts(items);
+        }
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
       }
     }
     loadData();
-  }, [resolvedParams.name]);
+  }, [initialCat]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -90,7 +86,7 @@ export default function CategoryClient({ params }: PageProps) {
           {/* Products Grid */}
           <ProductGrid
             products={products}
-            loading={loading}
+            loading={false}
             emptyTitle={`No items in ${categoryName}`}
             emptyMessage="We are currently crafting fresh batches for this category. Please check out our other offerings!"
             action={

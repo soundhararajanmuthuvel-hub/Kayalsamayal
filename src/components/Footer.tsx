@@ -32,14 +32,18 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="lg:col-span-4 space-y-4">
             <Link href="/" className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo-card.png"
-                alt="Kayal Samayal Logo"
-                width={400}
-                height={400}
-                className="w-12 h-12 rounded-full object-contain p-1 bg-white/95 ring-2 ring-gold shadow-md"
-              />
+              <picture>
+                <source srcSet="/logo-card.webp" type="image/webp" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo-card.png"
+                  alt="Kayal Samayal Logo"
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  className="w-12 h-12 rounded-full object-contain p-1 bg-white/95 ring-2 ring-gold shadow-md"
+                />
+              </picture>
               <div>
                 <span className="font-display font-bold text-xl text-white block leading-tight">
                   {brand.name}
@@ -65,12 +69,12 @@ export default function Footer() {
             <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
               Quick Links
             </h3>
-            <ul className="space-y-1 text-xs sm:text-sm">
+            <ul className="space-y-0.5 text-xs sm:text-sm">
               {navLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-1.5 min-h-[36px]"
+                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-2 min-h-[44px]"
                   >
                     {link.label}
                   </Link>
@@ -84,12 +88,12 @@ export default function Footer() {
             <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
               Product Range
             </h3>
-            <ul className="space-y-1 text-xs sm:text-sm">
+            <ul className="space-y-0.5 text-xs sm:text-sm">
               {categories.map((cat) => (
                 <li key={cat.href}>
                   <Link
                     href={cat.href}
-                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-1.5 min-h-[36px]"
+                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-2 min-h-[44px]"
                   >
                     {cat.label}
                   </Link>

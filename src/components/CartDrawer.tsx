@@ -61,7 +61,7 @@ export default function CartDrawer() {
             <button
               type="button"
               onClick={() => setIsCartOpen(false)}
-              className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+              className="p-2 text-muted-foreground hover:text-foreground rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
               aria-label="Close cart"
             >
               <X className="h-5 w-5" />
