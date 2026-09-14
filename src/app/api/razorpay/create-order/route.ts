@@ -23,6 +23,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!Number.isFinite(calc.grandTotal) || calc.grandTotal <= 0) {
+      console.error("[Razorpay Order Create] Invalid payable grandTotal:", calc.grandTotal);
+      return NextResponse.json(
+        { success: false, error: "Invalid payable order total." },
+        { status: 400 }
+      );
+    }
+
+    console.log(
+      `[Razorpay Order Create] Subtotal: ₹${calc.subtotal}, Shipping: ₹${calc.shipping}, GST: ₹${calc.gstTotal}, GrandTotal: ₹${calc.grandTotal}, Paise: ${calc.amountInPaise}`
+    );
+
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
@@ -74,6 +86,25 @@ export async function POST(req: NextRequest) {
     }
 
     const orderData = await razorpayRes.json();
+
+    // Verify created Razorpay order amount matches authoritative expectation exactly
+    if (orderData.amount !== calc.amountInPaise) {
+      console.error("[Razorpay Order Create] Gateway returned order amount mismatch:", {
+        gatewayOrderAmount: orderData.amount,
+        expectedPaise: calc.amountInPaise,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Payment gateway amount mismatch detected. Please try again.",
+        },
+        { status: 500 }
+      );
+    }
+
+    console.log(
+      `[Razorpay Order Create] Successfully created order ${orderData.id} for ₹${calc.grandTotal} (${orderData.amount} paise)`
+    );
 
     // 3. Issue server-signed token locking razorpayOrderId + amount
     const orderToken = createOrderToken({

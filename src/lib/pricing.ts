@@ -25,6 +25,27 @@ export interface OrderCalculationResult {
 }
 
 /**
+ * Authoritative price determination helper for products.
+ * Uses explicit product.price if present, otherwise computes standard category & tier pricing.
+ */
+export function getProductPrice(product: {
+  price?: number;
+  tier?: string;
+  category?: string;
+}): number {
+  if (product.price && product.price > 0) return product.price;
+  const isPremium = product.tier === "premium";
+  switch (product.category) {
+    case "Traditional Masalas":    return isPremium ? 120 : 60;
+    case "Podi Products":          return isPremium ? 100 : 50;
+    case "Specialty Noodles":      return isPremium ? 140 : 80;
+    case "Health Mixes & Malts":   return isPremium ? 320 : 180;
+    case "PeruKalam Legiyam":      return 250;
+    default:                       return 100;
+  }
+}
+
+/**
  * Single authoritative order pricing calculation matching Google Apps Script backend.
  */
 export function calculateOrderTotals(
@@ -94,7 +115,7 @@ export function calculateOrderTotals(
       };
     }
 
-    const unitPrice = product.price ?? 0;
+    const unitPrice = getProductPrice(product);
     const gstRate = product.gst ?? 0;
     const lineTotal = unitPrice * quantity;
     const gstAmount = lineTotal * gstRate;
@@ -118,7 +139,21 @@ export function calculateOrderTotals(
   const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCharge;
   const discount = 0;
   const grandTotal = Math.round(subtotal + shipping + gstTotal - discount);
-  const amountInPaise = grandTotal * 100;
+  const amountInPaise = Math.round(grandTotal * 100);
+
+  if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
+    return {
+      valid: false,
+      error: "Invalid payable amount calculated.",
+      items: [],
+      subtotal: 0,
+      gstTotal: 0,
+      shipping: 0,
+      discount: 0,
+      grandTotal: 0,
+      amountInPaise: 0,
+    };
+  }
 
   return {
     valid: true,

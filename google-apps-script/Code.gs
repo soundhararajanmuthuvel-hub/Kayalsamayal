@@ -759,6 +759,24 @@ function processOrderTransaction(ss, data) {
       }
 
       var unitPrice = Number((product["Price"] !== undefined) ? product["Price"] : ((product["price"] !== undefined) ? product["price"] : 0));
+      if (!unitPrice || unitPrice <= 0) {
+        var pCat  = String(product["Category"] || product["category"] || "");
+        var pTier = String(product["Tier"] || product["tier"] || "regular").toLowerCase();
+        var isPrem = (pTier === "premium");
+        if (pCat.indexOf("Traditional Masalas") !== -1) {
+          unitPrice = isPrem ? 120 : 60;
+        } else if (pCat.indexOf("Podi") !== -1) {
+          unitPrice = isPrem ? 100 : 50;
+        } else if (pCat.indexOf("Noodles") !== -1) {
+          unitPrice = isPrem ? 140 : 80;
+        } else if (pCat.indexOf("Health") !== -1 || pCat.indexOf("Malt") !== -1) {
+          unitPrice = isPrem ? 320 : 180;
+        } else if (pCat.indexOf("PeruKalam") !== -1 || pCat.indexOf("Legiyam") !== -1) {
+          unitPrice = 250;
+        } else {
+          unitPrice = 100;
+        }
+      }
       var gstRate   = Number((product["GST"]   !== undefined) ? product["GST"]   : ((product["gst"]   !== undefined) ? product["gst"]   : 0));
       var lineTotal = unitPrice * requestedQty;
 
