@@ -1,14 +1,13 @@
 /**
  * Google Apps Script for Kayal Samayal
- * Database Integration + UPI Manual Payment + COD/Pay Later + Email via MailApp
+ * Database Integration + Razorpay Online Payments + COD + Email via MailApp
  * Spreadsheet ID: 1VSApDnwqbwqSnZjgp1Stx1Ko54kM6mM3MpqrcaUzwjc
  *
  * Payment Methods:
- *   UPI  — Customer pays via UPI, enters UTR. Status: Pending Verification.
- *   COD  — Customer skips payment. Payment Method: COD / Pay Later. Status: Pending.
+ *   Razorpay Online — Verified via Next.js server signature / webhook. Status: Paid. Order Status: Confirmed.
+ *   COD             — Cash on Delivery. Payment Method: Cash on Delivery. Status: Pending. Order Status: Confirmed.
  *
- * IMPORTANT: UPI ID and Admin Email are read from Settings sheet.
- * Configure them in the Settings sheet before going live. Do NOT hardcode here.
+ * Historical UPI transactions and columns remain preserved and readable in the database.
  */
 
 var SPREADSHEET_ID = "1VSApDnwqbwqSnZjgp1Stx1Ko54kM6mM3MpqrcaUzwjc";
@@ -23,6 +22,19 @@ var TABS = {
 };
 
 // ── CORE HELPERS ─────────────────────────────────────────────────────────────
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ */
+function safeStringCompare(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (a.length !== b.length) return false;
+  var result = 0;
+  for (var i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
 
 /**
  * Safe Sheet Lookup — tries primary name then alternatives.
@@ -145,7 +157,11 @@ function addPaymentColumnsToOrders(ss) {
       "Payment Verified At",
       "Payment Screenshot File ID",
       "Payment Screenshot URL",
-      "Payment Evidence"
+      "Payment Evidence",
+      "Payment Gateway",
+      "Razorpay Order ID",
+      "Razorpay Payment ID",
+      "Razorpay Signature"
     ];
 
     paymentCols.forEach(function(colName) {
@@ -196,7 +212,8 @@ function setupDatabaseSheets() {
         "Subtotal", "GST", "Shipping", "Discount", "Grand Total",
         "Payment Status", "Order Status", "Created At",
         "Payment Method", "UPI ID", "UTR", "Payment Submitted At", "Payment Verified At",
-        "Payment Screenshot File ID", "Payment Screenshot URL", "Payment Evidence"
+        "Payment Screenshot File ID", "Payment Screenshot URL", "Payment Evidence",
+        "Payment Gateway", "Razorpay Order ID", "Razorpay Payment ID", "Razorpay Signature"
       ]
     },
     {
@@ -257,7 +274,7 @@ function setupDatabaseSheets() {
       ["shipping_charge",         "60",             "Flat shipping charge in INR",                       new Date()],
       ["free_shipping_threshold", "500",            "Cart subtotal threshold for free shipping (INR)",   new Date()],
       ["default_gst",             "0.05",           "Standard GST rate (0.05 = 5%)",                     new Date()],
-      ["upi_id",                  "",               "UPI ID for receiving payments — CONFIGURE BEFORE GOING LIVE", new Date()],
+      ["upi_id",                  "",               "UPI ID for manual UPI payments — configure in Settings", new Date()],
       ["admin_email",             "",               "Owner email for order notifications — CONFIGURE BEFORE GOING LIVE", new Date()]
     ];
 
@@ -285,21 +302,8 @@ function doGet(e) {
   try {
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-    if (action === "setup") {
-      setupDatabaseSheets();
-      return jsonResponse({ success: true, message: "Database sheets initialized successfully!" });
-    }
-
     if (action === "health") {
       return jsonResponse({ success: true, message: "Kayal Samayal API is working", timestamp: new Date() });
-    }
-
-    if (action === "diag") {
-      return jsonResponse({ success: true, data: testDatabaseSheets() });
-    }
-
-    if (action === "testSampleOrder") {
-      return jsonResponse(testSampleOrder());
     }
 
     if (action === "products") {
@@ -322,6 +326,16 @@ function doGet(e) {
       if (!sSheet) return jsonResponse({ success: true, data: {} });
       var settingsMap = {};
 
+      // Public allowed storefront settings whitelist
+      var publicAllowedKeys = {
+        "business_name": true,
+        "whatsapp_number": true,
+        "shipping_charge": true,
+        "free_shipping_threshold": true,
+        "default_gst": true,
+        "upi_id": true
+      };
+
       if (typeof findSettingsHeaderRow === "function") {
         var sHeaderInfo = findSettingsHeaderRow(sSheet, 10);
         if (sHeaderInfo) {
@@ -332,7 +346,7 @@ function doGet(e) {
             var sDisplayValues = sSheet.getRange(sStartRow, 1, sNumRows, sSheet.getLastColumn()).getDisplayValues();
             for (var si = 0; si < sDisplayValues.length; si++) {
               var sKey = String(sDisplayValues[si][sHeaderInfo.keyCol] || "").trim();
-              if (sKey) {
+              if (sKey && publicAllowedKeys[sKey]) {
                 settingsMap[sKey] = sDisplayValues[si][sHeaderInfo.valCol];
               }
             }
@@ -342,8 +356,9 @@ function doGet(e) {
       }
 
       getSheetRowsAsJSON(sSheet).forEach(function(row) {
-        if (row["Key"]) {
-          settingsMap[row["Key"]] = row["Value"];
+        var rowK = String(row["Key"] || "").trim();
+        if (rowK && publicAllowedKeys[rowK]) {
+          settingsMap[rowK] = row["Value"];
         }
       });
       return jsonResponse({ success: true, data: settingsMap });
@@ -365,6 +380,15 @@ function doGet(e) {
         customer = getSheetRowsAsJSON(custSheet2).filter(function(c) { return c["Customer ID"] === order["Customer ID"]; })[0] || null;
       }
       return jsonResponse({ success: true, data: { order: order, customer: customer, items: orderItems } });
+    }
+
+    // Diagnostic/Administrative actions are restricted from anonymous public GET execution
+    if (action === "setup" || action === "diag" || action === "testSampleOrder") {
+      return jsonResponse({
+        success: false,
+        error: "Action '" + action + "' is restricted from public GET routing. Run maintenance functions directly in Apps Script or use secure authenticated channels.",
+        step: "Public Endpoint Access Restriction"
+      });
     }
 
     return jsonResponse({ success: false, error: "Unknown action parameter", step: "Action Routing" });
@@ -405,6 +429,40 @@ function doPost(e) {
     }
 
     if (action === "updateOrder") {
+      // Security Gate: Protect updateOrder with SERVER_AUTH_SECRET HMAC verification
+      var scriptProps = PropertiesService.getScriptProperties();
+      var configuredSecret = scriptProps ? scriptProps.getProperty("SERVER_AUTH_SECRET") : null;
+      if (!configuredSecret || configuredSecret.trim().length === 0) {
+        return jsonResponse({
+          success: false,
+          error: "Unauthorized order update: Server authentication is not configured in Script Properties.",
+          step: "Server Configuration Validation"
+        });
+      }
+
+      var serverAuthToken = String(postData.serverAuthToken || "").trim();
+      var orderIdToUpdate = String(postData.orderId || "").trim();
+      if (!orderIdToUpdate) {
+        return jsonResponse({ success: false, error: "Order ID is required", step: "Order ID Validation" });
+      }
+
+      var expectedBytes = Utilities.computeHmacSha256Signature(
+        "KAYAL_ORDER_UPDATE:" + orderIdToUpdate,
+        configuredSecret.trim()
+      );
+      var expectedHex = expectedBytes.map(function(b) {
+        var byteVal = (b < 0 ? b + 256 : b);
+        return ("0" + byteVal.toString(16)).slice(-2);
+      }).join("");
+
+      if (!serverAuthToken || !safeStringCompare(serverAuthToken, expectedHex)) {
+        return jsonResponse({
+          success: false,
+          error: "Unauthorized order update: Invalid or forged server authentication token.",
+          step: "Server Authentication Validation"
+        });
+      }
+
       var ordSheet = getSheetSafely(ss, TABS.ORDERS, ["Order", "Orders Sheet"]);
       if (!ordSheet) {
         setupDatabaseSheets();
@@ -414,12 +472,12 @@ function doPost(e) {
       return jsonResponse(updateOrderStatus(ordSheet, postData));
     }
 
-    if (action === "diag") {
-      return jsonResponse({ success: true, data: testDatabaseSheets() });
-    }
-
-    if (action === "testSampleOrder") {
-      return jsonResponse(testSampleOrder());
+    if (action === "diag" || action === "testSampleOrder") {
+      return jsonResponse({
+        success: false,
+        error: "Action '" + action + "' is restricted from public POST routing. Run maintenance functions directly in Apps Script.",
+        step: "Public Endpoint Access Restriction"
+      });
     }
 
     return jsonResponse({ success: false, error: "Unknown action payload", step: "POST Action Routing" });
@@ -510,11 +568,18 @@ function savePaymentScreenshotToDrive(base64Data, filename) {
 
 /**
  * Full order transaction.
- * Accepts paymentMethod: "UPI" or "COD".
- * Backend sets all payment values — never trusts frontend.
+ * Accepts paymentMethod: "Razorpay Online" or "COD" (Cash on Delivery).
+ * Backend computes authoritative totals and stock — never trusts frontend calculations.
  */
 function processOrderTransaction(ss, data) {
+  var lock = LockService.getScriptLock();
+  var hasLock = false;
   try {
+    hasLock = lock.tryLock(20000); // 20s lock for atomic stock deduction and order sequence
+    if (!hasLock) {
+      return { success: false, error: "Server is busy processing concurrent transactions. Please try again in a few moments.", step: "Lock Acquisition" };
+    }
+
     var productsSheet  = getSheetSafely(ss, TABS.PRODUCTS,    ["products_export", "products"]);
     var ordersSheet    = getSheetSafely(ss, TABS.ORDERS,      ["Order", "Orders Sheet"]);
     var itemsSheet     = getSheetSafely(ss, TABS.ORDER_ITEMS, ["OrderItems", "Order_Items"]);
@@ -534,46 +599,114 @@ function processOrderTransaction(ss, data) {
     if (!customersSheet) return { success: false, error: "Sheet not found", step: "Customers" };
 
     // Extract fields
-    var customerInput = data.customer;
-    var itemsInput    = data.items;
-    var rawUtr        = String(data.utr || "").trim();
-    var paymentMethod = data.paymentMethod || "UPI";
+    var customerInput      = data.customer;
+    var itemsInput         = data.items;
+    var paymentMethod      = data.paymentMethod || "Razorpay Online";
+    var razorpayOrderId    = String(data.razorpayOrderId || "").trim();
+    var razorpayPaymentId  = String(data.razorpayPaymentId || "").trim();
+    var razorpaySignature  = String(data.razorpaySignature || "").trim();
+    var razorpayAmount     = Number(data.razorpayAmount || 0);
+    var serverAuthToken    = String(data.serverAuthToken || "").trim();
 
-    // Validate paymentMethod — backend must not trust frontend
-    if (paymentMethod !== "UPI" && paymentMethod !== "COD") {
+    // Validate paymentMethod
+    var isRazorpay = (paymentMethod === "Razorpay Online" || paymentMethod === "Razorpay");
+    var isCod      = (paymentMethod === "COD" || paymentMethod === "Cash on Delivery");
+
+    if (!isRazorpay && !isCod) {
       return {
         success: false,
-        error: "Invalid payment method: " + paymentMethod + ". Allowed: UPI, COD",
+        error: "Invalid payment method: " + paymentMethod + ". Allowed: Razorpay Online, COD",
         step: "Payment Method Validation"
       };
     }
 
-    // Backend-authoritative payment values
-    var displayPaymentMethod = (paymentMethod === "UPI") ? "UPI" : "COD / Pay Later";
-    var paymentStatus        = (paymentMethod === "UPI") ? "Pending Verification" : "Pending";
-    var storedUtr            = (paymentMethod === "UPI") ? rawUtr : "";
-    var orderStatus          = (paymentMethod === "COD") ? "New" : "Pending";
-    var paymentSubmittedAt   = (paymentMethod === "UPI") ? new Date() : "";
+    // Security Gate: Razorpay orders must have valid payment credentials verified by server
+    if (isRazorpay) {
+      var isAmountValid = (typeof data.razorpayAmount === "number" || typeof data.razorpayAmount === "string") &&
+                          !isNaN(Number(data.razorpayAmount)) &&
+                          isFinite(Number(data.razorpayAmount)) &&
+                          Number(data.razorpayAmount) > 0;
 
-    // Upload screenshot to Drive if provided
-    var screenshotResult = null;
-    if (paymentMethod === "UPI" && data.screenshotBase64) {
-      screenshotResult = savePaymentScreenshotToDrive(data.screenshotBase64, data.screenshotName || "payment_screenshot.jpg");
-    }
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !serverAuthToken || !isAmountValid) {
+        return {
+          success: false,
+          error: "Unverified payment: Missing or invalid Razorpay payment ID, order ID, signature, amount, or server authentication token.",
+          step: "Payment Verification Validation"
+        };
+      }
 
-    // Determine payment evidence type
-    var paymentEvidence = "None";
-    if (paymentMethod === "UPI") {
-      var hasUtr = storedUtr !== "";
-      var hasScreenshot = !!screenshotResult;
-      if (hasUtr && hasScreenshot) {
-        paymentEvidence = "UTR + Screenshot";
-      } else if (hasUtr) {
-        paymentEvidence = "UTR";
-      } else if (hasScreenshot) {
-        paymentEvidence = "Screenshot";
+      // Cryptographically verify server-to-server authorization token
+      // SERVER_AUTH_SECRET must be set in Script Properties. Hardcoded or Settings secrets are strictly forbidden.
+      var scriptProps = PropertiesService.getScriptProperties();
+      var serverAuthSecret = scriptProps ? scriptProps.getProperty("SERVER_AUTH_SECRET") : null;
+      if (!serverAuthSecret || serverAuthSecret.trim().length === 0) {
+        return {
+          success: false,
+          error: "Unauthorized order creation: SERVER_AUTH_SECRET is not configured in Script Properties.",
+          step: "Server Configuration Validation"
+        };
+      }
+
+      if (!serverAuthToken) {
+        return {
+          success: false,
+          error: "Unauthorized order creation: Missing server authentication token.",
+          step: "Server Authentication Validation"
+        };
+      }
+
+      var expectedBytes = Utilities.computeHmacSha256Signature(
+        "KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId,
+        serverAuthSecret.trim()
+      );
+      var expectedToken = expectedBytes.map(function(b) {
+        var byteVal = (b < 0 ? b + 256 : b);
+        return ("0" + byteVal.toString(16)).slice(-2);
+      }).join("");
+
+      if (!safeStringCompare(serverAuthToken, expectedToken)) {
+        return {
+          success: false,
+          error: "Unauthorized order creation: Invalid or forged server authentication token.",
+          step: "Server Authentication Validation"
+        };
       }
     }
+
+    // Idempotency check for Razorpay
+    if (isRazorpay && (razorpayPaymentId || razorpayOrderId)) {
+      var existingOrders = getSheetRowsAsJSON(ordersSheet);
+      var existingMatch  = existingOrders.filter(function(o) {
+        return (razorpayPaymentId && String(o["Razorpay Payment ID"] || "").trim() === razorpayPaymentId) ||
+               (razorpayOrderId && String(o["Razorpay Order ID"] || "").trim() === razorpayOrderId);
+      })[0];
+
+      if (existingMatch) {
+        Logger.log("Idempotent order return for Razorpay Payment ID: " + razorpayPaymentId);
+        return {
+          success: true,
+          orderId: existingMatch["Order ID"],
+          customerId: existingMatch["Customer ID"],
+          paymentMethod: existingMatch["Payment Method"],
+          paymentStatus: existingMatch["Payment Status"],
+          subtotal: Number(existingMatch["Subtotal"] || 0),
+          shipping: Number(existingMatch["Shipping"] || 0),
+          discount: Number(existingMatch["Discount"] || 0),
+          gst: Number(existingMatch["GST"] || 0),
+          grandTotal: Number(existingMatch["Grand Total"] || 0),
+          orderStatus: existingMatch["Order Status"],
+          emailSent: true,
+          idempotent: true,
+          message: "Order already processed."
+        };
+      }
+    }
+
+    var displayPaymentMethod = isRazorpay ? "Razorpay Online" : "Cash on Delivery";
+    var paymentGateway       = isRazorpay ? "Razorpay" : "COD";
+    var paymentStatus        = isRazorpay ? "Paid" : "Pending";
+    var orderStatus          = "Confirmed";
+    var paymentSubmittedAt   = new Date();
 
     // Validate customer
     if (!customerInput || !customerInput.name || !customerInput.mobile) {
@@ -663,8 +796,18 @@ function processOrderTransaction(ss, data) {
     var discount   = 0;
     var grandTotal = subtotal + shipping + gstTotal - discount;
 
-    // Read authoritative UPI ID from Settings
-    var upiId = getSettingValue(ss, "upi_id") || "";
+    // Reconciliation check for Razorpay: ensure amount matches authoritative backend calculation exactly
+    if (isRazorpay) {
+      var authPaise = Math.round(grandTotal * 100);
+      var rzpPaise  = Math.round(razorpayAmount * 100);
+      if (authPaise !== rzpPaise) {
+        return {
+          success: false,
+          error: "Amount mismatch: Razorpay amount (" + razorpayAmount + ") does not match authoritative order total (" + grandTotal + ").",
+          step: "Amount Reconciliation"
+        };
+      }
+    }
 
     // Find/create customer
     var customerId = findOrCreateCustomer(customersSheet, customerInput);
@@ -693,8 +836,8 @@ function processOrderTransaction(ss, data) {
       shipping,
       discount,
       grandTotal,
-      paymentStatus,   // "Pending Verification" or "Pending"
-      orderStatus,     // "Pending" (UPI) or "New" (COD)
+      paymentStatus,   // "Paid" or "Pending"
+      orderStatus,     // "Confirmed"
       new Date()       // Created At
     ]);
 
@@ -707,14 +850,13 @@ function processOrderTransaction(ss, data) {
       if (idx > 0) ordersSheet.getRange(newOrderRowNum, idx).setValue(value);
     }
 
-    setOrderCol("Payment Method",      displayPaymentMethod);
-    setOrderCol("UPI ID",              (paymentMethod === "UPI") ? upiId : "");
-    setOrderCol("UTR",                 storedUtr);
-    setOrderCol("Payment Submitted At", paymentSubmittedAt);
-    setOrderCol("Payment Verified At",  "");
-    setOrderCol("Payment Screenshot File ID", screenshotResult ? screenshotResult.fileId : "");
-    setOrderCol("Payment Screenshot URL",     screenshotResult ? screenshotResult.url    : "");
-    setOrderCol("Payment Evidence",           paymentEvidence);
+    setOrderCol("Payment Method",        displayPaymentMethod);
+    setOrderCol("Payment Gateway",       paymentGateway);
+    setOrderCol("Razorpay Order ID",     razorpayOrderId);
+    setOrderCol("Razorpay Payment ID",   razorpayPaymentId);
+    setOrderCol("Razorpay Signature",    razorpaySignature);
+    setOrderCol("Payment Submitted At",  paymentSubmittedAt);
+    setOrderCol("Payment Verified At",   isRazorpay ? new Date() : "");
 
     // Append Order Items & deduct stock
     validatedItems.forEach(function(item, index) {
@@ -747,22 +889,20 @@ function processOrderTransaction(ss, data) {
 
     // Build shared data object for emails
     var orderData = {
-      orderId:      orderId,
-      customerId:   customerId,
-      customerInput: customerInput,
-      validatedItems: validatedItems,
-      subtotal:     subtotal,
-      gstTotal:     gstTotal,
-      shipping:     shipping,
-      discount:     discount,
-      grandTotal:   grandTotal,
-      paymentMethod: displayPaymentMethod,
-      paymentStatus: paymentStatus,
-      utr:          storedUtr,
-      upiId:        (paymentMethod === "UPI") ? upiId : "",
-      screenshotFileId: screenshotResult ? screenshotResult.fileId : "",
-      screenshotUrl:    screenshotResult ? screenshotResult.url    : "",
-      paymentEvidence:  paymentEvidence
+      orderId:           orderId,
+      customerId:        customerId,
+      customerInput:     customerInput,
+      validatedItems:    validatedItems,
+      subtotal:          subtotal,
+      gstTotal:          gstTotal,
+      shipping:          shipping,
+      discount:          discount,
+      grandTotal:        grandTotal,
+      paymentMethod:     displayPaymentMethod,
+      paymentStatus:     paymentStatus,
+      paymentGateway:    paymentGateway,
+      razorpayOrderId:   razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId
     };
 
     // Send emails — NEVER cancels order on failure
@@ -799,9 +939,9 @@ function processOrderTransaction(ss, data) {
       customerId:    customerId,
       paymentMethod: displayPaymentMethod,
       paymentStatus: paymentStatus,
-      utr:           storedUtr,
-      paymentEvidence: paymentEvidence,
-      paymentScreenshotUploaded: !!screenshotResult,
+      paymentGateway: paymentGateway,
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId,
       subtotal:      subtotal,
       shipping:      shipping,
       discount:      discount,
@@ -827,6 +967,12 @@ function processOrderTransaction(ss, data) {
       logApiAction(SpreadsheetApp.openById(SPREADSHEET_ID), { action: "createOrder", status: "ERROR", message: err.toString() });
     } catch (e) { /* ignore */ }
     return { success: false, error: err.toString(), step: "processOrderTransaction Execution" };
+  } finally {
+    if (hasLock) {
+      try {
+        lock.releaseLock();
+      } catch (e) { /* ignore lock release error */ }
+    }
   }
 }
 
@@ -852,7 +998,10 @@ function buildOrderEmailHtml(orderData, isAdmin) {
   var upiId          = orderData.upiId;
 
   var orderDate = Utilities.formatDate(new Date(), "GMT+5:30", "dd MMM yyyy hh:mm a");
-  var isCod     = (paymentMethod === "COD / Pay Later");
+  var isCod =
+    paymentMethod === "Cash on Delivery" ||
+    paymentMethod === "COD" ||
+    paymentMethod === "COD / Pay Later";
 
   // Items rows
   var itemsRows = validatedItems.map(function(item) {
@@ -871,26 +1020,18 @@ function buildOrderEmailHtml(orderData, isAdmin) {
   if (isAdmin) {
     if (isCod) {
       adminWarning = '<div style="background:#e0f2fe;border-left:4px solid #0ea5e9;padding:16px;margin-bottom:20px;border-radius:4px;">'
-        + '<strong style="font-family:sans-serif;color:#0369a1;font-size:14px;">&#9432; COD / Pay Later Order</strong><br>'
+        + '<strong style="font-family:sans-serif;color:#0369a1;font-size:14px;">&#9432; Cash on Delivery Order</strong><br>'
         + '<span style="font-family:sans-serif;font-size:13px;color:#0c4a6e;">'
-        + 'This customer chose <strong>Skip Payment</strong>. No online payment was made.<br>'
-        + 'Payment Method: <strong>COD / Pay Later</strong> &middot; Payment Status: <strong>Pending</strong>'
+        + 'Payment will be collected upon doorstep delivery.<br>'
+        + 'Payment Method: <strong>Cash on Delivery</strong> &middot; Payment Status: <strong>Pending</strong>'
         + '</span></div>';
     } else {
-      var evidenceDetails = 'Customer UTR: <strong>' + (utr || "Not provided") + '</strong><br>';
-      if (orderData.screenshotUrl) {
-        evidenceDetails += 'Screenshot Available: <strong>YES</strong> (Evidence: ' + orderData.paymentEvidence + ')<br>'
-          + 'Drive Reference: <a href="' + orderData.screenshotUrl + '" target="_blank" style="color:#b45309;font-weight:bold;">Open Secure Screenshot Link</a><br>';
-      } else {
-        evidenceDetails += 'Screenshot Available: <strong>NO</strong><br>';
-      }
-
-      adminWarning = '<div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:16px;margin-bottom:20px;border-radius:4px;">'
-        + '<strong style="font-family:sans-serif;color:#b45309;font-size:14px;">&#9888; Action Required: Verify UPI Payment</strong><br>'
-        + '<span style="font-family:sans-serif;font-size:13px;color:#92400e;">'
-        + evidenceDetails
-        + 'Please verify payment details in your UPI app/statement. '
-        + 'Update Payment Status in the Orders sheet after verification.'
+      adminWarning = '<div style="background:#f0fdf4;border-left:4px solid #22c55e;padding:16px;margin-bottom:20px;border-radius:4px;">'
+        + '<strong style="font-family:sans-serif;color:#15803d;font-size:14px;">&#10004; Razorpay Payment Verified</strong><br>'
+        + '<span style="font-family:sans-serif;font-size:13px;color:#166534;">'
+        + 'Payment captured securely via Razorpay.<br>'
+        + 'Razorpay Payment ID: <strong>' + (orderData.razorpayPaymentId || "N/A") + '</strong><br>'
+        + 'Razorpay Order ID: <strong>' + (orderData.razorpayOrderId || "N/A") + '</strong>'
         + '</span></div>';
     }
   }
@@ -902,52 +1043,39 @@ function buildOrderEmailHtml(orderData, isAdmin) {
       intro = '<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">'
         + 'Dear <strong>' + customerInput.name + '</strong>,<br><br>'
         + 'Your order has been received successfully!<br>'
-        + '<strong>Payment Method: Cash on Delivery / Pay Later</strong><br>'
-        + 'Payment can be completed when the order is delivered, or as agreed with Kayal Samayal. '
-        + 'We will contact you to confirm delivery. Thank you for choosing Kayal Samayal!'
+        + '<strong>Payment Method: Cash on Delivery</strong><br>'
+        + 'You can inspect the parcel and pay in cash or UPI upon doorstep delivery. '
+        + 'Thank you for choosing Kayal Samayal!'
         + '</p>';
     } else {
       intro = '<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">'
         + 'Dear <strong>' + customerInput.name + '</strong>,<br><br>'
-        + 'Your order has been received successfully. Your UPI payment is '
-        + '<strong style="color:#b45309;">pending verification</strong>. '
-        + 'We will confirm your payment and process your order shortly. '
+        + 'Your payment of <strong>Rs. ' + grandTotal.toFixed(2) + '</strong> has been received successfully via Razorpay.<br>'
+        + 'Our team is preparing your authentic spice batch and will update you with dispatch details. '
         + 'Thank you for choosing Kayal Samayal!'
         + '</p>';
     }
   } else {
     intro = isCod
-      ? '<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">A new COD / Pay Later order has been placed. No online payment was collected.</p>'
-      : '<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">A new UPI order has been placed and is awaiting payment verification.</p>';
+      ? '<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">A new Cash on Delivery order has been placed.</p>'
+      : '<p style="font-family:sans-serif;font-size:14px;color:#3d2010;line-height:1.7;margin-bottom:20px;">A new online order has been paid and confirmed via Razorpay.</p>';
   }
 
   // Payment detail rows
   var paymentRows = "";
   if (!isCod) {
-    var evidenceType = orderData.paymentEvidence || "UTR";
     paymentRows = '<tr>'
-      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">UPI ID Paid To</td>'
-      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:13px;color:#3d2010;">' + (upiId || "Not configured") + '</td>'
+      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Payment Gateway</td>'
+      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:13px;color:#3d2010;">Razorpay Secure</td>'
       + '</tr>'
       + '<tr>'
-      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">UTR / Transaction ID</td>'
-      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#1c0f06;">' + (utr || "Not provided") + '</td>'
-      + '</tr>'
-      + '<tr>'
-      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Payment Evidence</td>'
-      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#1c0f06;">' + evidenceType + '</td>'
+      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Razorpay Payment ID</td>'
+      + '<td style="padding:4px 16px;font-family:sans-serif;font-size:13px;font-weight:bold;color:#1c0f06;">' + (orderData.razorpayPaymentId || "N/A") + '</td>'
       + '</tr>';
-
-    if (isAdmin && orderData.screenshotUrl) {
-      paymentRows += '<tr>'
-        + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Screenshot Reference</td>'
-        + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;color:#3d2010;"><a href="' + orderData.screenshotUrl + '" target="_blank" style="color:#c86432;font-weight:bold;">View Private Screenshot in Google Drive</a></td>'
-        + '</tr>';
-    }
   } else {
     paymentRows = '<tr>'
       + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:12px;color:#7a5c3a;">Note</td>'
-      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;color:#3d2010;">Payment on delivery / as agreed with Kayal Samayal</td>'
+      + '<td style="padding:4px 16px 10px;font-family:sans-serif;font-size:13px;color:#3d2010;">Pay cash or UPI upon doorstep delivery</td>'
       + '</tr>';
   }
 
@@ -955,12 +1083,12 @@ function buildOrderEmailHtml(orderData, isAdmin) {
   var bottomMsg = "";
   if (!isAdmin) {
     bottomMsg = isCod
-      ? 'Payment Method: <strong>Cash on Delivery / Pay Later</strong>. Payment Status: <strong>Pending</strong>. Your order has been received. Payment can be completed on delivery / as agreed with Kayal Samayal.'
-      : 'Your UPI payment is <strong>pending verification</strong>. We will process your order once confirmed. For queries: WhatsApp +91 9003860616.';
+      ? 'Payment Method: <strong>Cash on Delivery</strong>. Payment Status: <strong>Pending</strong>. You can pay when your order arrives.'
+      : 'Payment Status: <strong>Paid</strong>. Thank you for your payment! We will pack your order fresh.';
   } else {
     bottomMsg = isCod
-      ? 'COD / Pay Later order. No online payment collected. Update order status once payment is received on delivery.'
-      : 'Verify the UTR against your UPI app / bank statement. Update <strong>Payment Status</strong> to <em>Verified</em> or <em>Rejected</em> in the Orders sheet.';
+      ? 'Cash on Delivery order. Collect payment on delivery.'
+      : 'Razorpay payment verified and recorded.';
   }
 
   var shippingDisplay = (shipping === 0)
@@ -1125,13 +1253,57 @@ function updateOrderStatus(sheet, data) {
 
   if (!order) return { success: false, error: "Order ID not found: " + orderId, step: "Order Lookup" };
 
+  // Status Allow-lists
+  var ALLOWED_PAYMENT_STATUSES = ["Pending", "Paid", "Verified", "Failed", "Refunded"];
+  var ALLOWED_ORDER_STATUSES   = ["Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled", "Refunded"];
+
+  if (paymentStatus && ALLOWED_PAYMENT_STATUSES.indexOf(paymentStatus) === -1) {
+    return {
+      success: false,
+      error: "Invalid Payment Status: '" + paymentStatus + "'. Allowed: " + ALLOWED_PAYMENT_STATUSES.join(", "),
+      step: "Payment Status Validation"
+    };
+  }
+
+  if (orderStatus && ALLOWED_ORDER_STATUSES.indexOf(orderStatus) === -1) {
+    return {
+      success: false,
+      error: "Invalid Order Status: '" + orderStatus + "'. Allowed: " + ALLOWED_ORDER_STATUSES.join(", "),
+      step: "Order Status Validation"
+    };
+  }
+
+  var currentPaymentStatus = String(order["Payment Status"] || "").trim();
+
+  // Payment Transition Protection:
+  // - Paid must not become Pending
+  // - Verified must not become Pending
+  // - Failed must not become Paid
+  // - Refunded must not become Paid
+  if (paymentStatus && currentPaymentStatus) {
+    if ((currentPaymentStatus === "Paid" || currentPaymentStatus === "Verified") && paymentStatus === "Pending") {
+      return {
+        success: false,
+        error: "Invalid payment transition: Cannot revert '" + currentPaymentStatus + "' to 'Pending'.",
+        step: "Payment State Transition Protection"
+      };
+    }
+    if ((currentPaymentStatus === "Failed" || currentPaymentStatus === "Refunded") && paymentStatus === "Paid") {
+      return {
+        success: false,
+        error: "Invalid payment transition: Cannot change terminal state '" + currentPaymentStatus + "' to 'Paid'.",
+        step: "Payment State Transition Protection"
+      };
+    }
+  }
+
   var rowIndex = orders.indexOf(order) + 2;
   var headers  = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
   if (paymentStatus) {
     var psIdx = headers.indexOf("Payment Status") + 1;
     if (psIdx > 0) sheet.getRange(rowIndex, psIdx).setValue(paymentStatus);
-    if (paymentStatus === "Verified") {
+    if (paymentStatus === "Verified" || paymentStatus === "Paid") {
       var verifIdx = headers.indexOf("Payment Verified At") + 1;
       if (verifIdx > 0) sheet.getRange(rowIndex, verifIdx).setValue(new Date());
     }
@@ -1194,94 +1366,24 @@ function testDatabaseSheets() {
 }
 
 /**
- * testSampleOrder — end-to-end UPI order test using a real active product.
+ * testSampleOrder — DEPRECATED & DISABLED FOR SAFETY
+ *
+ * This function has been intentionally disabled because:
+ * 1. It directly invokes processOrderTransaction, which writes real rows to Orders & Order Items and decrements live stock.
+ * 2. It previously sent `paymentMethod: "UPI"`, which is obsolete and rejected by the current Razorpay-only workflow.
+ *
+ * For testing payment flows safely:
+ * - Use Razorpay Test Mode checkout in the web app.
+ * - Test mode orders run end-to-end through /api/razorpay/create-order and /api/razorpay/verify-payment.
  */
 function testSampleOrder() {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-  setupDatabaseSheets();
-
-  var prodSheet = getSheetSafely(ss, TABS.PRODUCTS, ["products_export", "products"]);
-  if (!prodSheet) {
-    return { success: false, error: "Products sheet not found", step: "Products Lookup" };
-  }
-
-  var products      = getSheetRowsAsJSON(prodSheet);
-  var activeProduct = products.filter(function(p) {
-    var act = (p["Active"] !== undefined) ? p["Active"] : p["active"];
-    return act === true || String(act).toLowerCase() === "true" || act === 1 || String(act).toLowerCase() === "yes";
-  })[0];
-
-  if (!activeProduct) {
-    return { success: false, error: "No active product found in Products sheet", step: "Product Selection" };
-  }
-
-  var productId = String(activeProduct["Product ID"] || activeProduct["id"] || activeProduct["productId"]);
-  var testUtr   = "TEST-UTR-" + Utilities.formatDate(new Date(), "GMT+5:30", "yyyyMMddHHmmss");
-
-  var testPayload = {
-    action: "createOrder",
-    customer: {
-      name:    "Kayal Samayal API Test",
-      mobile:  "9999999999",
-      email:   "test@kayalsamayal.test",
-      address: "API Test Address",
-      city:    "Kumbakonam",
-      state:   "Tamil Nadu",
-      pincode: "612001",
-      notes:   "AUTOMATED API TEST ORDER"
-    },
-    items:         [{ productId: productId, quantity: 1 }],
-    utr:           testUtr,
-    paymentMethod: "UPI"
+  Logger.log("testSampleOrder() is disabled to prevent accidental order creation and inventory deduction.");
+  return {
+    success: false,
+    disabled: true,
+    error: "testSampleOrder() is disabled to prevent accidental order creation and stock deduction. Please use the web store with Razorpay Test Mode keys for checkout testing.",
+    step: "Safety Guard"
   };
-
-  var orderResult = processOrderTransaction(ss, testPayload);
-
-  if (!orderResult || !orderResult.success) {
-    return {
-      success: false,
-      error:   orderResult ? (orderResult.error || orderResult.message) : "Failed to place sample order",
-      step:    orderResult ? orderResult.step : "processOrderTransaction"
-    };
-  }
-
-  var custSheet2 = getSheetSafely(ss, TABS.CUSTOMERS,   ["Customer"]);
-  var ordSheet2  = getSheetSafely(ss, TABS.ORDERS,      ["Order"]);
-  var itemSheet2 = getSheetSafely(ss, TABS.ORDER_ITEMS, ["OrderItems", "Order_Items"]);
-
-  var customers = getSheetRowsAsJSON(custSheet2);
-  var orders    = getSheetRowsAsJSON(ordSheet2);
-  var items     = getSheetRowsAsJSON(itemSheet2);
-
-  var testCustomer  = customers.filter(function(c) { return String(c["Mobile"]).trim() === "9999999999"; })[0];
-  var testOrder     = orders.filter(function(o) { return o["Order ID"] === orderResult.orderId; })[0];
-  var testOrderItem = items.filter(function(i) { return i["Order ID"] === orderResult.orderId; })[0];
-
-  var verification = {
-    success:             true,
-    orderId:             orderResult.orderId,
-    customerFound:       !!testCustomer,
-    customerId:          testCustomer ? testCustomer["Customer ID"] : null,
-    orderFound:          !!testOrder,
-    orderItemFound:      !!testOrderItem,
-    orderIdMatches:      !!(testOrder && testOrderItem && testOrder["Order ID"] === testOrderItem["Order ID"]),
-    paymentMethodStored: testOrder ? testOrder["Payment Method"]       : null,
-    paymentStatusStored: testOrder ? testOrder["Payment Status"]       : null,
-    utrStored:           testOrder ? testOrder["UTR"]                  : null,
-    upiIdStored:         testOrder ? testOrder["UPI ID"]               : null,
-    paymentSubmittedAt:  testOrder ? testOrder["Payment Submitted At"]  : null,
-    productIdUsed:       productId,
-    productNameUsed:     activeProduct["Product Name"] || activeProduct["name"],
-    subtotal:            orderResult.subtotal,
-    gst:                 orderResult.gst,
-    shipping:            orderResult.shipping,
-    grandTotal:          orderResult.grandTotal,
-    emailSent:           orderResult.emailSent
-  };
-
-  Logger.log(JSON.stringify(verification, null, 2));
-  return verification;
 }
 
 /**
@@ -1391,7 +1493,6 @@ function findSettingsHeaderRow(sheet, scanLimit) {
         for (var s = 0; s < sampleCells.length; s++) {
           var valStr = String(sampleCells[s][0] || "").trim().toLowerCase();
           if (KNOWN_SETTINGS_KEYS.indexOf(valStr) !== -1 ||
-              valStr.indexOf("instagram_reel_") === 0 ||
               valStr.indexOf("shipping_") === 0 ||
               valStr.indexOf("whatsapp_") === 0) {
             matchCount++;

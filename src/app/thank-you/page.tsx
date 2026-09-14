@@ -7,14 +7,16 @@ import { brand, formatINR, whatsappLink } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ShoppingBag, Printer, MessageCircle, Truck } from "lucide-react";
 import Link from "next/link";
-import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import React, { useState, Suspense } from "react";
 
-
-export default function ThankYouPage() {
+function ThankYouContent() {
   const { lastOrderResponse, customerDetails } = useCart();
+  const searchParams = useSearchParams();
 
+  const urlOrderId = searchParams.get("orderId");
   const [orderId] = useState(() => {
-    return lastOrderResponse?.orderId || `KS-${Math.floor(100000 + Math.random() * 900000)}`;
+    return urlOrderId || lastOrderResponse?.orderId || `KS-${Math.floor(100000 + Math.random() * 900000)}`;
   });
   const [orderDate] = useState(() => {
     return new Date().toLocaleDateString("en-IN", {
@@ -77,9 +79,15 @@ export default function ThankYouPage() {
               </div>
               <div>
                 <span className="text-xs font-bold text-muted-foreground uppercase">Payment Status</span>
-                <p className="font-bold text-xs sm:text-sm text-leaf flex items-center gap-1 mt-1">
-                  <CheckCircle2 className="h-4 w-4" /> Received & In Process
-                </p>
+                {lastOrderResponse?.paymentMethod === "Cash on Delivery" || lastOrderResponse?.paymentMethod === "COD" ? (
+                  <p className="font-bold text-xs sm:text-sm text-amber-600 flex items-center gap-1 mt-1">
+                    <CheckCircle2 className="h-4 w-4" /> Pending (Pay on Delivery)
+                  </p>
+                ) : (
+                  <p className="font-bold text-xs sm:text-sm text-leaf flex items-center gap-1 mt-1">
+                    <CheckCircle2 className="h-4 w-4" /> Paid via Razorpay
+                  </p>
+                )}
               </div>
             </div>
 
@@ -139,5 +147,13 @@ export default function ThankYouPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function ThankYouPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading order confirmation...</div>}>
+      <ThankYouContent />
+    </Suspense>
   );
 }

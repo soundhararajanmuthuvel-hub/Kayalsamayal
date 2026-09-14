@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeFromCart, cartSubtotal, cartCount } = useCart();
+  const { cart, updateQuantity, removeFromCart, cartSubtotal, cartCount, cartNotice, clearCartNotice } = useCart();
   const [coupon, setCoupon] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [couponError, setCouponError] = useState("");
@@ -60,6 +60,21 @@ export default function CartPage() {
         </section>
 
         <div className="container-page pt-8 sm:pt-12">
+          {cartNotice && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs sm:text-sm flex items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0" />
+                <span>{cartNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={clearCartNotice}
+                className="text-xs font-bold underline hover:opacity-80 shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           {cart.length === 0 ? (
             /* Empty State */
             <div className="max-w-md mx-auto text-center rounded-3xl border border-border/80 bg-card p-8 sm:p-12 shadow-[var(--shadow-card)] space-y-4">
@@ -68,7 +83,7 @@ export default function CartPage() {
               </div>
               <h2 className="font-display font-bold text-xl text-primary">Your Cart is Empty</h2>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Add authentic coastal spices, organic podis, or healthy noodle varieties to get started.
+                Add authentic coastal spices, traditional podis, or healthy noodle varieties to get started.
               </p>
               <div className="pt-2">
                 <Link href="/products">
@@ -244,7 +259,7 @@ export default function CartPage() {
 
                   <div className="flex items-center justify-center gap-1.5 text-[0.7rem] text-muted-foreground pt-1">
                     <ShieldCheck className="h-4 w-4 text-leaf" />
-                    <span>Safe & Verified Manual UPI / COD Payment</span>
+                    <span>100% Safe & Encrypted Razorpay Online Payment</span>
                   </div>
                 </div>
 

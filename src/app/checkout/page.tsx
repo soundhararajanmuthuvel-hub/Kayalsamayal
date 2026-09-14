@@ -4,29 +4,62 @@ import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart, getProductPrice } from "@/context/CartContext";
-import { getSettings, type OrderResponse } from "@/lib/api";
+import { type OrderResponse } from "@/lib/api";
 import { brand, formatINR, whatsappLink } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
 import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Copy,
-  Upload,
-  Trash2,
   Loader2,
   ArrowRight,
   ArrowLeft,
-  QrCode,
-  Truck,
-  Check,
+  CreditCard,
+  Banknote,
+  Lock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Script from "next/script";
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  image?: string;
+  order_id: string;
+  one_click_checkout?: boolean;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  notes?: Record<string, string>;
+  theme?: {
+    color?: string;
+  };
+  handler: (response: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+  }) => void;
+  modal?: {
+    ondismiss?: () => void;
+  };
+}
+
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay: new (options: RazorpayOptions) => any;
+  }
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartSubtotal, customerDetails, setCustomerDetails, placeOrder } = useCart();
+  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart } = useCart();
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirm">("shipping");
   const [formData, setFormData] = useState({
@@ -42,37 +75,12 @@ export default function CheckoutPage() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [paymentMethod, setPaymentMethod] = useState<"UPI" | "COD">("UPI");
-  const [utr, setUtr] = useState("");
-  const [isChecked, setIsChecked] = useState(false);
-  const [upiId, setUpiId] = useState("pay.kayalsamayal@okaxis");
-  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStatusText, setLoadingStatusText] = useState("");
   const [orderErr, setOrderErr] = useState("");
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
 
-  // Payment Screenshot
-  const [paymentScreenshotPreview, setPaymentScreenshotPreview] = useState<string | null>(null);
-  const [screenshotBase64, setScreenshotBase64] = useState<string>("");
-  const [screenshotName, setScreenshotName] = useState<string>("");
-
-  // Load store settings
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        const settings = await getSettings();
-        if (settings) {
-          const loadedUpi = settings.upi_id || settings.upiId;
-          if (loadedUpi && loadedUpi.trim()) {
-            setUpiId(loadedUpi.trim());
-          }
-        }
-      } catch (err) {
-        console.error("Settings load error:", err);
-      }
-    }
-    loadSettings();
-  }, []);
+  const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
 
   // Redirect if cart is empty and not on confirm step
   useEffect(() => {
@@ -84,36 +92,6 @@ export default function CheckoutPage() {
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
   const grandTotal = cartSubtotal + shipping;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!["image/jpeg", "image/png", "image/jpg", "image/webp"].includes(file.type)) {
-      alert("Please upload a JPG, PNG or WEBP image under 5 MB.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image file size should be less than 5 MB.");
-      return;
-    }
-
-    setScreenshotName(file.name);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setPaymentScreenshotPreview(base64);
-      setScreenshotBase64(base64);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCopyUPI = () => {
-    navigator.clipboard.writeText(upiId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const validateField = (name: string, value: string) => {
     let err = "";
@@ -165,58 +143,194 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handlePlaceFinalOrder = async () => {
+  /**
+   * Cash on Delivery (COD) Order Flow
+   */
+  const handleCodOrder = async () => {
     setOrderErr("");
-
-    if (paymentMethod === "UPI") {
-      if (!utr.trim()) {
-        setOrderErr("Please enter the 12-digit UPI Reference / UTR Number from your payment app.");
-        return;
-      }
-      if (!isChecked) {
-        setOrderErr("Please confirm that you have completed the UPI payment transfer.");
-        return;
-      }
-    }
-
     setLoading(true);
-    try {
-      const res = await placeOrder(
-        paymentMethod === "UPI" ? utr.trim() : "COD",
-        paymentMethod,
-        screenshotBase64,
-        screenshotName
-      );
+    setLoadingStatusText("Placing Cash on Delivery order...");
 
-      if (res && res.success) {
-        setOrderResponse(res);
-        setStep("confirm");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        setOrderErr(
-          res?.message ||
-            "Unable to place your order right now. Please check your internet connection and try again."
-        );
+    try {
+      const codRes = await fetch("/api/orders/cod", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer: {
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            mobile: formData.mobile,
+            email: formData.email,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pincode: formData.pincode,
+            notes: formData.notes,
+          },
+          items: cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const codData = await codRes.json();
+      if (!codRes.ok || !codData.success) {
+        throw new Error(codData.error || "Failed to place Cash on Delivery order. Please try again or reach out on WhatsApp.");
       }
-    } catch (e) {
-      console.error(e);
-      setOrderErr("A network error occurred. Please try again or reach out on WhatsApp.");
+
+      clearCart();
+      setOrderResponse(codData.orderResponse);
+      setStep("confirm");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err: unknown) {
+      console.error("COD placement error:", err);
+      const msg = err instanceof Error ? err.message : "Failed to place Cash on Delivery order.";
+      setOrderErr(msg);
     } finally {
       setLoading(false);
+      setLoadingStatusText("");
     }
   };
 
-  // Dynamic UPI Intent String
-  const upiIntentUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
-    brand.legalName
-  )}&am=${grandTotal}&cu=INR&tn=${encodeURIComponent("Kayal Samayal Order")}`;
+  /**
+   * Razorpay Online Payment Flow
+   */
+  const handleOnlinePayment = async () => {
+    setOrderErr("");
+    setLoading(true);
+    setLoadingStatusText("Preparing secure payment...");
 
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(
-    upiIntentUrl
-  )}`;
+    try {
+      // 1. Create Razorpay order on server with validated pricing
+      const createRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+          customer: {
+            name: `${formData.firstName} ${formData.lastName}`.trim(),
+            mobile: formData.mobile,
+            email: formData.email,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pincode: formData.pincode,
+            notes: formData.notes,
+          },
+        }),
+      });
+
+      const orderData = await createRes.json();
+      if (!createRes.ok || !orderData.success) {
+        throw new Error(orderData.error || "Could not initiate secure payment. Please try again or contact support on WhatsApp.");
+      }
+
+      if (typeof window.Razorpay === "undefined") {
+        throw new Error("Razorpay payment gateway failed to load. Please check your internet connection.");
+      }
+
+      setLoadingStatusText("Opening secure payment...");
+
+      // 2. Configure official Razorpay Checkout
+      const options: RazorpayOptions = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || "INR",
+        name: brand.name,
+        description: `Order Payment (${cart.length} items)`,
+        image: "https://www.kayalsamayal.in/logo.png",
+        order_id: orderData.orderId,
+        one_click_checkout: false,
+        prefill: {
+          name: `${formData.firstName} ${formData.lastName}`.trim(),
+          contact: formData.mobile,
+          email: formData.email,
+        },
+        theme: {
+          color: "#8B2500", // Spice red brand color
+        },
+        modal: {
+          ondismiss: () => {
+            setLoading(false);
+            setLoadingStatusText("");
+            setOrderErr("Payment was not completed. Your cart is still saved. You can try again.");
+          },
+        },
+        handler: async (response) => {
+          // 3. Server-side verification of payment signature using server-stored order token
+          setLoadingStatusText("Confirming your payment...");
+          try {
+            const verifyRes = await fetch("/api/razorpay/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderToken: orderData.orderToken,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                customer: {
+                  name: `${formData.firstName} ${formData.lastName}`.trim(),
+                  mobile: formData.mobile,
+                  email: formData.email,
+                  address: formData.address,
+                  city: formData.city,
+                  state: formData.state,
+                  pincode: formData.pincode,
+                  notes: formData.notes,
+                },
+                items: cart.map((item) => ({
+                  productId: item.product.id,
+                  quantity: item.quantity,
+                })),
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error(verifyData.error || "Payment verification failed. Please contact support.");
+            }
+
+            clearCart();
+            setOrderResponse(verifyData.orderResponse);
+            setStep("confirm");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } catch (verErr: unknown) {
+            console.error("Verification error:", verErr);
+            const msg = verErr instanceof Error ? verErr.message : "Payment verification failed.";
+            setOrderErr(msg);
+          } finally {
+            setLoading(false);
+            setLoadingStatusText("");
+          }
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (failedRes: { error?: { description?: string } }) => {
+        setLoading(false);
+        setLoadingStatusText("");
+        setOrderErr(
+          failedRes?.error?.description || "Payment was not completed. Your cart is still saved. You can try again."
+        );
+      });
+      rzp.open();
+    } catch (err: unknown) {
+      console.error("Payment initiation error:", err);
+      const msg = err instanceof Error ? err.message : "Unable to start secure payment. Please try again.";
+      setOrderErr(msg);
+      setLoading(false);
+      setLoadingStatusText("");
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
       <Header />
       <main className="flex-1 pb-16 sm:pb-24">
         
@@ -272,11 +386,21 @@ export default function CheckoutPage() {
               <div className="rounded-2xl bg-surface border border-border p-4 text-left text-xs space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Payment Mode:</span>
-                  <span className="font-bold text-foreground">{paymentMethod === "UPI" ? "UPI (Manual Verification)" : "Cash on Delivery / Pay Later"}</span>
+                  <span className="font-bold text-foreground">
+                    {orderResponse?.paymentMethod || (paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment (Razorpay)")}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Payment Status:</span>
+                  <span className={`font-bold ${orderResponse?.paymentStatus === "Paid" ? "text-leaf" : "text-secondary"}`}>
+                    {orderResponse?.paymentStatus || (paymentMethod === "cod" ? "Pending (Pay on Delivery)" : "Paid")}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Delivery Address:</span>
-                  <span className="font-bold text-foreground truncate max-w-[240px]">{customerDetails.address}, {customerDetails.city}</span>
+                  <span className="font-bold text-foreground truncate max-w-[240px]">
+                    {customerDetails.address}, {customerDetails.city}
+                  </span>
                 </div>
               </div>
 
@@ -469,180 +593,89 @@ export default function CheckoutPage() {
                       </button>
                     </div>
 
-                    {/* Payment Mode Selector */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("UPI")}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
-                          paymentMethod === "UPI"
-                            ? "border-secondary bg-accent shadow-xs"
-                            : "border-border bg-surface hover:bg-card"
+                    {/* Payment Method Selector Cards */}
+                    <div className="space-y-4">
+                      {/* OPTION 1: PAY ONLINE VIA RAZORPAY */}
+                      <div
+                        onClick={() => setPaymentMethod("razorpay")}
+                        className={`rounded-2xl border-2 p-5 transition-all cursor-pointer space-y-3 ${
+                          paymentMethod === "razorpay"
+                            ? "border-secondary bg-accent shadow-xs ring-1 ring-secondary/30"
+                            : "border-border bg-card hover:border-secondary/40"
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-display font-bold text-base text-primary">
-                            Option 1: Pay via UPI
-                          </span>
-                          <QrCode className="h-5 w-5 text-secondary" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              paymentMethod === "razorpay" ? "border-secondary" : "border-muted-foreground"
+                            }`}>
+                              {paymentMethod === "razorpay" && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="font-display font-bold text-base text-primary">
+                                Pay Online via Razorpay
+                              </h3>
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Instant confirmation • UPI, Cards, Net Banking, Wallets
+                              </p>
+                            </div>
+                          </div>
+                          <CreditCard className="h-6 w-6 text-secondary" />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Scan QR, pay on GPay / PhonePe / Paytm, and enter UTR reference.
-                        </p>
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod("COD")}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${
-                          paymentMethod === "COD"
-                            ? "border-secondary bg-accent shadow-xs"
-                            : "border-border bg-surface hover:bg-card"
+                        {paymentMethod === "razorpay" && (
+                          <div className="border-t border-border/80 pt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                            <Lock className="h-3.5 w-3.5 text-leaf shrink-0 mt-0.5" />
+                            <span>Encrypted 256-bit secure transaction via Razorpay gateway.</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* OPTION 2: CASH ON DELIVERY (COD) */}
+                      <div
+                        onClick={() => setPaymentMethod("cod")}
+                        className={`rounded-2xl border-2 p-5 transition-all cursor-pointer space-y-3 ${
+                          paymentMethod === "cod"
+                            ? "border-secondary bg-accent shadow-xs ring-1 ring-secondary/30"
+                            : "border-border bg-card hover:border-secondary/40"
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-display font-bold text-base text-primary">
-                            Option 2: Cash on Delivery / Pay Later
-                          </span>
-                          <Truck className="h-5 w-5 text-secondary" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              paymentMethod === "cod" ? "border-secondary" : "border-muted-foreground"
+                            }`}>
+                              {paymentMethod === "cod" && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="font-display font-bold text-base text-primary">
+                                Cash on Delivery (COD)
+                              </h3>
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Pay with Cash or UPI upon doorstep delivery
+                              </p>
+                            </div>
+                          </div>
+                          <Banknote className="h-6 w-6 text-secondary" />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Skip online payment now. Pay cash upon doorstep delivery.
-                        </p>
-                      </button>
+
+                        {paymentMethod === "cod" && (
+                          <div className="border-t border-border/80 pt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                            <ShieldCheck className="h-3.5 w-3.5 text-leaf shrink-0 mt-0.5" />
+                            <span>Inspect your authentic spices batch upon delivery before paying.</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* OPTION 1: UPI INSTRUCTIONS & FORM */}
-                    {paymentMethod === "UPI" && (
-                      <div className="rounded-2xl border border-border/80 bg-surface p-5 sm:p-7 space-y-6 animate-in fade-in">
-                        <div className="flex flex-col sm:flex-row items-center gap-6 justify-center">
-                          {/* QR Code */}
-                          <div className="bg-white p-3 rounded-2xl border border-border shadow-xs shrink-0 text-center">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={qrImageUrl}
-                              alt="Kayal Samayal UPI Payment QR Code"
-                              className="h-44 w-44 object-contain"
-                            />
-                            <span className="text-[0.65rem] text-muted-foreground font-bold mt-1 block">
-                              Scan with any UPI App
-                            </span>
-                          </div>
-
-                          {/* UPI ID & App Link */}
-                          <div className="space-y-3.5 text-center sm:text-left flex-1">
-                            <div className="space-y-1">
-                              <span className="text-xs text-muted-foreground font-semibold">Amount to Pay:</span>
-                              <p className="font-display font-black text-2xl text-secondary">{formatINR(grandTotal)}</p>
-                            </div>
-
-                            <div className="space-y-1">
-                              <span className="text-xs text-muted-foreground font-semibold">UPI ID:</span>
-                              <div className="flex items-center gap-2">
-                                <code className="bg-card px-3 py-1.5 rounded-lg font-mono text-xs font-bold text-primary border border-border">
-                                  {upiId}
-                                </code>
-                                <button
-                                  type="button"
-                                  onClick={handleCopyUPI}
-                                  className="p-1.5 rounded-lg border border-border bg-card hover:bg-accent text-secondary text-xs flex items-center gap-1 font-bold"
-                                >
-                                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                                  <span>{copied ? "Copied" : "Copy"}</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div>
-                              <a href={upiIntentUrl} className="inline-block">
-                                <Button variant="plum" size="sm" className="gap-1.5 font-bold">
-                                  <span>Pay Directly via UPI App</span>
-                                </Button>
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Transaction UTR & Screenshot */}
-                        <div className="space-y-4 pt-4 border-t border-border">
-                          <div className="space-y-1">
-                            <label className="text-xs font-bold text-foreground flex items-center gap-1">
-                              <span>12-Digit UPI Transaction / UTR Ref ID *</span>
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. 328109823471"
-                              value={utr}
-                              onChange={(e) => setUtr(e.target.value)}
-                              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm font-mono font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
-                            />
-                            <p className="text-[0.65rem] text-muted-foreground">
-                              Find the 12-digit UPI Reference Number inside your payment receipt on GPay, PhonePe, or Paytm.
-                            </p>
-                          </div>
-
-                          {/* Screenshot Upload */}
-                          <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">
-                              Upload Payment Screenshot (Optional)
-                            </label>
-                            {paymentScreenshotPreview ? (
-                              <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={paymentScreenshotPreview}
-                                  alt="Screenshot Preview"
-                                  className="h-14 w-14 object-cover rounded-lg border border-border"
-                                />
-                                <span className="text-xs font-medium truncate flex-1">{screenshotName}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPaymentScreenshotPreview(null);
-                                    setScreenshotBase64("");
-                                    setScreenshotName("");
-                                  }}
-                                  className="text-destructive p-1.5"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ) : (
-                              <label className="flex items-center justify-center gap-2 p-4 rounded-xl border border-dashed border-border bg-card hover:bg-accent/50 cursor-pointer text-xs font-bold text-secondary">
-                                <Upload className="h-4 w-4" />
-                                <span>Upload Payment Screenshot (JPG, PNG under 5MB)</span>
-                                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                              </label>
-                            )}
-                          </div>
-
-                          {/* Checkbox */}
-                          <label className="flex items-start gap-2.5 cursor-pointer pt-2">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => setIsChecked(e.target.checked)}
-                              className="mt-0.5 h-4 w-4 rounded text-secondary focus:ring-secondary cursor-pointer"
-                            />
-                            <span className="text-xs text-foreground font-medium">
-                              I have completed the UPI payment transfer of <strong>{formatINR(grandTotal)}</strong> to Kayal Samayal.
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* OPTION 2: COD / PAY LATER INSTRUCTIONS */}
-                    {paymentMethod === "COD" && (
-                      <div className="rounded-2xl border border-border/80 bg-surface p-5 sm:p-7 space-y-3 animate-in fade-in">
-                        <h3 className="font-display font-bold text-base text-primary">
-                          Pay Cash on Doorstep Delivery
-                        </h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                          Your order will be packed and dispatched directly. You can inspect the package and pay the delivery executive in cash or via UPI at the time of delivery.
-                        </p>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-surface border border-border text-xs">
+                      <span className="text-muted-foreground font-medium">Authoritative Payable Total:</span>
+                      <span className="font-display font-black text-secondary text-base">{formatINR(grandTotal)}</span>
+                    </div>
 
                     {orderErr && (
                       <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold flex items-center gap-2">
@@ -657,6 +690,7 @@ export default function CheckoutPage() {
                         variant="outline"
                         size="touch"
                         onClick={() => setStep("shipping")}
+                        disabled={loading}
                         className="font-bold"
                       >
                         Back to Shipping
@@ -667,18 +701,23 @@ export default function CheckoutPage() {
                         variant="plum"
                         size="touch"
                         disabled={loading}
-                        onClick={handlePlaceFinalOrder}
+                        onClick={paymentMethod === "razorpay" ? handleOnlinePayment : handleCodOrder}
                         className="font-bold gap-2 px-8 shadow-md"
                       >
                         {loading ? (
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            <span>Submitting Order…</span>
+                            <span>{loadingStatusText || "Processing…"}</span>
+                          </>
+                        ) : paymentMethod === "razorpay" ? (
+                          <>
+                            <Lock className="h-4 w-4" />
+                            <span>Pay {formatINR(grandTotal)} Securely</span>
                           </>
                         ) : (
                           <>
-                            <span>{paymentMethod === "UPI" ? "Confirm Payment & Place Order" : "Place Order (Pay on Delivery)"}</span>
-                            <ArrowRight className="h-4 w-4" />
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>Confirm COD Order ({formatINR(grandTotal)})</span>
                           </>
                         )}
                       </Button>
@@ -742,3 +781,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

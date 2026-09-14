@@ -16,7 +16,7 @@ const pillars = [
     icon: Flame,
     num: "1",
     title: "Stone Ground Taste",
-    desc: "Slow, low-heat grinding preserves the volatile natural essential oils of each seed, keeping aroma and medicinal heat intact.",
+    desc: "Slow, low-heat grinding preserves the volatile natural essential oils of each seed, keeping aroma and authentic spice warmth intact.",
     color: "bg-secondary-container text-secondary",
   },
   {

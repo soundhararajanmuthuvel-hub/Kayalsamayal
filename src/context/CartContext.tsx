@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Product } from "@/data/products";
-import { createOrder, OrderInput, OrderResponse } from "@/lib/api";
+import { OrderResponse } from "@/lib/api";
 
 export interface CartItem {
   product: Product;
@@ -36,8 +36,16 @@ interface CartContextType {
   setCustomerDetails: React.Dispatch<React.SetStateAction<CustomerDetails>>;
   checkoutStep: CheckoutStep;
   setCheckoutStep: (step: CheckoutStep) => void;
-  /** Place the order. Pass utr (required for UPI) and paymentMethod (defaults to UPI). */
-  placeOrder: (utr: string, paymentMethod?: "UPI" | "COD", screenshotBase64?: string, screenshotName?: string) => Promise<OrderResponse | null>;
+  /** Place the order via Razorpay Online or COD. */
+  placeOrder: (orderData: {
+    paymentMethod: "Razorpay Online" | "COD";
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    razorpaySignature?: string;
+    razorpayAmount?: number;
+  }) => Promise<OrderResponse | null>;
+  cartNotice: string;
+  clearCartNotice: () => void;
   lastOrderResponse: OrderResponse | null;
 }
 
@@ -68,17 +76,54 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     address: "", city: "", state: "", pincode: "", notes: "",
   });
 
-  // Restore cart from localStorage on mount
+  const [cartNotice, setCartNotice] = useState<string>("");
+
+  // Restore cart from localStorage on mount with strict product validation & migration
   useEffect(() => {
     const savedCart = localStorage.getItem("kayal_samayal_cart");
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart);
-        setTimeout(() => {
-          setCart(parsed);
-        }, 0);
+        if (Array.isArray(parsed)) {
+          // Dynamic import / check against authoritative product catalog
+          import("@/data/products").then(({ products: catalog }) => {
+            const validCart: CartItem[] = [];
+            let removedCount = 0;
+
+            for (const item of parsed) {
+              if (!item || !item.product) continue;
+              const rawId = String(item.product.id || "").trim();
+              const rawName = String(item.product.name || "").trim().toLowerCase();
+
+              // Explicitly filter out stale development items (such as "sample" ID "12")
+              if (rawId === "12" || rawName === "sample") {
+                removedCount++;
+                continue;
+              }
+
+              // Verify against catalog
+              const match = catalog.find((p) => p.id === rawId);
+              if (match && match.active !== false) {
+                validCart.push({
+                  product: match,
+                  quantity: Math.max(1, Math.min(Number(item.quantity) || 1, match.stock ?? 999)),
+                });
+              } else {
+                removedCount++;
+              }
+            }
+
+            if (removedCount > 0) {
+              console.warn(`[Cart] Purged ${removedCount} stale/inactive item(s) from previous session.`);
+              setCartNotice("One or more items in your previous cart are no longer available and were removed.");
+              localStorage.setItem("kayal_samayal_cart", JSON.stringify(validCart));
+            }
+            setCart(validCart);
+          });
+        }
       } catch (e) {
         console.error("Failed to parse cart data", e);
+        localStorage.removeItem("kayal_samayal_cart");
       }
     }
   }, []);
@@ -136,53 +181,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartSubtotal = cart.reduce((total, item) => total + getProductPrice(item.product) * item.quantity, 0);
 
   /**
-   * Place the order with the customer-entered UTR.
-   * Sets checkoutStep to "loading" while the API call is in flight.
-   * On success → "confirm". On failure → returns to "payment" step.
-   * Email failure from the backend does NOT cause the order to fail.
+   * Client-side direct order placement is intentionally disabled for security.
+   * All orders must be verified server-side through /api/razorpay/verify-payment.
    */
-  const placeOrder = async (
-    utr: string,
-    paymentMethod: "UPI" | "COD" = "UPI",
-    screenshotBase64?: string,
-    screenshotName?: string
-  ): Promise<OrderResponse | null> => {
-    setCheckoutStep("loading");
-
-    const orderInput: OrderInput = {
-      customer: customerDetails,
-      items: cart.map((item) => ({
-        productId: item.product.id,
-        quantity:  item.quantity,
-      })),
-      utr:           utr,
-      paymentMethod: paymentMethod,
-      screenshotBase64: screenshotBase64,
-      screenshotName:   screenshotName,
+  const placeOrder = async (_orderData: {
+    paymentMethod: "Razorpay Online" | "COD";
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    razorpaySignature?: string;
+    razorpayAmount?: number;
+  }): Promise<OrderResponse | null> => {
+    console.warn("Direct placeOrder called from client. Orders must be verified server-side.");
+    const errResponse: OrderResponse = {
+      success: false,
+      code: "VERIFICATION_REQUIRED",
+      orderId: "",
+      customerId: "",
+      subtotal: 0,
+      shipping: 0,
+      discount: 0,
+      gst: 0,
+      grandTotal: 0,
+      paymentStatus: "Pending",
+      paymentMethod: _orderData.paymentMethod,
+      orderStatus: "Pending",
+      items: [],
+      message: "Payment must be verified server-side before order creation.",
     };
-
-    try {
-      const response = await createOrder(orderInput);
-      setLastOrderResponse(response);
-      if (response && response.success) {
-        clearCart();
-        setCheckoutStep("confirm");
-      } else {
-        setCheckoutStep("payment"); // back to payment step so customer can retry
-      }
-      return response;
-    } catch (e) {
-      console.error("Order creation error:", e);
-      setCheckoutStep("payment");
-      return {
-        success: false, code: "NETWORK_ERROR",
-        orderId: "", customerId: "",
-        subtotal: 0, shipping: 0, discount: 0, gst: 0, grandTotal: 0,
-        paymentStatus: "Pending", paymentMethod: paymentMethod === "COD" ? "COD / Pay Later" : "UPI", orderStatus: "Pending",
-        items: [],
-        message: "We couldn't connect to our order system. Please check your connection and try again.",
-      };
-    }
+    setLastOrderResponse(errResponse);
+    return errResponse;
   };
 
   return (
@@ -194,6 +221,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         customerDetails, setCustomerDetails,
         checkoutStep, setCheckoutStep,
         placeOrder,
+        cartNotice,
+        clearCartNotice: () => setCartNotice(""),
         lastOrderResponse,
       }}
     >

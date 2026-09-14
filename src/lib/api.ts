@@ -29,10 +29,12 @@ export interface OrderItemInput {
 export interface OrderInput {
   customer: CustomerInput;
   items: OrderItemInput[];
-  utr: string;
-  paymentMethod: "UPI" | "COD";
-  screenshotBase64?: string;
-  screenshotName?: string;
+  paymentMethod: "Razorpay Online" | "COD" | "Cash on Delivery";
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  razorpayAmount?: number;
+  serverAuthToken?: string;
 }
 
 export interface OrderResponse {
@@ -46,10 +48,13 @@ export interface OrderResponse {
   grandTotal: number;
   paymentStatus: string;
   paymentMethod?: string;
+  paymentGateway?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   orderStatus: string;
-  utr?: string;
   emailSent?: boolean;
-  items: Array<{
+  idempotent?: boolean;
+  items?: Array<{
     productId: string;
     productName: string;
     tier: string;
@@ -253,7 +258,7 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
         action: payload.action,
         customer: payload.customer,
         items:    payload.items,
-        utr:      payload.utr,
+        paymentMethod: payload.paymentMethod,
         response: json,
       });
     }
@@ -270,7 +275,7 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
       success: false, code: "NETWORK_ERROR",
       orderId: "", customerId: "",
       subtotal: 0, shipping: 0, discount: 0, gst: 0, grandTotal: 0,
-      paymentStatus: "Pending Verification", paymentMethod: "UPI", orderStatus: "Pending",
+      paymentStatus: "Failed", paymentMethod: order.paymentMethod, orderStatus: "Pending",
       items: [],
       message: "We couldn't connect to our order system. Please check your connection and try again.",
     };

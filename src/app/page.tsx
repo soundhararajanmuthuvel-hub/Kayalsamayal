@@ -12,14 +12,14 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "Traditional Masala & South Indian Spices | Kayal Samayal",
   description:
-    "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500. Order Kayal Samayal Today!",
+    "Buy Authentic Traditional Masalas & South Indian Spices Online. 35+ Traditional Varieties with Heritage Recipes. Free Shipping Above ₹500. Order Kayal Samayal Today!",
   alternates: {
     canonical: "https://www.kayalsamayal.in",
   },
   openGraph: {
     title: "Traditional Masala & South Indian Spices | Kayal Samayal",
     description:
-      "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500. Order Kayal Samayal Today!",
+      "Buy Authentic Traditional Masalas & South Indian Spices Online. 35+ Traditional Varieties with Heritage Recipes. Free Shipping Above ₹500. Order Kayal Samayal Today!",
     url: "https://www.kayalsamayal.in",
     siteName: "Kayal Samayal",
     locale: "en_IN",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Traditional Masala & South Indian Spices | Kayal Samayal",
     description:
-      "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500. Order Kayal Samayal Today!",
+      "Buy Authentic Traditional Masalas & South Indian Spices Online. 35+ Traditional Varieties with Heritage Recipes. Free Shipping Above ₹500. Order Kayal Samayal Today!",
     images: ["https://www.kayalsamayal.in/icon-512x512.png"],
   },
 };
@@ -57,7 +57,7 @@ export default function Home() {
           "Kayal Samayal Spices",
         ],
         "description":
-          "Buy 100% Pure Handmade Traditional Masala & South Indian Spices Online. 35+ Organic Masala Varieties - No Preservatives. Free Shipping Above ₹500.",
+          "Buy Authentic Traditional Masalas & South Indian Spices Online. 35+ Traditional Varieties with Heritage Recipes. Free Shipping Above ₹500.",
         "publisher": {
           "@id": "https://www.kayalsamayal.in/#organization",
         },
@@ -81,7 +81,7 @@ export default function Home() {
         "telephone": "+91 9003860616",
         "email": "kpmsamayal@gmail.com",
         "taxID": "33IKWPS3211P1ZB",
-        "priceRange": "₹140 - ₹500",
+        "priceRange": "₹50 - ₹320",
         "address": {
           "@type": "PostalAddress",
           "streetAddress": "No.504 Housing Board Ph1",

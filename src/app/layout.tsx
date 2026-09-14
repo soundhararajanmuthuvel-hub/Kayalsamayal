@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     "South Indian masala",
     "homemade masala",
     "South Indian spices",
-    "organic spices India",
+    "authentic spices India",
     "Kayal Samayal",
     "Kayal Samayal masala",
     "Kayalpattinam masala",

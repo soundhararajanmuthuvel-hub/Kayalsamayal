@@ -19,7 +19,7 @@ export const brand = {
   },
   site: "https://www.kayalsamayal.in",
   freeShippingOver: 500,
-  shippingFlat: 50,
+  shippingFlat: 60,
 };
 
 export const whatsappLink = (message = "Hello Kayal Samayal, I would like to place an order.") =>

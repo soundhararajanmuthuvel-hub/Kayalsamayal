@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Loader2, ShoppingBag, Star, Sparkles } from "lucide-react";
+import { Loader2, ShoppingBag, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PriceDisplay } from "./PriceDisplay";
 import { QuantitySelector } from "./QuantitySelector";
@@ -96,16 +96,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
               PREMIUM
             </span>
           ) : null}
-        </div>
-
-        {/* Badges Right (Rating) */}
-        <div className="absolute top-2.5 right-2.5 z-10">
-          {!isOutOfStock && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-xs px-2 py-0.5 text-[0.7rem] font-bold text-foreground shadow-xs border border-border/60">
-              <Star className="h-3 w-3 fill-gold text-gold" />
-              <span>4.9</span>
-            </span>
-          )}
         </div>
       </Link>
 

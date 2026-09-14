@@ -98,17 +98,9 @@ export default function Hero() {
               </div>
 
               {/* Quick Micro Social Proof */}
-              <div className="flex items-center gap-3 pt-2 text-muted-foreground text-xs">
-                <div className="flex -space-x-2">
-                  <span className="w-7 h-7 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-[0.65rem] shadow-xs">
-                    4.9★
-                  </span>
-                  <span className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-[0.65rem] shadow-xs">
-                    12k
-                  </span>
-                </div>
+              <div className="flex items-center gap-2 pt-2 text-muted-foreground text-xs">
                 <p>
-                  Loved by <span className="font-bold text-foreground">12,800+ homes</span> across Tamil Nadu, Bengaluru &amp; Pan-India
+                  Trusted by families across <span className="font-bold text-foreground">Tamil Nadu, Bengaluru &amp; Pan-India</span>
                 </p>
               </div>
             </div>
@@ -199,7 +191,7 @@ export default function Hero() {
             </div>
             <div className="flex items-center justify-center gap-2 py-1 text-xs font-semibold text-foreground">
               <CreditCard className="h-4 w-4 text-primary" />
-              <span>UPI & Cash on Delivery</span>
+              <span>Razorpay Online Payment</span>
             </div>
           </div>
         </div>

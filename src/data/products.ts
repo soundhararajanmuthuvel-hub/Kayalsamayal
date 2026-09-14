@@ -238,8 +238,8 @@ export const products: Product[] = [
     image: "/assets/kayal-marunthu-satha-podi.jpg",
     tier: "regular",
     description:
-      "A traditional healing rice podi made from medicinal herbs and warming spices — both nourishing and flavourful.",
-    highlights: ["Medicinal herbs", "Healing properties", "Traditional recipe"],
+      "A traditional herbal rice podi prepared with culinary herbs and warming spices — both nourishing and flavourful.",
+    highlights: ["Traditional herbs", "Heritage recipe", "Aromatic warming spices"],
     whatsappMessage: wa("Hi! I'd like to order Kayal Marunthu Satha Podi. Please share details."),
   },
   {
@@ -312,8 +312,8 @@ export const products: Product[] = [
     tier: "premium",
     pairedWith: "golden-milk-magic-regular",
     description:
-      "Premium Golden Milk with organic turmeric, long pepper, and ashwagandha for enhanced anti-inflammatory and adaptogenic benefits.",
-    highlights: ["Organic turmeric", "Ashwagandha", "Adaptogenic blend"],
+      "Premium Golden Milk crafted with traditional turmeric, long pepper, and ashwagandha for a rich, warming beverage.",
+    highlights: ["Traditional turmeric", "Ashwagandha", "Aromatic spice blend"],
     whatsappMessage: wa("Hi! I'd like to order Golden Milk Magic (Premium). Please share details."),
   },
   {
@@ -346,8 +346,8 @@ export const products: Product[] = [
     tier: "regular",
     pairedWith: "root-power-premium",
     description:
-      "A potent blend of traditional root herbs — turmeric, ginger, galangal, and more — to support immunity and vitality.",
-    highlights: ["Root herb blend", "Immunity support", "Traditional wisdom"],
+      "A potent blend of traditional root herbs — turmeric, ginger, galangal, and more — to support everyday wellness.",
+    highlights: ["Root herb blend", "Everyday wellness", "Traditional wisdom"],
     whatsappMessage: wa("Hi! I'd like to order Root Power (Regular). Please share details."),
   },
   {
@@ -358,8 +358,8 @@ export const products: Product[] = [
     tier: "premium",
     pairedWith: "root-power-regular",
     description:
-      "Premium Root Power with a richer concentration of rare roots and certified organic herbs for maximum therapeutic benefit.",
-    highlights: ["Rare roots", "Certified organic", "Maximum potency"],
+      "Premium Root Power with a richer concentration of select traditional roots and botanical ingredients.",
+    highlights: ["Selected roots", "Heritage botanical blend", "Rich aroma"],
     whatsappMessage: wa("Hi! I'd like to order Root Power (Premium). Please share details."),
   },
   {
@@ -393,8 +393,8 @@ export const products: Product[] = [
     image: "/assets/slim-sakthi.jpg",
     tier: "regular",
     description:
-      "A traditional herbal slimming blend curated from metabolism-supporting herbs and seeds — supporting a healthy lifestyle naturally.",
-    highlights: ["Herbal slimming blend", "Metabolism support", "No stimulants"],
+      "A traditional multi-seed and herbal health blend crafted with roasted millets, horsegram, and flax seeds for daily nutrition.",
+    highlights: ["Roasted millets & seeds", "Traditional nutrition", "No stimulants"],
     whatsappMessage: wa("Hi! I'd like to order Slim Sakthi. Please share details."),
   },
   {

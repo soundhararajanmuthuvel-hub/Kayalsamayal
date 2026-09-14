@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title       = `${product.name} | Buy Online | Kayal Samayal`;
   const description =
     product.description ||
-    `Buy 100% pure authentic ${product.name} from Kayal Samayal. Traditional stone-ground South Indian recipe with no artificial colours or preservatives. Order online today!`;
+    `Buy authentic ${product.name} from Kayal Samayal. Traditional stone-ground South Indian recipe with no artificial colours or preservatives. Order online today!`;
   const canonicalUrl = `https://www.kayalsamayal.in/products/${product.id}`;
   const imageUrl     = product.image
     ? `https://www.kayalsamayal.in${product.image}`

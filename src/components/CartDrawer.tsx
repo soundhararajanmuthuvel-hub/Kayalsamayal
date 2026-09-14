@@ -215,7 +215,7 @@ export default function CartDrawer() {
 
               <div className="flex items-center justify-center gap-1 text-[0.65rem] text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5 text-leaf" />
-                <span>Manual UPI QR & COD Payment Supported</span>
+                <span>100% Safe Razorpay Online Payment Supported</span>
               </div>
             </div>
           )}
