@@ -5,7 +5,7 @@ import { createOrderToken } from "@/lib/orderToken";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { items, customer } = body;
+    const { items, customer, couponCode } = body;
 
     if (!customer || !customer.name || !customer.mobile) {
       return NextResponse.json(
@@ -14,8 +14,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Authoritative Pricing Calculation on Server
-    const calc = calculateOrderTotals(items);
+    // 1. Authoritative Pricing Calculation on Server (including coupon discount)
+    const calc = calculateOrderTotals(items, {
+      couponCode,
+      customerMobile: customer.mobile,
+    });
     if (!calc.valid) {
       return NextResponse.json(
         { success: false, error: calc.error || "Invalid cart items." },
@@ -23,7 +26,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!Number.isFinite(calc.grandTotal) || calc.grandTotal <= 0) {
+    if (!Number.isFinite(calc.grandTotal) || calc.grandTotal < 0) {
       console.error("[Razorpay Order Create] Invalid payable grandTotal:", calc.grandTotal);
       return NextResponse.json(
         { success: false, error: "Invalid payable order total." },
@@ -31,8 +34,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Free-order path: 100% coupon (or similar) results in ₹0 grand total.
+    // Never send ₹0 to Razorpay — return freeOrder flag; checkout will use /api/orders/free.
+    if (calc.grandTotal === 0) {
+      return NextResponse.json({
+        success: true,
+        freeOrder: true,
+        subtotal: calc.subtotal,
+        discount: calc.discount,
+        shipping: calc.shipping,
+        couponCode: calc.couponCode,
+        gst: calc.gstTotal,
+        grandTotal: 0,
+      });
+    }
+
     console.log(
-      `[Razorpay Order Create] Subtotal: ₹${calc.subtotal}, Shipping: ₹${calc.shipping}, GST: ₹${calc.gstTotal}, GrandTotal: ₹${calc.grandTotal}, Paise: ${calc.amountInPaise}`
+      `[Razorpay Order Create] Subtotal: ₹${calc.subtotal}, Discount: ₹${calc.discount} (${calc.couponCode || "None"}), Shipping: ₹${calc.shipping}, GST: ₹${calc.gstTotal}, GrandTotal: ₹${calc.grandTotal}, Paise: ${calc.amountInPaise}`
     );
 
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
@@ -106,11 +124,12 @@ export async function POST(req: NextRequest) {
       `[Razorpay Order Create] Successfully created order ${orderData.id} for ₹${calc.grandTotal} (${orderData.amount} paise)`
     );
 
-    // 3. Issue server-signed token locking razorpayOrderId + amount
+    // 3. Issue server-signed token locking razorpayOrderId + amount + couponCode
     const orderToken = createOrderToken({
       razorpayOrderId: orderData.id,
       expectedAmountPaise: calc.amountInPaise,
       customerMobile: customer.mobile,
+      couponCode: calc.couponCode,
       timestamp: Date.now(),
     });
 
@@ -123,6 +142,8 @@ export async function POST(req: NextRequest) {
       keyId,
       subtotal: calc.subtotal,
       shipping: calc.shipping,
+      discount: calc.discount,
+      couponCode: calc.couponCode,
       gst: calc.gstTotal,
       grandTotal: calc.grandTotal,
     });

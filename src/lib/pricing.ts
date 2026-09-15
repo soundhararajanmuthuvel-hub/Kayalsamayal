@@ -1,5 +1,6 @@
 import { products } from "@/data/products";
 import { brand } from "@/lib/brand";
+import { evaluateCoupon, CouponValidationResult } from "@/lib/coupons";
 
 export interface OrderItemCalculation {
   productId: string;
@@ -20,6 +21,8 @@ export interface OrderCalculationResult {
   gstTotal: number;
   shipping: number;
   discount: number;
+  couponCode?: string;
+  couponResult?: CouponValidationResult;
   grandTotal: number;
   amountInPaise: number;
 }
@@ -49,7 +52,12 @@ export function getProductPrice(product: {
  * Single authoritative order pricing calculation matching Google Apps Script backend.
  */
 export function calculateOrderTotals(
-  cartItems: Array<{ productId: string; quantity: number }>
+  cartItems: Array<{ productId: string; quantity: number }>,
+  options?: {
+    couponCode?: string;
+    customerMobile?: string;
+    existingCustomerUses?: number;
+  }
 ): OrderCalculationResult {
   if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
     return {
@@ -137,11 +145,27 @@ export function calculateOrderTotals(
   const freeShippingThreshold = brand.freeShippingOver; // 500
   const shippingCharge = brand.shippingFlat; // 60
   const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCharge;
-  const discount = 0;
-  const grandTotal = Math.round(subtotal + shipping + gstTotal - discount);
+
+  // Authoritative Coupon Evaluation
+  let discount = 0;
+  let couponResult: CouponValidationResult | undefined;
+  if (options?.couponCode && options.couponCode.trim()) {
+    couponResult = evaluateCoupon(options.couponCode, subtotal, {
+      customerMobile: options.customerMobile,
+      existingCustomerUses: options.existingCustomerUses,
+    });
+    if (couponResult.valid) {
+      discount = couponResult.discountAmount;
+    }
+  }
+
+  // grandTotal may be 0 when a 100% coupon applies to subtotal and shipping/GST is also 0.
+  // The Razorpay create-order route handles this by returning freeOrder:true instead of creating
+  // a ₹0 Razorpay order. COD and Free Order paths accept ₹0 naturally.
+  const grandTotal = Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
   const amountInPaise = Math.round(grandTotal * 100);
 
-  if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
+  if (!Number.isFinite(grandTotal) || grandTotal < 0) {
     return {
       valid: false,
       error: "Invalid payable amount calculated.",
@@ -162,6 +186,8 @@ export function calculateOrderTotals(
     gstTotal,
     shipping,
     discount,
+    couponCode: couponResult?.valid ? couponResult.code : undefined,
+    couponResult,
     grandTotal,
     amountInPaise,
   };

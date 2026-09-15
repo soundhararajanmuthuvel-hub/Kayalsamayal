@@ -17,6 +17,9 @@ import {
   CreditCard,
   Banknote,
   Lock,
+  Tag,
+  Check,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -82,6 +85,20 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
 
+  // Coupon states — couponInput is pre-filled from ?coupon= URL param if present
+  const [couponInput, setCouponInput] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const cp = new URLSearchParams(window.location.search).get("coupon");
+    return cp ? cp.trim().toUpperCase() : "";
+  });
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+    description?: string;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
   // Redirect if cart is empty and not on confirm step
   useEffect(() => {
     if (cart.length === 0 && step !== "confirm") {
@@ -91,7 +108,62 @@ export default function CheckoutPage() {
 
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
-  const grandTotal = cartSubtotal + shipping;
+  const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
+  // Mirror the server: Math.max(0, ...) — free orders (100% coupon) legitimately total ₹0
+  const grandTotal = Math.max(0, cartSubtotal + shipping - discountAmount);
+
+  // Core coupon apply logic (shared by button-click and URL-param auto-apply)
+  const applyCouponCode = async (rawCode: string) => {
+    if (!rawCode) {
+      setCouponError("Please enter a coupon code.");
+      return;
+    }
+
+    setCouponError("");
+    setCouponLoading(true);
+
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: rawCode,
+          customerMobile: formData.mobile,
+          items: cart.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.valid) {
+        setCouponError(data.error || "Invalid coupon code.");
+        setAppliedCoupon(null);
+        return;
+      }
+
+      setAppliedCoupon({
+        code: data.code,
+        discount: data.discountAmount,
+        description: data.message || data.description,
+      });
+      setCouponInput("");
+    } catch {
+      setCouponError("Unable to validate coupon. Please try again.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleApplyCoupon = async () => {
+    await applyCouponCode(couponInput.trim());
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError("");
+  };
 
   const validateField = (name: string, value: string) => {
     let err = "";
@@ -170,6 +242,7 @@ export default function CheckoutPage() {
             productId: item.product.id,
             quantity: item.quantity,
           })),
+          couponCode: appliedCoupon?.code || undefined,
         }),
       });
 
@@ -201,7 +274,7 @@ export default function CheckoutPage() {
     setLoadingStatusText("Preparing secure payment...");
 
     try {
-      // 1. Create Razorpay order on server with validated pricing
+      // 1. Create Razorpay order on server with validated pricing and coupon
       const createRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,6 +283,7 @@ export default function CheckoutPage() {
             productId: item.product.id,
             quantity: item.quantity,
           })),
+          couponCode: appliedCoupon?.code || undefined,
           customer: {
             name: `${formData.firstName} ${formData.lastName}`.trim(),
             mobile: formData.mobile,
@@ -227,6 +301,48 @@ export default function CheckoutPage() {
       if (!createRes.ok || !orderData.success) {
         throw new Error(orderData.error || "Could not initiate secure payment. Please try again or contact support on WhatsApp.");
       }
+
+      // ── FREE ORDER PATH ───────────────────────────────────────────────
+      // Server signals grand total = ₹0 — skip Razorpay entirely.
+      if (orderData.freeOrder) {
+        setLoadingStatusText("Completing your order...");
+        try {
+          const freeRes = await fetch("/api/orders/free", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: {
+                name: `${formData.firstName} ${formData.lastName}`.trim(),
+                mobile: formData.mobile,
+                email: formData.email,
+                address: formData.address,
+                city: formData.city,
+                state: formData.state,
+                pincode: formData.pincode,
+                notes: formData.notes,
+              },
+              items: cart.map((item) => ({
+                productId: item.product.id,
+                quantity: item.quantity,
+              })),
+              couponCode: appliedCoupon?.code || undefined,
+            }),
+          });
+          const freeData = await freeRes.json();
+          if (!freeRes.ok || !freeData.success) {
+            throw new Error(freeData.error || "Failed to complete order. Please try again.");
+          }
+          clearCart();
+          setOrderResponse(freeData.orderResponse);
+          setStep("confirm");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } finally {
+          setLoading(false);
+          setLoadingStatusText("");
+        }
+        return; // Do NOT open Razorpay modal
+      }
+      // ── END FREE ORDER PATH ─────────────────────────────────────────
 
       if (typeof window.Razorpay === "undefined") {
         throw new Error("Razorpay payment gateway failed to load. Please check your internet connection.");
@@ -752,14 +868,93 @@ export default function CheckoutPage() {
                     <span>Subtotal</span>
                     <span className="font-bold text-foreground">{formatINR(cartSubtotal)}</span>
                   </div>
+
+                  {appliedCoupon && appliedCoupon.discount > 0 && (
+                    <div className="flex justify-between text-leaf font-bold">
+                      <span className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        <span>Discount ({appliedCoupon.code})</span>
+                      </span>
+                      <span>-{formatINR(appliedCoupon.discount)}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
                     <span className="font-bold text-foreground">{shipping === 0 ? "FREE" : formatINR(shipping)}</span>
                   </div>
+
                   <div className="flex justify-between text-sm font-bold text-primary pt-2 border-t border-border">
                     <span>Total Payable</span>
                     <span className="text-secondary font-extrabold text-lg">{formatINR(grandTotal)}</span>
                   </div>
+                </div>
+
+                {/* Coupon Code Section */}
+                <div className="pt-2 border-t border-border/70 space-y-2">
+                  <label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-secondary" />
+                    <span>Have a Coupon?</span>
+                  </label>
+
+                  {appliedCoupon ? (
+                    <div className="p-3 rounded-2xl bg-leaf/10 border border-leaf/30 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-leaf">
+                          <Check className="h-4 w-4 shrink-0" />
+                          <span>✓ {appliedCoupon.code} applied</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveCoupon}
+                          className="text-[0.7rem] font-bold text-destructive hover:underline flex items-center gap-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                      <p className="text-[0.75rem] text-muted-foreground font-medium pl-5">
+                        {appliedCoupon.description || "Coupon discount applied"} &bull; You saved {formatINR(appliedCoupon.discount)}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={couponInput}
+                          onChange={(e) => {
+                            setCouponInput(e.target.value.toUpperCase());
+                            setCouponError("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleApplyCoupon();
+                            }
+                          }}
+                          placeholder="Enter coupon code"
+                          className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground uppercase tracking-wider placeholder:normal-case placeholder:font-normal placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-secondary/50"
+                        />
+                        <Button
+                          type="button"
+                          variant="plum"
+                          size="sm"
+                          disabled={couponLoading || !couponInput.trim()}
+                          onClick={handleApplyCoupon}
+                          className="font-bold text-xs px-4 rounded-xl shrink-0"
+                        >
+                          {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+                        </Button>
+                      </div>
+                      {couponError && (
+                        <p className="text-[0.7rem] font-medium text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <span>{couponError}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-surface border border-border/60 text-[0.7rem] text-muted-foreground space-y-1">

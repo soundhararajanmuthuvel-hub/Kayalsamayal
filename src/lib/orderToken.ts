@@ -7,6 +7,7 @@ export interface OrderTokenPayload {
   razorpayOrderId: string;
   expectedAmountPaise: number;
   customerMobile: string;
+  couponCode?: string;
   timestamp: number;
 }
 
@@ -15,7 +16,8 @@ export interface OrderTokenPayload {
  * This ensures the client cannot tamper with or swap the order ID during verification.
  */
 export function createOrderToken(payload: OrderTokenPayload): string {
-  const data = `${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${payload.timestamp}`;
+  const cpn = payload.couponCode ? payload.couponCode.trim().toUpperCase() : "";
+  const data = `${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${cpn}:${payload.timestamp}`;
   const signature = crypto
     .createHmac("sha256", ORDER_TOKEN_SECRET)
     .update(data)
@@ -35,7 +37,8 @@ export function verifyOrderToken(token: string): OrderTokenPayload | null {
     const payloadStr = Buffer.from(encoded, "base64url").toString("utf8");
     const payload: OrderTokenPayload = JSON.parse(payloadStr);
 
-    const expectedData = `${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${payload.timestamp}`;
+    const cpn = payload.couponCode ? payload.couponCode.trim().toUpperCase() : "";
+    const expectedData = `${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${cpn}:${payload.timestamp}`;
     const expectedSignature = crypto
       .createHmac("sha256", ORDER_TOKEN_SECRET)
       .update(expectedData)

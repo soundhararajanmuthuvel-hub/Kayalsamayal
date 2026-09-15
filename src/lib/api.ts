@@ -29,11 +29,13 @@ export interface OrderItemInput {
 export interface OrderInput {
   customer: CustomerInput;
   items: OrderItemInput[];
-  paymentMethod: "Razorpay Online" | "COD" | "Cash on Delivery";
+  paymentMethod: "Razorpay Online" | "COD" | "Cash on Delivery" | "Free Order";
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
   razorpayAmount?: number;
+  couponCode?: string;
+  discount?: number;
   serverAuthToken?: string;
 }
 

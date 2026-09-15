@@ -5,7 +5,7 @@ import { createOrder } from "@/lib/api";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { customer, items } = body;
+    const { customer, items, couponCode } = body;
 
     if (!customer || !customer.name || !customer.mobile || !customer.address || !customer.city || !customer.pincode) {
       return NextResponse.json(
@@ -21,11 +21,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Authoritative server-side pricing & stock calculation
-    const calc = calculateOrderTotals(items);
+    // 1. Authoritative server-side pricing, discount & stock calculation
+    const calc = calculateOrderTotals(items, {
+      couponCode: typeof couponCode === "string" ? couponCode : undefined,
+      customerMobile: customer.mobile,
+    });
     if (!calc.valid) {
       return NextResponse.json(
         { success: false, error: calc.error || "Invalid items in cart." },
+        { status: 400 }
+      );
+    }
+
+    // If client provided a coupon but it failed validation, reject safely
+    if (couponCode && !calc.couponResult?.valid) {
+      return NextResponse.json(
+        { success: false, error: calc.couponResult?.error || "Invalid coupon code." },
         { status: 400 }
       );
     }
@@ -47,6 +58,8 @@ export async function POST(req: NextRequest) {
         quantity: it.quantity,
       })),
       paymentMethod: "Cash on Delivery",
+      couponCode: calc.couponCode,
+      discount: calc.discount,
     });
 
     if (!orderResponse || !orderResponse.success) {

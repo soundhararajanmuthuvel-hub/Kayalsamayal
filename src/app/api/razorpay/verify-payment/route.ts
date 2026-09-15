@@ -68,8 +68,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Authoritative calculation & amount verification
-    const calc = calculateOrderTotals(items);
+    // 3. Authoritative calculation & amount verification (with validated token couponCode if present)
+    const calc = calculateOrderTotals(items, {
+      couponCode: tokenPayload.couponCode,
+      customerMobile: customer?.mobile,
+    });
     if (!calc.valid) {
       return NextResponse.json(
         { success: false, error: calc.error || "Invalid order calculation." },
@@ -188,6 +191,8 @@ export async function POST(req: NextRequest) {
       razorpayPaymentId: razorpay_payment_id,
       razorpaySignature: razorpay_signature,
       razorpayAmount: calc.grandTotal,
+      couponCode: calc.couponCode,
+      discount: calc.discount,
       serverAuthToken,
     });
 

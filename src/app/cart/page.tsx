@@ -21,17 +21,41 @@ import Link from "next/link";
 export default function CartPage() {
   const { cart, updateQuantity, removeFromCart, cartSubtotal, cartCount, cartNotice, clearCartNotice } = useCart();
   const [coupon, setCoupon] = useState("");
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (coupon.trim().toUpperCase() === "WELCOME10") {
-      setAppliedDiscount(Math.round(cartSubtotal * 0.1));
-      setCouponError("");
-    } else {
-      setCouponError("Invalid coupon code. Try WELCOME10 for 10% off.");
-      setAppliedDiscount(0);
+    const rawCode = coupon.trim();
+    if (!rawCode) { setCouponError("Please enter a coupon code."); return; }
+
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: rawCode,
+          items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setCouponError(data.error || "Invalid coupon code.");
+        setAppliedDiscount(0);
+        setAppliedCouponCode("");
+      } else {
+        setAppliedDiscount(data.discountAmount || 0);
+        setAppliedCouponCode(data.code || rawCode.toUpperCase());
+        setCoupon("");
+      }
+    } catch {
+      setCouponError("Unable to validate coupon. Please try again.");
+    } finally {
+      setCouponLoading(false);
     }
   };
 
@@ -273,13 +297,13 @@ export default function CartPage() {
                   <form onSubmit={handleApplyCoupon} className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="e.g. WELCOME10"
+                      placeholder="Enter coupon code"
                       value={coupon}
                       onChange={(e) => setCoupon(e.target.value)}
                       className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs uppercase font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
                     />
-                    <Button type="submit" variant="plum" size="sm" className="font-bold">
-                      Apply
+                    <Button type="submit" variant="plum" size="sm" className="font-bold" disabled={couponLoading}>
+                      {couponLoading ? "..." : "Apply"}
                     </Button>
                   </form>
 
@@ -288,7 +312,7 @@ export default function CartPage() {
                   )}
                   {appliedDiscount > 0 && (
                     <p className="text-[0.7rem] font-bold text-leaf flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" /> WELCOME10 applied successfully!
+                      <CheckCircle className="h-3 w-3" /> {appliedCouponCode} applied! You saved {formatINR(appliedDiscount)}.
                     </p>
                   )}
                 </div>
