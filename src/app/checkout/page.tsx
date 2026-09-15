@@ -62,7 +62,7 @@ declare global {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart } = useCart();
+  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon, setAppliedCoupon, clearAppliedCoupon } = useCart();
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirm">("shipping");
   const [formData, setFormData] = useState({
@@ -85,17 +85,15 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
 
-  // Coupon states — couponInput is pre-filled from ?coupon= URL param if present
+  // Coupon input for manual entry in checkout — couponInput is pre-filled from:
+  //   1. CartContext (persistent, set in Cart page)
+  //   2. ?coupon= URL param (fallback for direct link access)
   const [couponInput, setCouponInput] = useState(() => {
+    // Context coupon is read below (after hook calls); URL param fills the input as fallback.
     if (typeof window === "undefined") return "";
     const cp = new URLSearchParams(window.location.search).get("coupon");
     return cp ? cp.trim().toUpperCase() : "";
   });
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    discount: number;
-    description?: string;
-  } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
@@ -108,11 +106,22 @@ export default function CheckoutPage() {
 
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
-  const discountAmount = appliedCoupon ? appliedCoupon.discount : 0;
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   // Mirror the server: Math.max(0, ...) — free orders (100% coupon) legitimately total ₹0
   const grandTotal = Math.max(0, cartSubtotal + shipping - discountAmount);
 
-  // Core coupon apply logic (shared by button-click and URL-param auto-apply)
+  /** Dynamic discount label — derived from coupon definition, never hardcoded. */
+  const discountLabel = (() => {
+    if (!appliedCoupon) return "Discount";
+    if (appliedCoupon.discountType === "percentage") {
+      return `Discount (${appliedCoupon.discountValue}%)`;
+    }
+    return `Discount (${appliedCoupon.code})`;
+  })();
+
+  // Core coupon apply logic (shared by button-click)
+  // ROOT CAUSE FIX: validate route returns { valid, ... } not { success, valid, ... }.
+  // The old check `!data.success` always evaluated true (field missing) — rejecting every coupon.
   const applyCouponCode = async (rawCode: string) => {
     if (!rawCode) {
       setCouponError("Please enter a coupon code.");
@@ -137,16 +146,20 @@ export default function CheckoutPage() {
       });
 
       const data = await res.json();
-      if (!res.ok || !data.success || !data.valid) {
+      // FIXED: only check data.valid — the route never sets data.success
+      if (!res.ok || !data.valid) {
         setCouponError(data.error || "Invalid coupon code.");
-        setAppliedCoupon(null);
+        clearAppliedCoupon();
         return;
       }
 
+      // Persist to CartContext (localStorage) so it survives refresh
       setAppliedCoupon({
         code: data.code,
-        discount: data.discountAmount,
-        description: data.message || data.description,
+        discountType: data.discountType || "percentage",
+        discountValue: data.discountValue ?? 0,
+        discountAmount: data.discountAmount,
+        message: data.message || undefined,
       });
       setCouponInput("");
     } catch {
@@ -161,7 +174,7 @@ export default function CheckoutPage() {
   };
 
   const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
+    clearAppliedCoupon();
     setCouponError("");
   };
 
@@ -869,13 +882,13 @@ export default function CheckoutPage() {
                     <span className="font-bold text-foreground">{formatINR(cartSubtotal)}</span>
                   </div>
 
-                  {appliedCoupon && appliedCoupon.discount > 0 && (
+                  {appliedCoupon && appliedCoupon.discountAmount > 0 && (
                     <div className="flex justify-between text-leaf font-bold">
                       <span className="flex items-center gap-1">
                         <Tag className="h-3 w-3" />
-                        <span>Discount ({appliedCoupon.code})</span>
+                        <span>{discountLabel}</span>
                       </span>
-                      <span>-{formatINR(appliedCoupon.discount)}</span>
+                      <span>-{formatINR(appliedCoupon.discountAmount)}</span>
                     </div>
                   )}
 
@@ -914,7 +927,7 @@ export default function CheckoutPage() {
                         </button>
                       </div>
                       <p className="text-[0.75rem] text-muted-foreground font-medium pl-5">
-                        {appliedCoupon.description || "Coupon discount applied"} &bull; You saved {formatINR(appliedCoupon.discount)}
+                        {appliedCoupon.message || "Coupon discount applied"} &bull; You saved {formatINR(appliedCoupon.discountAmount)}
                       </p>
                     </div>
                   ) : (

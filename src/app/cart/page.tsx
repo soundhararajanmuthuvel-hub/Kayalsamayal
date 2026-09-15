@@ -15,14 +15,20 @@ import {
   Tag,
   Truck,
   CheckCircle,
+  X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CartPage() {
-  const { cart, updateQuantity, removeFromCart, cartSubtotal, cartCount, cartNotice, clearCartNotice } = useCart();
+  const router = useRouter();
+  const {
+    cart, updateQuantity, removeFromCart, cartSubtotal, cartCount,
+    cartNotice, clearCartNotice,
+    appliedCoupon, setAppliedCoupon, clearAppliedCoupon,
+  } = useCart();
+
   const [coupon, setCoupon] = useState("");
-  const [appliedCouponCode, setAppliedCouponCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
 
@@ -45,12 +51,18 @@ export default function CartPage() {
       const data = await res.json();
       if (!res.ok || !data.valid) {
         setCouponError(data.error || "Invalid coupon code.");
-        setAppliedDiscount(0);
-        setAppliedCouponCode("");
+        clearAppliedCoupon();
       } else {
-        setAppliedDiscount(data.discountAmount || 0);
-        setAppliedCouponCode(data.code || rawCode.toUpperCase());
+        // Persist to context (and localStorage) so Checkout inherits it
+        setAppliedCoupon({
+          code: data.code || rawCode.toUpperCase(),
+          discountType: data.discountType || "percentage",
+          discountValue: data.discountValue ?? 0,
+          discountAmount: data.discountAmount || 0,
+          message: data.message || undefined,
+        });
         setCoupon("");
+        setCouponError("");
       }
     } catch {
       setCouponError("Unable to validate coupon. Please try again.");
@@ -59,10 +71,30 @@ export default function CartPage() {
     }
   };
 
+  const handleRemoveCoupon = () => {
+    clearAppliedCoupon();
+    setCouponError("");
+  };
+
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
-  const grandTotal = cartSubtotal - appliedDiscount + shipping;
+  const appliedDiscountAmount = appliedCoupon?.discountAmount ?? 0;
+  const grandTotal = Math.max(0, cartSubtotal - appliedDiscountAmount + shipping);
   const neededForFreeShipping = brand.freeShippingOver - cartSubtotal;
+
+  /** Dynamic discount label — never hardcoded. */
+  const discountLabel = (() => {
+    if (!appliedCoupon) return "Discount";
+    if (appliedCoupon.discountType === "percentage") {
+      return `Discount (${appliedCoupon.discountValue}%)`;
+    }
+    return `Discount (${appliedCoupon.code})`;
+  })();
+
+  /** Build checkout URL — if coupon is applied, pass the code so checkout inherits it. */
+  const checkoutHref = appliedCoupon
+    ? `/checkout?coupon=${encodeURIComponent(appliedCoupon.code)}`
+    : "/checkout";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -238,10 +270,11 @@ export default function CartPage() {
                       <span className="font-bold text-foreground">{formatINR(cartSubtotal)}</span>
                     </div>
 
-                    {appliedDiscount > 0 && (
+                    {appliedCoupon && appliedDiscountAmount > 0 && (
                       <div className="flex justify-between text-leaf font-semibold">
-                        <span>Discount (10%)</span>
-                        <span>- {formatINR(appliedDiscount)}</span>
+                        {/* Dynamic label — never hardcoded */}
+                        <span>{discountLabel}</span>
+                        <span>- {formatINR(appliedDiscountAmount)}</span>
                       </div>
                     )}
 
@@ -267,12 +300,17 @@ export default function CartPage() {
 
                   {/* Actions */}
                   <div className="space-y-2.5 pt-2">
-                    <Link href="/checkout" className="block w-full">
+                    {/* Pass coupon code in URL so Checkout reads it from context + URL fallback */}
+                    <button
+                      type="button"
+                      onClick={() => router.push(checkoutHref)}
+                      className="block w-full"
+                    >
                       <Button variant="plum" size="touch" className="w-full gap-2 font-bold shadow-md">
                         <span>Proceed to Checkout</span>
                         <ArrowRight className="h-4 w-4" />
                       </Button>
-                    </Link>
+                    </button>
 
                     <Link href="/products" className="block w-full">
                       <Button variant="outline" size="touch" className="w-full font-bold">
@@ -283,7 +321,7 @@ export default function CartPage() {
 
                   <div className="flex items-center justify-center gap-1.5 text-[0.7rem] text-muted-foreground pt-1">
                     <ShieldCheck className="h-4 w-4 text-leaf" />
-                    <span>100% Safe & Encrypted Razorpay Online Payment</span>
+                    <span>100% Safe &amp; Encrypted Razorpay Online Payment</span>
                   </div>
                 </div>
 
@@ -294,26 +332,44 @@ export default function CartPage() {
                     <span>Have a Coupon?</span>
                   </h3>
 
-                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Enter coupon code"
-                      value={coupon}
-                      onChange={(e) => setCoupon(e.target.value)}
-                      className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs uppercase font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
-                    />
-                    <Button type="submit" variant="plum" size="sm" className="font-bold" disabled={couponLoading}>
-                      {couponLoading ? "..." : "Apply"}
-                    </Button>
-                  </form>
+                  {appliedCoupon ? (
+                    /* Applied state */
+                    <div className="flex items-center justify-between gap-2 rounded-xl border border-leaf/40 bg-leaf/5 px-3 py-2">
+                      <p className="text-[0.75rem] font-bold text-leaf flex items-center gap-1.5 min-w-0">
+                        <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">
+                          {appliedCoupon.code} applied! Saved {formatINR(appliedDiscountAmount)}.
+                        </span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        aria-label="Remove coupon"
+                        className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    /* Input state */
+                    <>
+                      <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter coupon code"
+                          value={coupon}
+                          onChange={(e) => setCoupon(e.target.value)}
+                          className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs uppercase font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
+                        />
+                        <Button type="submit" variant="plum" size="sm" className="font-bold" disabled={couponLoading}>
+                          {couponLoading ? "..." : "Apply"}
+                        </Button>
+                      </form>
 
-                  {couponError && (
-                    <p className="text-[0.7rem] font-semibold text-destructive">{couponError}</p>
-                  )}
-                  {appliedDiscount > 0 && (
-                    <p className="text-[0.7rem] font-bold text-leaf flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" /> {appliedCouponCode} applied! You saved {formatINR(appliedDiscount)}.
-                    </p>
+                      {couponError && (
+                        <p className="text-[0.7rem] font-semibold text-destructive">{couponError}</p>
+                      )}
+                    </>
                   )}
                 </div>
 

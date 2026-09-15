@@ -20,7 +20,21 @@ export interface CustomerDetails {
   notes: string;
 }
 
+/**
+ * Single source of truth for an applied coupon.
+ * Persisted to localStorage so it survives refresh and Cart → Checkout navigation.
+ */
+export interface AppliedCoupon {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;   // e.g. 100 for KAYAL100, 10 for WELCOME10
+  discountAmount: number;  // server-calculated rupee amount for the current cart
+  message?: string;
+}
+
 export type CheckoutStep = "cart" | "checkout" | "payment" | "loading" | "confirm";
+
+const COUPON_STORAGE_KEY = "kayal_samayal_coupon";
 
 interface CartContextType {
   cart: CartItem[];
@@ -47,6 +61,10 @@ interface CartContextType {
   cartNotice: string;
   clearCartNotice: () => void;
   lastOrderResponse: OrderResponse | null;
+  /** Applied coupon — shared between Cart and Checkout. Persisted to localStorage. */
+  appliedCoupon: AppliedCoupon | null;
+  setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
+  clearAppliedCoupon: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -70,6 +88,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen]           = useState(false);
   const [checkoutStep, setCheckoutStep]       = useState<CheckoutStep>("cart");
   const [lastOrderResponse, setLastOrderResponse] = useState<OrderResponse | null>(null);
+  const [appliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(() => {
+    // Restore persisted coupon from localStorage synchronously on first render.
+    // This avoids calling setState inside a useEffect (lint rule: set-state-in-effect).
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = localStorage.getItem(COUPON_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as AppliedCoupon;
+        if (parsed && parsed.code) return parsed;
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
 
   const [customerDetails, setCustomerDetails] = useState<CustomerDetails>({
     name: "", mobile: "", email: "",
@@ -175,7 +206,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = () => {
     saveCart([]);
     localStorage.removeItem("kayal_samayal_cart");
+    // Clear coupon when cart is cleared (order completed)
+    setAppliedCouponState(null);
+    localStorage.removeItem(COUPON_STORAGE_KEY);
   };
+
+  /** Persist and set coupon — shared between Cart and Checkout. */
+  const setAppliedCoupon = (coupon: AppliedCoupon | null) => {
+    setAppliedCouponState(coupon);
+    if (coupon) {
+      localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(coupon));
+    } else {
+      localStorage.removeItem(COUPON_STORAGE_KEY);
+    }
+  };
+
+  const clearAppliedCoupon = () => setAppliedCoupon(null);
 
   const cartCount    = cart.reduce((total, item) => total + item.quantity, 0);
   const cartSubtotal = cart.reduce((total, item) => total + getProductPrice(item.product) * item.quantity, 0);
@@ -224,6 +270,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartNotice,
         clearCartNotice: () => setCartNotice(""),
         lastOrderResponse,
+        appliedCoupon,
+        setAppliedCoupon,
+        clearAppliedCoupon,
       }}
     >
       {children}
