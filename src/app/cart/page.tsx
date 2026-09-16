@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useCart, getProductPrice } from "@/context/CartContext";
 import { QuantitySelector } from "@/components/shop/QuantitySelector";
 import { Button } from "@/components/ui/button";
 import { brand, formatINR } from "@/lib/brand";
+import { CouponSection } from "@/components/coupon";
 import {
   Trash2,
   ShoppingBag,
@@ -14,8 +15,7 @@ import {
   ShieldCheck,
   Tag,
   Truck,
-  CheckCircle,
-  X,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,56 +25,26 @@ export default function CartPage() {
   const {
     cart, updateQuantity, removeFromCart, cartSubtotal, cartCount,
     cartNotice, clearCartNotice,
-    appliedCoupon, setAppliedCoupon, clearAppliedCoupon,
+    appliedCoupon, clearAppliedCoupon,
   } = useCart();
 
-  const [coupon, setCoupon] = useState("");
-  const [couponLoading, setCouponLoading] = useState(false);
-  const [couponError, setCouponError] = useState("");
+  const [couponDropNotice, setCouponDropNotice] = useState<string>("");
 
-  const handleApplyCoupon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const rawCode = coupon.trim();
-    if (!rawCode) { setCouponError("Please enter a coupon code."); return; }
-
-    setCouponLoading(true);
-    setCouponError("");
-    try {
-      const res = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: rawCode,
-          items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.valid) {
-        setCouponError(data.error || "Invalid coupon code.");
+  // Edge Case 1: Subtotal drops below the minimum required for applied coupon
+  useEffect(() => {
+    if (!appliedCoupon || !appliedCoupon.minOrder) return;
+    if (cartSubtotal > 0 && cartSubtotal < appliedCoupon.minOrder) {
+      const code = appliedCoupon.code;
+      const min = appliedCoupon.minOrder;
+      const timer = setTimeout(() => {
         clearAppliedCoupon();
-      } else {
-        // Persist to context (and localStorage) so Checkout inherits it
-        setAppliedCoupon({
-          code: data.code || rawCode.toUpperCase(),
-          discountType: data.discountType || "percentage",
-          discountValue: data.discountValue ?? 0,
-          discountAmount: data.discountAmount || 0,
-          message: data.message || undefined,
-        });
-        setCoupon("");
-        setCouponError("");
-      }
-    } catch {
-      setCouponError("Unable to validate coupon. Please try again.");
-    } finally {
-      setCouponLoading(false);
+        setCouponDropNotice(
+          `Cart total dropped below ₹${min} minimum required for ${code}. The coupon was automatically removed.`
+        );
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  };
-
-  const handleRemoveCoupon = () => {
-    clearAppliedCoupon();
-    setCouponError("");
-  };
+  }, [cartSubtotal, appliedCoupon, clearAppliedCoupon]);
 
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
@@ -125,7 +95,23 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={clearCartNotice}
-                className="text-xs font-bold underline hover:opacity-80 shrink-0"
+                className="text-xs font-bold underline hover:opacity-80 shrink-0 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {couponDropNotice && (
+            <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs sm:text-sm flex items-center justify-between gap-3 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                <span>{couponDropNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCouponDropNotice("")}
+                className="text-xs font-bold underline hover:opacity-80 shrink-0 cursor-pointer"
               >
                 Dismiss
               </button>
@@ -194,7 +180,6 @@ export default function CartPage() {
                                 srcSet={item.product.image.replace(/\.jpg$/, ".webp")}
                                 type="image/webp"
                               />
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={item.product.image}
                                 alt={item.product.name}
@@ -271,9 +256,17 @@ export default function CartPage() {
                     </div>
 
                     {appliedCoupon && appliedDiscountAmount > 0 && (
-                      <div className="flex justify-between text-leaf font-semibold">
-                        {/* Dynamic label — never hardcoded */}
-                        <span>{discountLabel}</span>
+                      <div className="flex justify-between text-leaf font-semibold items-center">
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="h-3.5 w-3.5" />
+                          <span>{discountLabel}</span>
+                          <span
+                            className="inline-flex items-center text-muted-foreground hover:text-foreground cursor-help text-[0.7rem]"
+                            title={appliedCoupon.message || `${appliedCoupon.code} promo applied`}
+                          >
+                            ⓘ
+                          </span>
+                        </span>
                         <span>- {formatINR(appliedDiscountAmount)}</span>
                       </div>
                     )}
@@ -326,51 +319,8 @@ export default function CartPage() {
                 </div>
 
                 {/* Coupon Box */}
-                <div className="rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-3">
-                  <h3 className="font-display font-bold text-xs uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <Tag className="h-4 w-4 text-secondary" />
-                    <span>Have a Coupon?</span>
-                  </h3>
-
-                  {appliedCoupon ? (
-                    /* Applied state */
-                    <div className="flex items-center justify-between gap-2 rounded-xl border border-leaf/40 bg-leaf/5 px-3 py-2">
-                      <p className="text-[0.75rem] font-bold text-leaf flex items-center gap-1.5 min-w-0">
-                        <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">
-                          {appliedCoupon.code} applied! Saved {formatINR(appliedDiscountAmount)}.
-                        </span>
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleRemoveCoupon}
-                        aria-label="Remove coupon"
-                        className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    /* Input state */
-                    <>
-                      <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Enter coupon code"
-                          value={coupon}
-                          onChange={(e) => setCoupon(e.target.value)}
-                          className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs uppercase font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50"
-                        />
-                        <Button type="submit" variant="plum" size="sm" className="font-bold" disabled={couponLoading}>
-                          {couponLoading ? "..." : "Apply"}
-                        </Button>
-                      </form>
-
-                      {couponError && (
-                        <p className="text-[0.7rem] font-semibold text-destructive">{couponError}</p>
-                      )}
-                    </>
-                  )}
+                <div className="rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs">
+                  <CouponSection variant="cart" />
                 </div>
 
               </div>

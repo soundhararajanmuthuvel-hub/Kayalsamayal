@@ -29,7 +29,10 @@ export interface AppliedCoupon {
   discountType: "percentage" | "fixed";
   discountValue: number;   // e.g. 100 for KAYAL100, 10 for WELCOME10
   discountAmount: number;  // server-calculated rupee amount for the current cart
+  maxDiscount?: number;
+  minOrder?: number;
   message?: string;
+  appliedAt?: number;
 }
 
 export type CheckoutStep = "cart" | "checkout" | "payment" | "loading" | "confirm";
@@ -65,6 +68,11 @@ interface CartContextType {
   appliedCoupon: AppliedCoupon | null;
   setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
   clearAppliedCoupon: () => void;
+  updateAppliedCoupon: (partial: Partial<AppliedCoupon>) => void;
+  couponError: string | null;
+  setCouponError: (error: string | null) => void;
+  couponLoading: boolean;
+  setCouponLoading: (loading: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -211,6 +219,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(COUPON_STORAGE_KEY);
   };
 
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState<boolean>(false);
+
   /** Persist and set coupon — shared between Cart and Checkout. */
   const setAppliedCoupon = (coupon: AppliedCoupon | null) => {
     setAppliedCouponState(coupon);
@@ -221,7 +232,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const clearAppliedCoupon = () => setAppliedCoupon(null);
+  const clearAppliedCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  };
+
+  const updateAppliedCoupon = (partial: Partial<AppliedCoupon>) => {
+    setAppliedCouponState((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...partial };
+      localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const cartCount    = cart.reduce((total, item) => total + item.quantity, 0);
   const cartSubtotal = cart.reduce((total, item) => total + getProductPrice(item.product) * item.quantity, 0);
@@ -273,6 +296,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         appliedCoupon,
         setAppliedCoupon,
         clearAppliedCoupon,
+        updateAppliedCoupon,
+        couponError,
+        setCouponError,
+        couponLoading,
+        setCouponLoading,
       }}
     >
       {children}

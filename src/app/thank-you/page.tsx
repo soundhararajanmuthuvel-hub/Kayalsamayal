@@ -74,12 +74,21 @@ function ThankYouContent() {
               <div>
                 <span className="text-xs font-bold text-muted-foreground uppercase">Amount</span>
                 <p className="font-display font-black text-xl text-secondary">
-                  {grandTotal > 0 ? formatINR(grandTotal) : "Confirmed"}
+                  {grandTotal > 0 ? formatINR(grandTotal) : "FREE (₹0)"}
                 </p>
+                {lastOrderResponse?.discount && lastOrderResponse.discount > 0 ? (
+                  <span className="text-[0.7rem] font-bold text-leaf block">
+                    Saved {formatINR(lastOrderResponse.discount)} with promo
+                  </span>
+                ) : null}
               </div>
               <div>
                 <span className="text-xs font-bold text-muted-foreground uppercase">Payment Status</span>
-                {lastOrderResponse?.paymentMethod === "Cash on Delivery" || lastOrderResponse?.paymentMethod === "COD" ? (
+                {lastOrderResponse?.paymentMethod === "Free Order (Coupon)" || grandTotal === 0 ? (
+                  <p className="font-bold text-xs sm:text-sm text-leaf flex items-center gap-1 mt-1">
+                    <CheckCircle2 className="h-4 w-4" /> 100% Promo (No Payment Needed)
+                  </p>
+                ) : lastOrderResponse?.paymentMethod === "Cash on Delivery" || lastOrderResponse?.paymentMethod === "COD" ? (
                   <p className="font-bold text-xs sm:text-sm text-amber-600 flex items-center gap-1 mt-1">
                     <CheckCircle2 className="h-4 w-4" /> Pending (Pay on Delivery)
                   </p>

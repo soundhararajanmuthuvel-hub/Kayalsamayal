@@ -7,6 +7,7 @@ import { useCart, getProductPrice } from "@/context/CartContext";
 import { type OrderResponse } from "@/lib/api";
 import { brand, formatINR, whatsappLink } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
+import { CouponSection } from "@/components/coupon";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -18,7 +19,6 @@ import {
   Lock,
   Tag,
   Check,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -61,7 +61,7 @@ declare global {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon, setAppliedCoupon, clearAppliedCoupon } = useCart();
+  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon } = useCart();
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirm">("shipping");
   const [formData, setFormData] = useState({
@@ -81,19 +81,6 @@ export default function CheckoutPage() {
   const [loadingStatusText, setLoadingStatusText] = useState("");
   const [orderErr, setOrderErr] = useState("");
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
-
-
-  // Coupon input for manual entry in checkout — couponInput is pre-filled from:
-  //   1. CartContext (persistent, set in Cart page)
-  //   2. ?coupon= URL param (fallback for direct link access)
-  const [couponInput, setCouponInput] = useState(() => {
-    // Context coupon is read below (after hook calls); URL param fills the input as fallback.
-    if (typeof window === "undefined") return "";
-    const cp = new URLSearchParams(window.location.search).get("coupon");
-    return cp ? cp.trim().toUpperCase() : "";
-  });
-  const [couponLoading, setCouponLoading] = useState(false);
-  const [couponError, setCouponError] = useState("");
 
   // Redirect if cart is empty and not on confirm step
   useEffect(() => {
@@ -116,65 +103,6 @@ export default function CheckoutPage() {
     }
     return `Discount (${appliedCoupon.code})`;
   })();
-
-  // Core coupon apply logic (shared by button-click)
-  // ROOT CAUSE FIX: validate route returns { valid, ... } not { success, valid, ... }.
-  // The old check `!data.success` always evaluated true (field missing) — rejecting every coupon.
-  const applyCouponCode = async (rawCode: string) => {
-    if (!rawCode) {
-      setCouponError("Please enter a coupon code.");
-      return;
-    }
-
-    setCouponError("");
-    setCouponLoading(true);
-
-    try {
-      const res = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: rawCode,
-          customerMobile: formData.mobile,
-          items: cart.map((item) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-          })),
-        }),
-      });
-
-      const data = await res.json();
-      // FIXED: only check data.valid — the route never sets data.success
-      if (!res.ok || !data.valid) {
-        setCouponError(data.error || "Invalid coupon code.");
-        clearAppliedCoupon();
-        return;
-      }
-
-      // Persist to CartContext (localStorage) so it survives refresh
-      setAppliedCoupon({
-        code: data.code,
-        discountType: data.discountType || "percentage",
-        discountValue: data.discountValue ?? 0,
-        discountAmount: data.discountAmount,
-        message: data.message || undefined,
-      });
-      setCouponInput("");
-    } catch {
-      setCouponError("Unable to validate coupon. Please try again.");
-    } finally {
-      setCouponLoading(false);
-    }
-  };
-
-  const handleApplyCoupon = async () => {
-    await applyCouponCode(couponInput.trim());
-  };
-
-  const handleRemoveCoupon = () => {
-    clearAppliedCoupon();
-    setCouponError("");
-  };
 
   const validateField = (name: string, value: string) => {
     let err = "";
@@ -464,9 +392,15 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Payment Mode:</span>
                   <span className="font-bold text-foreground">
-                    {orderResponse?.paymentMethod || "Online Payment (Razorpay)"}
+                    {orderResponse?.paymentMethod || (grandTotal === 0 ? "Free Order (Coupon)" : "Online Payment (Razorpay)")}
                   </span>
                 </div>
+                {orderResponse?.discount && orderResponse.discount > 0 ? (
+                  <div className="flex justify-between text-leaf font-bold">
+                    <span>Coupon Discount:</span>
+                    <span>- {formatINR(orderResponse.discount)}</span>
+                  </div>
+                ) : null}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Payment Status:</span>
                   <span className={`font-bold ${orderResponse?.paymentStatus === "Paid" ? "text-leaf" : "text-secondary"}`}>
@@ -670,7 +604,22 @@ export default function CheckoutPage() {
                       </button>
                     </div>
 
-                    {/* RAZORPAY — only payment method */}
+                    {/* PAYMENT METHOD SELECTION */}
+                    {grandTotal === 0 ? (
+                      <div className="rounded-2xl border-2 border-leaf bg-leaf/10 shadow-xs ring-1 ring-leaf/30 p-5 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle2 className="h-6 w-6 text-leaf shrink-0" />
+                          <div>
+                            <h3 className="font-display font-bold text-base text-primary">
+                              100% Discount Applied — Free Order
+                            </h3>
+                            <p className="text-xs font-medium text-muted-foreground">
+                              No payment required. Your order will be placed instantly for free.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
                       <div className="rounded-2xl border-2 border-secondary bg-accent shadow-xs ring-1 ring-secondary/30 p-5 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -693,6 +642,7 @@ export default function CheckoutPage() {
                           <span>Encrypted 256-bit secure transaction via Razorpay gateway.</span>
                         </div>
                       </div>
+                    )}
 
                     <div className="flex items-center justify-between p-3.5 rounded-xl bg-surface border border-border text-xs">
                       <span className="text-muted-foreground font-medium">Authoritative Payable Total:</span>
@@ -730,6 +680,11 @@ export default function CheckoutPage() {
                           <>
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span>{loadingStatusText || "Processing…"}</span>
+                          </>
+                        ) : grandTotal === 0 ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            <span>Place Free Order Now</span>
                           </>
                         ) : (
                           <>
@@ -771,10 +726,16 @@ export default function CheckoutPage() {
                   </div>
 
                   {appliedCoupon && appliedCoupon.discountAmount > 0 && (
-                    <div className="flex justify-between text-leaf font-bold">
-                      <span className="flex items-center gap-1">
+                    <div className="flex justify-between text-leaf font-bold items-center">
+                      <span className="flex items-center gap-1.5">
                         <Tag className="h-3 w-3" />
                         <span>{discountLabel}</span>
+                        <span
+                          className="inline-flex items-center text-muted-foreground hover:text-foreground cursor-help text-[0.7rem]"
+                          title={appliedCoupon.message || `${appliedCoupon.code} promo applied`}
+                        >
+                          ⓘ
+                        </span>
                       </span>
                       <span>-{formatINR(appliedCoupon.discountAmount)}</span>
                     </div>
@@ -792,70 +753,8 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Coupon Code Section */}
-                <div className="pt-2 border-t border-border/70 space-y-2">
-                  <label className="text-xs font-bold text-primary flex items-center gap-1.5">
-                    <Tag className="h-3.5 w-3.5 text-secondary" />
-                    <span>Have a Coupon?</span>
-                  </label>
-
-                  {appliedCoupon ? (
-                    <div className="p-3 rounded-2xl bg-leaf/10 border border-leaf/30 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-leaf">
-                          <Check className="h-4 w-4 shrink-0" />
-                          <span>✓ {appliedCoupon.code} applied</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleRemoveCoupon}
-                          className="text-[0.7rem] font-bold text-destructive hover:underline flex items-center gap-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                          <span>Remove</span>
-                        </button>
-                      </div>
-                      <p className="text-[0.75rem] text-muted-foreground font-medium pl-5">
-                        {appliedCoupon.message || "Coupon discount applied"} &bull; You saved {formatINR(appliedCoupon.discountAmount)}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={couponInput}
-                          onChange={(e) => {
-                            setCouponInput(e.target.value.toUpperCase());
-                            setCouponError("");
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleApplyCoupon();
-                            }
-                          }}
-                          placeholder="Enter coupon code"
-                          className="flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground uppercase tracking-wider placeholder:normal-case placeholder:font-normal placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-secondary/50"
-                        />
-                        <Button
-                          type="button"
-                          variant="plum"
-                          size="sm"
-                          disabled={couponLoading || !couponInput.trim()}
-                          onClick={handleApplyCoupon}
-                          className="font-bold text-xs px-4 rounded-xl shrink-0"
-                        >
-                          {couponLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
-                        </Button>
-                      </div>
-                      {couponError && (
-                        <p className="text-[0.7rem] font-medium text-destructive flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3 shrink-0" />
-                          <span>{couponError}</span>
-                        </p>
-                      )}
-                    </div>
-                  )}
+                <div className="pt-2 border-t border-border/70">
+                  <CouponSection variant="checkout" compact={true} />
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-surface border border-border/60 text-[0.7rem] text-muted-foreground space-y-1">

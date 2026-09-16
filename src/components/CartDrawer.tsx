@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Truck,
   ShieldCheck,
+  Tag,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -23,14 +24,20 @@ export default function CartDrawer() {
     removeFromCart,
     cartSubtotal,
     cartCount,
+    appliedCoupon,
   } = useCart();
 
   if (!isCartOpen) return null;
 
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
-  const grandTotal = cartSubtotal + shipping;
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const grandTotal = Math.max(0, cartSubtotal + shipping - discountAmount);
   const neededForFreeShipping = brand.freeShippingOver - cartSubtotal;
+
+  const checkoutHref = appliedCoupon
+    ? `/checkout?coupon=${encodeURIComponent(appliedCoupon.code)}`
+    : "/checkout";
 
   return (
     <div
@@ -123,7 +130,6 @@ export default function CartDrawer() {
                             srcSet={item.product.image.replace(/\.jpg$/, ".webp")}
                             type="image/webp"
                           />
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={item.product.image}
                             alt={item.product.name}
@@ -182,6 +188,15 @@ export default function CartDrawer() {
                     {shipping === 0 ? "FREE" : formatINR(shipping)}
                   </span>
                 </div>
+                {appliedCoupon && discountAmount > 0 && (
+                  <div className="flex justify-between text-leaf font-bold">
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      <span>{appliedCoupon.code} Discount</span>
+                    </span>
+                    <span>-{formatINR(discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-bold text-primary pt-2 border-t border-border/60">
                   <span>Total</span>
                   <span className="text-secondary font-extrabold text-base">
@@ -192,7 +207,7 @@ export default function CartDrawer() {
 
               <div className="space-y-2 pt-1">
                 <Link
-                  href="/checkout"
+                  href={checkoutHref}
                   onClick={() => setIsCartOpen(false)}
                   className="block w-full"
                 >
