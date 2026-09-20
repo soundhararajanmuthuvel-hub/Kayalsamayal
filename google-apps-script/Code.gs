@@ -19,7 +19,8 @@ var SPREADSHEET_ID = "1VSApDnwqbwqSnZjgp1Stx1Ko54kM6mM3MpqrcaUzwjc";
   ORDER_ITEMS: "Order Items",
   REVIEWS:     "Reviews",
   SETTINGS:    "Settings",
-  COUPONS:     "Coupons"
+  COUPONS:     "Coupons",
+  CATEGORIES:  "Categories"
 };
 
 // ── CORE HELPERS ─────────────────────────────────────────────────────────────
@@ -244,6 +245,11 @@ function setupDatabaseSheets() {
       ]
     },
     {
+      name:     TABS.CATEGORIES,
+      altNames: ["categories"],
+      headers:  ["Category"]
+    },
+    {
       name:     "API Logs",
       altNames: [],
       headers:  ["Log ID", "Timestamp", "Action", "Method", "Order ID", "Customer ID", "Status", "Request Data", "Response Data", "Error Message"]
@@ -328,12 +334,189 @@ function setupDatabaseSheets() {
     });
   }
 
+  // Set up Categories sheet and Products Category column dropdown validation
+  setupCategoryDropdown(ss);
+
   Logger.log("=========================================");
   Logger.log("DATABASE SYNC COMPLETE");
   Logger.log("Spreadsheet: " + spreadsheetName);
   Logger.log("Created: "  + (createdSheets.length > 0 ? createdSheets.join(", ") : "None"));
   Logger.log("Skipped (already exist): " + skippedSheets.join(", "));
   Logger.log("=========================================");
+}
+
+// ── CATEGORIES SHEET & DROPDOWN VALIDATION ───────────────────────────────────
+
+/**
+ * Sets up the Categories sheet and applies Google Sheets Data Validation (Dropdown)
+ * to the Products sheet Category column.
+ *
+ * Requirements & Features:
+ * 1. Finds/creates the separate "Categories" sheet.
+ * 2. Populates Categories sheet with UNIQUE non-empty categories extracted from Products sheet.
+ * 3. Does not hardcode category names — fully dynamic.
+ * 4. Preserves admin-managed categories in Categories sheet (does not delete unused categories).
+ * 5. Applies Google Sheets in-cell dropdown data validation pointing to Categories!A2:A.
+ * 6. Range covers Category rows 2 to 1000 so future product rows automatically have the dropdown.
+ * 7. Existing product category values remain 100% intact.
+ * 8. Can be run standalone or as part of setupDatabaseSheets().
+ */
+function setupCategoryDropdown(ssInput) {
+  var ss = ssInput || SpreadsheetApp.openById(SPREADSHEET_ID);
+  var result = {
+    success: false,
+    categoriesSheetCreated: false,
+    categoriesCount: 0,
+    categories: [],
+    dropdownRange: "",
+    productsRowCount: 0,
+    message: ""
+  };
+
+  try {
+    // 1. Find or create Categories sheet
+    var categoriesSheet = getSheetSafely(ss, TABS.CATEGORIES, ["Categories", "categories"]);
+    if (!categoriesSheet) {
+      categoriesSheet = ss.insertSheet(TABS.CATEGORIES);
+      categoriesSheet.appendRow(["Category"]);
+      categoriesSheet.setFrozenRows(1);
+      var cHeaderRange = categoriesSheet.getRange(1, 1, 1, 1);
+      cHeaderRange.setFontWeight("bold").setBackground("#F4EBE1");
+      categoriesSheet.autoResizeColumn(1);
+      result.categoriesSheetCreated = true;
+      Logger.log("Created sheet: " + TABS.CATEGORIES);
+    } else {
+      // Ensure header is "Category" in cell A1
+      var a1Val = String(categoriesSheet.getRange(1, 1).getValue() || "").trim();
+      if (!a1Val) {
+        categoriesSheet.getRange(1, 1).setValue("Category").setFontWeight("bold").setBackground("#F4EBE1");
+        categoriesSheet.setFrozenRows(1);
+      }
+    }
+
+    // 2. Find Products sheet
+    var productsSheet = getSheetSafely(ss, TABS.PRODUCTS, ["products_export", "products"]);
+    if (!productsSheet) {
+      result.message = "Products sheet not found";
+      Logger.log(result.message);
+      return result;
+    }
+
+    // 3. Find "Category" column in Products sheet by header
+    var pLastCol = productsSheet.getLastColumn();
+    if (pLastCol === 0) {
+      result.message = "Products sheet has no columns";
+      Logger.log(result.message);
+      return result;
+    }
+
+    var pHeaders = productsSheet.getRange(1, 1, 1, pLastCol).getValues()[0];
+    var catColIdx = -1;
+    for (var h = 0; h < pHeaders.length; h++) {
+      if (String(pHeaders[h] || "").trim().toLowerCase() === "category") {
+        catColIdx = h + 1; // 1-indexed
+        break;
+      }
+    }
+
+    if (catColIdx === -1) {
+      result.message = "Category column not found in Products sheet";
+      Logger.log(result.message);
+      return result;
+    }
+
+    // 4. Read existing categories from Categories sheet (to preserve admin additions)
+    var existingCategories = [];
+    var existingNormalized = [];
+    var cLastRow = categoriesSheet.getLastRow();
+    if (cLastRow > 1) {
+      var cData = categoriesSheet.getRange(2, 1, cLastRow - 1, 1).getValues();
+      for (var cr = 0; cr < cData.length; cr++) {
+        var rawC = String(cData[cr][0] || "").trim();
+        if (rawC.length > 0) {
+          var normC = rawC.toLowerCase();
+          if (existingNormalized.indexOf(normC) === -1) {
+            existingCategories.push(rawC);
+            existingNormalized.push(normC);
+          }
+        }
+      }
+    }
+
+    // 5. Read existing product categories from Products sheet
+    var pLastRow = productsSheet.getLastRow();
+    result.productsRowCount = Math.max(0, pLastRow - 1);
+    var missingCategories = [];
+
+    if (pLastRow > 1) {
+      var pCatData = productsSheet.getRange(2, catColIdx, pLastRow - 1, 1).getValues();
+      for (var pr = 0; pr < pCatData.length; pr++) {
+        var rawPCat = String(pCatData[pr][0] || "").trim();
+        if (rawPCat.length > 0) {
+          var normPCat = rawPCat.toLowerCase();
+          if (existingNormalized.indexOf(normPCat) === -1) {
+            existingCategories.push(rawPCat);
+            existingNormalized.push(normPCat);
+            missingCategories.push(rawPCat);
+          }
+        }
+      }
+    }
+
+    // 6. Write back clean, deduplicated categories list if newly created, missing items found, or duplicates existed
+    var needsRewrite = result.categoriesSheetCreated ||
+                       missingCategories.length > 0 ||
+                       (cLastRow > 1 && existingCategories.length !== (cLastRow - 1));
+
+    if (needsRewrite && existingCategories.length > 0) {
+      if (categoriesSheet.getLastRow() > 1) {
+        categoriesSheet.getRange(2, 1, categoriesSheet.getLastRow() - 1, 1).clearContent();
+      }
+      var rowsToWrite = existingCategories.map(function(cat) { return [cat]; });
+      categoriesSheet.getRange(2, 1, rowsToWrite.length, 1).setValues(rowsToWrite);
+      categoriesSheet.autoResizeColumn(1);
+      Logger.log("Categories sheet updated with " + existingCategories.length + " categories (" + missingCategories.length + " added from Products).");
+    }
+
+    result.categoriesCount = existingCategories.length;
+    result.categories = existingCategories;
+
+    // 7. Ensure Categories sheet has plenty of row capacity
+    if (categoriesSheet.getMaxRows() < 100) {
+      categoriesSheet.insertRowsAfter(categoriesSheet.getMaxRows(), 100 - categoriesSheet.getMaxRows());
+    }
+
+    // 8. Build Data Validation Rule pointing to Categories!A2:A
+    // requireValueInRange(range, true) displays the in-cell dropdown list in Google Sheets.
+    // Referencing Categories!A2:A dynamically includes any new categories added by admin in future rows.
+    var categorySourceRange = categoriesSheet.getRange("A2:A");
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInRange(categorySourceRange, true)
+      .setAllowInvalid(false)
+      .build();
+
+    // 9. Ensure Products sheet has capacity for at least 1000 rows
+    if (productsSheet.getMaxRows() < 1000) {
+      productsSheet.insertRowsAfter(productsSheet.getMaxRows(), 1000 - productsSheet.getMaxRows());
+    }
+
+    // 10. Apply Data Validation across Products Category column (Row 2 to 1000+)
+    var numFutureRows = Math.max(productsSheet.getMaxRows() - 1, 999);
+    var productsCategoryRange = productsSheet.getRange(2, catColIdx, numFutureRows, 1);
+    productsCategoryRange.setDataValidation(rule);
+
+    result.dropdownRange = productsSheet.getName() + "!" + productsCategoryRange.getA1Notation();
+    result.success = true;
+    result.message = "Successfully set up category dropdown for " + result.dropdownRange + " linked to Categories!A2:A (" + result.categoriesCount + " categories available).";
+    Logger.log(result.message);
+    return result;
+
+  } catch (err) {
+    result.success = false;
+    result.message = "Error setting up category dropdown: " + err.toString();
+    Logger.log(result.message);
+    return result;
+  }
 }
 
 // ── HTTP GET HANDLER ─────────────────────────────────────────────────────────
@@ -384,7 +567,25 @@ function doGet(e) {
       }
 
       var catList = catOrder.map(function(k) { return catMap[k]; });
-      return jsonResponse({ success: true, categories: catList });
+
+      // Read available categories defined in Categories sheet
+      var cSheet = getSheetSafely(ss, TABS.CATEGORIES, ["Categories", "categories"]);
+      var availableOptions = [];
+      if (cSheet && cSheet.getLastRow() > 1) {
+        var cVals = cSheet.getRange(2, 1, cSheet.getLastRow() - 1, 1).getValues();
+        for (var ci = 0; ci < cVals.length; ci++) {
+          var cName = String(cVals[ci][0] || "").trim();
+          if (cName.length > 0 && availableOptions.indexOf(cName) === -1) {
+            availableOptions.push(cName);
+          }
+        }
+      }
+
+      return jsonResponse({
+        success: true,
+        categories: catList,
+        availableOptions: availableOptions
+      });
     }
 
     if (action === "reviews") {
@@ -514,6 +715,10 @@ function doPost(e) {
 
     if (action === "coupons") {
       return jsonResponse(getPublicCoupons(ss));
+    }
+
+    if (action === "setupCategoryDropdown") {
+      return jsonResponse(setupCategoryDropdown(ss));
     }
 
     if (action === "createCustomer") {
