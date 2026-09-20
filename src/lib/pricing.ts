@@ -57,6 +57,8 @@ export function calculateOrderTotals(
     couponCode?: string;
     customerMobile?: string;
     existingCustomerUses?: number;
+    availableCoupons?: import("@/lib/coupons").CouponDefinition[];
+    couponValidation?: CouponValidationResult;
   }
 ): OrderCalculationResult {
   if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
@@ -149,10 +151,16 @@ export function calculateOrderTotals(
   // Authoritative Coupon Evaluation
   let discount = 0;
   let couponResult: CouponValidationResult | undefined;
-  if (options?.couponCode && options.couponCode.trim()) {
+  if (options?.couponValidation) {
+    couponResult = options.couponValidation;
+    if (couponResult.valid) {
+      discount = couponResult.discountAmount;
+    }
+  } else if (options?.couponCode && options.couponCode.trim()) {
     couponResult = evaluateCoupon(options.couponCode, subtotal, {
       customerMobile: options.customerMobile,
       existingCustomerUses: options.existingCustomerUses,
+      availableCoupons: options.availableCoupons,
     });
     if (couponResult.valid) {
       discount = couponResult.discountAmount;

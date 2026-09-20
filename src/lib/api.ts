@@ -323,3 +323,89 @@ export async function getOrder(
     return { success: false, message: "Network error. Unable to fetch order details." };
   }
 }
+
+// ── COUPONS ───────────────────────────────────────────────────────────────────
+
+export interface BackendCouponValidation {
+  success: boolean;
+  valid: boolean;
+  code?: string;
+  discountType?: "percentage" | "fixed";
+  discountValue?: number;
+  maximumDiscount?: number;
+  minimumOrder?: number;
+  discountAmount: number;
+  message?: string;
+  error?: string;
+}
+
+export interface PublicCoupon {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  maximumDiscount?: number;
+  minimumOrder: number;
+  startDate?: string;
+  expiryDate?: string;
+  active: boolean;
+}
+
+export async function validateCouponBackend(
+  couponCode: string,
+  subtotal: number,
+  customerMobile?: string
+): Promise<BackendCouponValidation> {
+  const normalized = String(couponCode || "").trim().toUpperCase();
+  if (!normalized) {
+    return { success: false, valid: false, discountAmount: 0, error: "Please enter a coupon code." };
+  }
+
+  try {
+    const payload = {
+      action: "validateCoupon",
+      couponCode: normalized,
+      subtotal: Math.max(0, subtotal),
+      customer: customerMobile ? { mobile: customerMobile } : undefined,
+    };
+
+    const res = await fetch(API_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const json = await res.json();
+    return json;
+  } catch (err) {
+    console.warn("Backend coupon validation fetch failed:", err);
+    return {
+      success: false,
+      valid: false,
+      code: normalized,
+      discountAmount: 0,
+      error: "Unable to connect to validation server.",
+    };
+  }
+}
+
+export async function fetchPublicCoupons(): Promise<PublicCoupon[]> {
+  try {
+    const res = await fetch(`${API_URL}?action=coupons`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      // Exclude private coupons (KAYAL100) and inactive ones
+      return json.data.filter((c: PublicCoupon) => c.code !== "KAYAL100" && c.active);
+    }
+    return [];
+  } catch (err) {
+    console.warn("fetchPublicCoupons error:", err);
+    return [];
+  }
+}
+

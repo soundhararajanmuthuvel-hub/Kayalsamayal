@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { calculateOrderTotals } from "@/lib/pricing";
+import { calculateOrderTotals, getProductPrice } from "@/lib/pricing";
 import { createOrderToken } from "@/lib/orderToken";
+import { validateCouponBackend } from "@/lib/api";
+import { products } from "@/data/products";
+import { CouponValidationResult } from "@/lib/coupons";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,10 +17,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Authoritative Pricing Calculation on Server (including coupon discount)
+    // 1. Authoritative Pricing Calculation on Server (including dynamic coupon discount)
+    let dynamicValidation: CouponValidationResult | undefined;
+    if (couponCode && typeof couponCode === "string" && couponCode.trim()) {
+      let approxSubtotal = 0;
+      if (Array.isArray(items)) {
+        for (const it of items) {
+          const product = products.find((p) => p.id === it.productId);
+          if (product) {
+            approxSubtotal += getProductPrice(product) * Math.max(1, Number(it.quantity) || 1);
+          }
+        }
+      }
+      const backendVal = await validateCouponBackend(couponCode, approxSubtotal, customer.mobile);
+      if (backendVal.success !== false && (backendVal.valid === true || backendVal.valid === false)) {
+        if (!backendVal.valid) {
+          return NextResponse.json(
+            { success: false, error: backendVal.error || "Invalid coupon code." },
+            { status: 400 }
+          );
+        }
+        dynamicValidation = {
+          valid: true,
+          code: backendVal.code || couponCode.trim().toUpperCase(),
+          discountAmount: backendVal.discountAmount,
+          discountType: backendVal.discountType,
+          discountValue: backendVal.discountValue,
+          maximumDiscount: backendVal.maximumDiscount,
+          message: backendVal.message,
+        };
+      }
+    }
+
     const calc = calculateOrderTotals(items, {
-      couponCode,
+      couponCode: typeof couponCode === "string" ? couponCode.trim() : undefined,
       customerMobile: customer.mobile,
+      couponValidation: dynamicValidation,
     });
     if (!calc.valid) {
       return NextResponse.json(

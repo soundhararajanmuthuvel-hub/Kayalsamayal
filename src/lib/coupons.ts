@@ -37,6 +37,15 @@ export const DEFAULT_COUPONS: CouponDefinition[] = [
     perCustomerLimit: 1,
     active: true,
   },
+  {
+    id: "CPN-HI",
+    code: "HI",
+    discountType: "percentage",
+    discountValue: 100,
+    minimumOrderSubtotal: 0,
+    perCustomerLimit: 1,
+    active: true,
+  },
 ];
 
 export interface CouponValidationResult {

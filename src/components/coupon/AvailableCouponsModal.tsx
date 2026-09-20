@@ -1,10 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Copy, Check, Tag, Sparkles } from "lucide-react";
+import { X, Copy, Check, Tag, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DEFAULT_COUPONS } from "@/lib/coupons";
 import { formatINR } from "@/lib/brand";
+
+export interface ModalCoupon {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  maximumDiscount?: number;
+  minimumOrder: number;
+  startDate?: string;
+  expiryDate?: string;
+  active: boolean;
+}
 
 interface AvailableCouponsModalProps {
   isOpen: boolean;
@@ -19,6 +29,8 @@ export function AvailableCouponsModal({
   onApply,
   currentSubtotal,
 }: AvailableCouponsModalProps) {
+  const [coupons, setCoupons] = useState<ModalCoupon[]>([]);
+  const [loading, setLoading] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   // Close on Escape key press
@@ -45,13 +57,50 @@ export function AvailableCouponsModal({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  // Fetch live public coupons when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
 
-  // Filter for ACTIVE and strictly PUBLIC coupons (exclude KAYAL100 & private coupons)
-  const publicCoupons = DEFAULT_COUPONS.filter((c) => {
-    const isPrivate = c.code === "KAYAL100" || (c as unknown as { isPrivate?: boolean }).isPrivate === true;
-    return c.active && !isPrivate;
-  });
+    async function loadCoupons() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/coupons/available");
+        if (!res.ok) throw new Error("Failed to load coupons");
+        const data = await res.json();
+        if (!cancelled && data.coupons && Array.isArray(data.coupons)) {
+          // Strictly exclude staff/private coupons like KAYAL100
+          const publicOnly = data.coupons.filter(
+            (c: ModalCoupon) => c.code !== "KAYAL100" && c.active !== false
+          );
+          setCoupons(publicOnly);
+        }
+      } catch (err) {
+        console.warn("Could not load dynamic coupons, falling back:", err);
+        if (!cancelled) {
+          setCoupons([
+            {
+              code: "WELCOME10",
+              discountType: "percentage",
+              discountValue: 10,
+              maximumDiscount: 100,
+              minimumOrder: 299,
+              active: true,
+            },
+          ]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadCoupons();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const handleCopy = (code: string) => {
     navigator.clipboard?.writeText(code);
@@ -103,20 +152,27 @@ export function AvailableCouponsModal({
 
         {/* Content */}
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-          {publicCoupons.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12 space-y-2">
+              <Loader2 className="h-6 w-6 animate-spin text-secondary mx-auto" />
+              <p className="text-xs text-muted-foreground font-medium">Checking active offers...</p>
+            </div>
+          ) : coupons.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground space-y-2">
               <p className="text-sm font-semibold">No public coupons available at the moment.</p>
               <p className="text-xs">Check back soon for seasonal festive offers!</p>
             </div>
           ) : (
-            publicCoupons.map((coupon) => {
-              const isEligible = currentSubtotal >= coupon.minimumOrderSubtotal;
-              const shortfall = coupon.minimumOrderSubtotal - currentSubtotal;
+            coupons.map((coupon) => {
+              const minOrder = coupon.minimumOrder || 0;
+              const isEligible = currentSubtotal >= minOrder;
+              const shortfall = minOrder - currentSubtotal;
               const isCopied = copiedCode === coupon.code;
+              const isPercentage = coupon.discountType === "percentage";
 
               return (
                 <div
-                  key={coupon.id}
+                  key={coupon.code}
                   className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 space-y-3 hover:border-secondary/40 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -127,20 +183,23 @@ export function AvailableCouponsModal({
                         </span>
                         <span className="text-xs font-bold text-leaf bg-leaf/10 border border-leaf/30 px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Sparkles className="h-3 w-3" />
-                          {coupon.discountValue}% OFF
+                          {isPercentage ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
                         </span>
                       </div>
                       <p className="text-xs font-medium text-foreground pt-1">
-                        Get {coupon.discountValue}% off your order
-                        {coupon.maximumDiscount ? ` (up to ${formatINR(coupon.maximumDiscount)})` : ""}.
+                        {isPercentage
+                          ? `Get ${coupon.discountValue}% off your order${
+                              coupon.maximumDiscount ? ` (up to ${formatINR(coupon.maximumDiscount)})` : ""
+                            }.`
+                          : `Get flat ${formatINR(coupon.discountValue)} off your order.`}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/60">
                     <span>
-                      {coupon.minimumOrderSubtotal > 0
-                        ? `Min. order: ${formatINR(coupon.minimumOrderSubtotal)}`
+                      {minOrder > 0
+                        ? `Min. order: ${formatINR(minOrder)}`
                         : "No minimum order requirement"}
                     </span>
                     {!isEligible && (
@@ -192,7 +251,7 @@ export function AvailableCouponsModal({
         {/* Footer */}
         <div className="px-6 py-4 bg-muted/40 border-t border-border text-center">
           <p className="text-[0.7rem] text-muted-foreground">
-            Coupons are one-time use per customer • Server-verified at checkout
+            Coupons are server-verified at checkout • One coupon per order
           </p>
         </div>
       </div>

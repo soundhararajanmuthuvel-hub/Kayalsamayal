@@ -422,6 +422,10 @@ function doGet(e) {
       return jsonResponse({ success: true, data: { order: order, customer: customer, items: orderItems } });
     }
 
+    if (action === "coupons") {
+      return jsonResponse(getPublicCoupons(ss));
+    }
+
     // Diagnostic/Administrative actions are restricted from anonymous public GET execution
     if (action === "setup" || action === "diag" || action === "testSampleOrder") {
       return jsonResponse({
@@ -452,6 +456,29 @@ function doPost(e) {
 
     if (!action) {
       return jsonResponse({ success: false, error: "Missing action parameter", step: "POST Action Routing" });
+    }
+
+    if (action === "validateCoupon") {
+      var cCode = postData.couponCode || postData.code;
+      var cSubtotal = Number(postData.subtotal || 0);
+      var cMobile = (postData.customer && postData.customer.mobile) ? postData.customer.mobile : postData.customerMobile;
+      var evalRes = evaluateCouponFromSheet(ss, cCode, cSubtotal, cMobile);
+      return jsonResponse({
+        success: evalRes.valid,
+        valid: evalRes.valid,
+        code: evalRes.code,
+        discountType: evalRes.discountType,
+        discountValue: evalRes.discountValue,
+        maximumDiscount: evalRes.maximumDiscount,
+        minimumOrder: evalRes.minimumOrder,
+        discountAmount: evalRes.discountAmount,
+        message: evalRes.message,
+        error: evalRes.error
+      });
+    }
+
+    if (action === "coupons") {
+      return jsonResponse(getPublicCoupons(ss));
     }
 
     if (action === "createCustomer") {
@@ -525,6 +552,242 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ success: false, error: err.toString(), step: "doPost Exception" });
   }
+}
+
+// ── DYNAMIC COUPON HELPERS ───────────────────────────────────────────────────
+
+/**
+ * Authoritative evaluation of a coupon code against the Coupons sheet.
+ * Validates active status, date windows, min order, usage limit, and per-customer limit.
+ */
+function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) {
+  if (!couponCodeInput) {
+    return { valid: false, discountAmount: 0, error: "Please enter a coupon code." };
+  }
+  var codeNorm = String(couponCodeInput).trim().toUpperCase();
+  if (!codeNorm) {
+    return { valid: false, discountAmount: 0, error: "Please enter a coupon code." };
+  }
+
+  var couponsSheetForValidation = getSheetSafely(ss, TABS.COUPONS, ["coupons"]);
+  var couponList = [];
+  if (couponsSheetForValidation && couponsSheetForValidation.getLastRow() > 1) {
+    couponList = getSheetRowsAsJSON(couponsSheetForValidation);
+  }
+
+  // Find matching coupon in sheet
+  var coupon = null;
+  for (var csi = 0; csi < couponList.length; csi++) {
+    if (String(couponList[csi]["Code"] || "").trim().toUpperCase() === codeNorm) {
+      coupon = couponList[csi];
+      break;
+    }
+  }
+
+  // Fallback: recognize built-in WELCOME10 if Coupons sheet is empty or unseeded
+  if (!coupon && codeNorm === "WELCOME10") {
+    coupon = {
+      "Coupon ID": "CPN-WELCOME10",
+      "Code": "WELCOME10",
+      "Discount Type": "percentage",
+      "Discount Value": 10,
+      "Maximum Discount": 100,
+      "Minimum Order": 299,
+      "Usage Limit": "",
+      "Used Count": 0,
+      "Per Customer Limit": 1,
+      "Active": "TRUE"
+    };
+  }
+
+  if (!coupon) {
+    return {
+      valid: false,
+      code: codeNorm,
+      discountAmount: 0,
+      error: "Invalid coupon code: " + codeNorm
+    };
+  }
+
+  // 1. Active check
+  var cActiveVal = (coupon["Active"] !== undefined) ? coupon["Active"] : coupon["active"];
+  var isCouponActive = cActiveVal === true ||
+                       String(cActiveVal).toLowerCase() === "true" ||
+                       cActiveVal === 1 ||
+                       String(cActiveVal).toLowerCase() === "yes";
+  if (!isCouponActive) {
+    return { valid: false, code: codeNorm, discountAmount: 0, error: "Coupon is no longer active" };
+  }
+
+  // 2. Date validity
+  var nowCpn = new Date();
+  if (coupon["Start Date"]) {
+    var startDate = new Date(coupon["Start Date"]);
+    if (!isNaN(startDate.getTime()) && nowCpn < startDate) {
+      return { valid: false, code: codeNorm, discountAmount: 0, error: "Coupon is not valid yet" };
+    }
+  }
+  if (coupon["Expiry Date"]) {
+    var expiryDate = new Date(coupon["Expiry Date"]);
+    if (!isNaN(expiryDate.getTime()) && nowCpn > expiryDate) {
+      return { valid: false, code: codeNorm, discountAmount: 0, error: "Coupon has expired" };
+    }
+  }
+
+  // 3. Minimum order
+  var minOrder = Number(coupon["Minimum Order"] || 0);
+  if (minOrder > 0 && subtotal < minOrder) {
+    return {
+      valid: false,
+      code: codeNorm,
+      discountAmount: 0,
+      error: "Minimum order value is ₹" + minOrder + " to use this coupon"
+    };
+  }
+
+  // 4. Global usage limit
+  var usageLimit = Number(coupon["Usage Limit"] || 0);
+  var usedCount  = Number(coupon["Used Count"]  || 0);
+  if (usageLimit > 0 && usedCount >= usageLimit) {
+    return { valid: false, code: codeNorm, discountAmount: 0, error: "Coupon usage limit has been reached" };
+  }
+
+  // 5. Per-customer limit
+  var perCustLimit = Number(coupon["Per Customer Limit"] || 1);
+  if (perCustLimit > 0 && customerMobile) {
+    var ordersSheet = getSheetSafely(ss, TABS.ORDERS, ["Order", "Orders Sheet"]);
+    if (ordersSheet && ordersSheet.getLastRow() > 1) {
+      var custOrders   = getSheetRowsAsJSON(ordersSheet);
+      var normMobile   = String(customerMobile).replace(/\D/g, "").slice(-10);
+      var customerUsageCount = 0;
+      custOrders.forEach(function(o) {
+        var oMobile = String(o["Mobile"] || "").replace(/\D/g, "").slice(-10);
+        if (oMobile !== normMobile) return;
+        var oCouponCode = String(o["Coupon Code"] || "").trim().toUpperCase();
+        if (oCouponCode === codeNorm) {
+          customerUsageCount++;
+          return;
+        }
+        var oNotes = String(o["Order Notes"] || "");
+        var oDisc  = Number(o["Discount"] || 0);
+        if (oDisc > 0 && oNotes.indexOf("Coupon: " + codeNorm) !== -1) {
+          customerUsageCount++;
+        }
+      });
+      if (customerUsageCount >= perCustLimit) {
+        return {
+          valid: false,
+          code: codeNorm,
+          discountAmount: 0,
+          error: "You have already used this coupon"
+        };
+      }
+    }
+  }
+
+  // 6. Calculate authoritative discount
+  var discType = String(coupon["Discount Type"] || "percentage").toLowerCase();
+  var discVal  = Number(coupon["Discount Value"] || 0);
+  var maxDisc  = Number(coupon["Maximum Discount"] || 0);
+  var calculatedDiscount = 0;
+
+  if (discType === "percentage") {
+    calculatedDiscount = (subtotal * discVal) / 100;
+    if (maxDisc > 0 && calculatedDiscount > maxDisc) {
+      calculatedDiscount = maxDisc;
+    }
+  } else if (discType === "fixed") {
+    calculatedDiscount = discVal;
+  }
+
+  // Discount cannot exceed subtotal
+  if (calculatedDiscount > subtotal) calculatedDiscount = subtotal;
+  var finalDiscount = Math.round(calculatedDiscount);
+
+  return {
+    valid: true,
+    code: coupon["Code"] || codeNorm,
+    discountType: discType,
+    discountValue: discVal,
+    maximumDiscount: maxDisc > 0 ? maxDisc : undefined,
+    minimumOrder: minOrder,
+    discountAmount: finalDiscount,
+    message: (coupon["Code"] || codeNorm) + " applied! You saved ₹" + finalDiscount + "."
+  };
+}
+
+/**
+ * Returns safe public coupon catalog. Excludes staff/private coupons such as KAYAL100.
+ */
+function getPublicCoupons(ss) {
+  var couponsSheet = getSheetSafely(ss, TABS.COUPONS, ["coupons"]);
+  var publicCoupons = [];
+
+  if (!couponsSheet || couponsSheet.getLastRow() <= 1) {
+    publicCoupons.push({
+      code: "WELCOME10",
+      discountType: "percentage",
+      discountValue: 10,
+      maximumDiscount: 100,
+      minimumOrder: 299,
+      active: true
+    });
+    return { success: true, data: publicCoupons };
+  }
+
+  var rows = getSheetRowsAsJSON(couponsSheet);
+  var now = new Date();
+
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var code = String(r["Code"] || "").trim().toUpperCase();
+    if (!code) continue;
+
+    // Filter out private/staff coupons - NEVER expose KAYAL100 publicly in available coupons
+    if (code === "KAYAL100") continue;
+
+    // Check active
+    var cActiveVal = (r["Active"] !== undefined) ? r["Active"] : r["active"];
+    var isCouponActive = cActiveVal === true ||
+                         String(cActiveVal).toLowerCase() === "true" ||
+                         cActiveVal === 1 ||
+                         String(cActiveVal).toLowerCase() === "yes";
+    if (!isCouponActive) continue;
+
+    // Check dates
+    if (r["Start Date"]) {
+      var sDate = new Date(r["Start Date"]);
+      if (!isNaN(sDate.getTime()) && now < sDate) continue;
+    }
+    if (r["Expiry Date"]) {
+      var eDate = new Date(r["Expiry Date"]);
+      if (!isNaN(eDate.getTime()) && now > eDate) continue;
+    }
+
+    // Check global usage limit
+    var uLimit = Number(r["Usage Limit"] || 0);
+    var uCount = Number(r["Used Count"]  || 0);
+    if (uLimit > 0 && uCount >= uLimit) continue;
+
+    var discType = String(r["Discount Type"] || "percentage").toLowerCase();
+    var discVal  = Number(r["Discount Value"] || 0);
+    var maxDisc  = Number(r["Maximum Discount"] || 0);
+    var minOrder = Number(r["Minimum Order"] || 0);
+
+    // Return ONLY safe public fields
+    publicCoupons.push({
+      code: code,
+      discountType: discType,
+      discountValue: discVal,
+      maximumDiscount: maxDisc > 0 ? maxDisc : undefined,
+      minimumOrder: minOrder,
+      startDate: r["Start Date"] || undefined,
+      expiryDate: r["Expiry Date"] || undefined,
+      active: true
+    });
+  }
+
+  return { success: true, data: publicCoupons };
 }
 
 // ── CUSTOMER ─────────────────────────────────────────────────────────────────

@@ -7,7 +7,6 @@ import { CouponInput } from "./CouponInput";
 import { CouponBadge } from "./CouponBadge";
 import { AvailableCouponsModal } from "./AvailableCouponsModal";
 import { CouponToast, ToastMessage } from "./CouponToast";
-import { DEFAULT_COUPONS } from "@/lib/coupons";
 import { formatINR } from "@/lib/brand";
 
 interface CouponSectionProps {
@@ -85,14 +84,10 @@ export function CouponSection({
         return;
       }
 
-      // Lookup minOrder from default catalog if available
-      const catalogMatch = DEFAULT_COUPONS.find(
-        (c) => c.code.toUpperCase() === code
-      );
-      const minOrder = catalogMatch ? catalogMatch.minimumOrderSubtotal : (data.minOrder ?? 0);
-      const maxDiscount = data.maximumDiscount ?? catalogMatch?.maximumDiscount;
-      const discountType = data.discountType || catalogMatch?.discountType || "percentage";
-      const discountValue = data.discountValue ?? catalogMatch?.discountValue ?? 0;
+      const discountType = data.discountType || "percentage";
+      const discountValue = typeof data.discountValue === "number" ? data.discountValue : 0;
+      const maxDiscount = data.maximumDiscount !== undefined ? data.maximumDiscount : undefined;
+      const minOrder = typeof data.minOrder === "number" ? data.minOrder : 0;
 
       setAppliedCoupon({
         code: data.code || code,

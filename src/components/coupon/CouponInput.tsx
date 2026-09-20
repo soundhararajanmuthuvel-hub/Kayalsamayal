@@ -25,9 +25,7 @@ export function CouponInput({
   const cleanCode = code.trim().toUpperCase();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Alphanumeric uppercase conversion
-    const val = e.target.value.toUpperCase();
-    setCode(val);
+    setCode(e.target.value);
     setFormatError(null);
   };
 
@@ -38,8 +36,8 @@ export function CouponInput({
       return;
     }
 
-    // Basic format check (alphanumeric, 2-20 characters)
-    if (!/^[A-Z0-9]{2,20}$/.test(cleanCode)) {
+    // Basic format check (alphanumeric, 1-30 characters)
+    if (!/^[A-Z0-9_-]{1,30}$/.test(cleanCode)) {
       setFormatError("Coupon code should only contain letters and numbers.");
       return;
     }
@@ -74,12 +72,17 @@ export function CouponInput({
             </div>
             <input
               id="coupon-code-input"
+              name="couponCode"
               type="text"
               value={code}
               onChange={handleInputChange}
               disabled={isLoading}
-              maxLength={20}
-              placeholder="e.g. WELCOME10"
+              maxLength={30}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              placeholder="e.g. WELCOME10, HI"
               aria-label="Enter coupon code"
               aria-invalid={!!displayError}
               aria-describedby={displayError ? "coupon-error-desc" : undefined}
@@ -89,7 +92,7 @@ export function CouponInput({
                   : "border-border focus:border-secondary focus:ring-2 focus:ring-secondary/30"
               }`}
             />
-            {cleanCode.length >= 3 && !displayError && (
+            {cleanCode.length >= 2 && !displayError && (
               <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-leaf">
                 <Check className="h-4 w-4" />
               </div>
