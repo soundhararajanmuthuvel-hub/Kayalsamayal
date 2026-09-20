@@ -352,6 +352,39 @@ function doGet(e) {
       return jsonResponse({ success: true, data: getSheetRowsAsJSON(sheet) });
     }
 
+    if (action === "categories") {
+      var pSheet = getSheetSafely(ss, TABS.PRODUCTS, ["products_export", "products"]);
+      if (!pSheet) return jsonResponse({ success: true, categories: [] });
+      var pRows = getSheetRowsAsJSON(pSheet);
+      var catMap = {};
+      var catOrder = [];
+
+      for (var pi = 0; pi < pRows.length; pi++) {
+        var pRow = pRows[pi];
+        var pAct = (pRow["Active"] !== undefined) ? pRow["Active"] : pRow["active"];
+        var isPAct = pAct === true || String(pAct).toLowerCase() === "true" || pAct === 1 || String(pAct).toLowerCase() === "yes";
+        if (!isPAct) continue;
+
+        var rawCat = String(pRow["Category"] || "").trim();
+        if (!rawCat) continue;
+        var normCat = rawCat.toLowerCase();
+
+        if (!catMap[normCat]) {
+          catMap[normCat] = {
+            name: rawCat,
+            slug: rawCat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+            productCount: 1
+          };
+          catOrder.push(normCat);
+        } else {
+          catMap[normCat].productCount++;
+        }
+      }
+
+      var catList = catOrder.map(function(k) { return catMap[k]; });
+      return jsonResponse({ success: true, categories: catList });
+    }
+
     if (action === "reviews") {
       var rSheet = getSheetSafely(ss, TABS.REVIEWS);
       if (!rSheet) return jsonResponse({ success: true, data: [] });

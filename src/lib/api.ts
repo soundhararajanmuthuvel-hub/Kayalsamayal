@@ -121,11 +121,7 @@ function mapProduct(raw: any): Product {
 
   const tier: Tier = tierStr === "premium" ? "premium" : "regular";
 
-  let category: Category = "Traditional Masalas";
-  if (categoryStr.includes("Podi"))                              category = "Podi Products";
-  else if (categoryStr.includes("Noodles"))                      category = "Specialty Noodles";
-  else if (categoryStr.includes("Health") || categoryStr.includes("Malt")) category = "Health Mixes & Malts";
-  else if (categoryStr.includes("PeruKalam") || categoryStr.includes("Legiyam")) category = "PeruKalam Legiyam";
+  const category: Category = categoryStr.trim() || "Traditional Masalas";
 
   const cleanPhone = "919003860616";
   const formattedTier = tier === "premium" ? "Premium" : "Regular";

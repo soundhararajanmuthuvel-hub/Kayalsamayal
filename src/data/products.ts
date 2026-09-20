@@ -1,11 +1,6 @@
 export type Tier = "regular" | "premium";
 
-export type Category =
-  | "Traditional Masalas"
-  | "Podi Products"
-  | "Specialty Noodles"
-  | "Health Mixes & Malts"
-  | "PeruKalam Legiyam";
+export type Category = string;
 
 export interface Product {
   id: string;
@@ -445,10 +440,6 @@ export const products: Product[] = [
   },
 ];
 
-export const categories: Category[] = [
-  "Traditional Masalas",
-  "Podi Products",
-  "Specialty Noodles",
-  "Health Mixes & Malts",
-  "PeruKalam Legiyam",
-];
+import { getUniqueCategories } from "@/lib/categories";
+
+export const categories: Category[] = getUniqueCategories(products);

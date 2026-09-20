@@ -4,6 +4,8 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Compass } from "lucide-react";
 import type { Metadata } from "next";
+import { products } from "@/data/products";
+import { getUniqueCategories, slugifyCategory } from "@/lib/categories";
 
 export const metadata: Metadata = {
   title: "Page Not Found | Kayal Samayal",
@@ -15,14 +17,11 @@ export const metadata: Metadata = {
   },
 };
 
-const popularCategories = [
-  { name: "Traditional Masalas", href: "/category/traditional-masalas" },
-  { name: "Podi Products", href: "/category/podi-products" },
-  { name: "Health Mixes & Malts", href: "/health-mixes" },
-  { name: "Specialty Noodles", href: "/category/specialty-noodles" },
-];
-
 export default function NotFound() {
+  const popularCategories = getUniqueCategories(products).slice(0, 5).map((cat) => ({
+    name: cat,
+    href: `/category/${slugifyCategory(cat)}`,
+  }));
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Header />

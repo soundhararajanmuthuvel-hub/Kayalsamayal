@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { products as localProducts, categories, type Product } from "@/data/products";
+import { products as localProducts, type Product } from "@/data/products";
+import { getUniqueCategories, getCategoryCounts, normalizeCategory } from "@/lib/categories";
 import { getProducts } from "@/lib/api";
 import { getProductPrice } from "@/context/CartContext";
 import { ProductGrid } from "@/components/shop/ProductGrid";
@@ -32,9 +33,15 @@ export default function ProductsClient() {
     loadData();
   }, []);
 
+  const dynamicCategories = getUniqueCategories(products);
+  const categoryCounts = getCategoryCounts(products);
+
   // Filter & Sort
   const filteredProducts = products
     .filter((p) => {
+      // Exclude inactive products if explicitly marked
+      if (p.active === false) return false;
+
       const matchSearch =
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -42,7 +49,7 @@ export default function ProductsClient() {
 
       const matchCategory =
         selectedCategory === "All" ||
-        p.category.toLowerCase().includes(selectedCategory.toLowerCase().split(" ")[0]);
+        normalizeCategory(p.category) === normalizeCategory(selectedCategory);
 
       const matchTier =
         selectedTier === "All" || p.tier === selectedTier;
@@ -174,13 +181,11 @@ export default function ProductsClient() {
                       : "text-foreground hover:bg-accent"
                   }`}
                 >
-                  All Categories ({products.length})
+                  All Categories ({products.filter((p) => p.active !== false).length})
                 </button>
-                {categories.map((cat) => {
-                  const count = products.filter((p) =>
-                    p.category.toLowerCase().includes(cat.toLowerCase().split(" ")[0])
-                  ).length;
-                  const active = selectedCategory === cat;
+                {dynamicCategories.map((cat) => {
+                  const count = categoryCounts[cat] || 0;
+                  const active = normalizeCategory(selectedCategory) === normalizeCategory(cat);
                   return (
                     <button
                       key={cat}
@@ -314,23 +319,28 @@ export default function ProductsClient() {
                       selectedCategory === "All" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                     }`}
                   >
-                    All Categories
+                    All Categories ({products.filter((p) => p.active !== false).length})
                   </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCategory(cat);
-                        setMobileFiltersOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold ${
-                        selectedCategory === cat ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+                  {dynamicCategories.map((cat) => {
+                    const count = categoryCounts[cat] || 0;
+                    const active = normalizeCategory(selectedCategory) === normalizeCategory(cat);
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          setMobileFiltersOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold ${
+                          active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                        }`}
+                      >
+                        <span className="truncate">{cat}</span>
+                        <span className="text-xs opacity-75">({count})</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

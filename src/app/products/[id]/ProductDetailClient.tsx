@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { products as localProducts, type Product } from "@/data/products";
+import { slugifyCategory } from "@/lib/categories";
 import { getProducts } from "@/lib/api";
 import { getProductPrice, useCart } from "@/context/CartContext";
 import { ProductCard } from "@/components/shop/ProductCard";
@@ -123,10 +124,21 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
         
         {/* Breadcrumb Navigation */}
         <div className="container-page pt-6 pb-4">
-          <nav className="flex items-center gap-2 text-xs font-semibold text-muted-foreground" aria-label="Breadcrumb">
+          <nav className="flex items-center gap-2 text-xs font-semibold text-muted-foreground flex-wrap" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-primary transition-colors">Home</Link>
             <span>/</span>
             <Link href="/products" className="hover:text-primary transition-colors">Products</Link>
+            {product.category && (
+              <>
+                <span>/</span>
+                <Link
+                  href={`/category/${slugifyCategory(product.category)}`}
+                  className="hover:text-primary transition-colors"
+                >
+                  {product.category}
+                </Link>
+              </>
+            )}
             <span>/</span>
             <span className="text-secondary truncate max-w-[200px] sm:max-w-none">{product.name}</span>
           </nav>

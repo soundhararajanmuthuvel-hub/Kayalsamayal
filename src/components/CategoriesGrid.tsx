@@ -1,53 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { products as localProducts } from "@/data/products";
+import { products as localProducts, type Product } from "@/data/products";
+import { getProducts } from "@/lib/api";
+import { getCategoryCardList } from "@/lib/categories";
 import { CategoryCard } from "@/components/shop/CategoryCard";
 
-const categoryList = [
-  {
-    name: "Traditional Masalas",
-    slug: "traditional-masalas",
-    tagline: "Stone-ground everyday and coastal curry blends",
-    image: "/assets/fish-curry-masala.jpg",
-    emoji: "🌶️",
-  },
-  {
-    name: "Podi Products",
-    slug: "podi-products",
-    tagline: "For idli, dosa and piping hot rice with ghee",
-    image: "/assets/andhra-paruppu-sadham-podi.jpg",
-    emoji: "🏺",
-  },
-  {
-    name: "Specialty Noodles",
-    slug: "specialty-noodles",
-    tagline: "Millet & moringa noodles for healthy quick meals",
-    image: "/assets/moringa-noodles.jpg",
-    emoji: "🍜",
-  },
-  {
-    name: "Health Mixes & Malts",
-    slug: "health-mixes-malts",
-    tagline: "Sathu maavu, ABC malt & herbal nutritional drinks",
-    image: "/assets/abc-malt.jpg",
-    emoji: "🌾",
-  },
-  {
-    name: "PeruKalam Legiyam",
-    slug: "perukalam-legiyam",
-    tagline: "Time-honoured postpartum & digestion remedies",
-    image: "/assets/kindiya-kaayam.jpg",
-    emoji: "🍯",
-  },
-];
-
 export default function CategoriesGrid() {
-  const getCount = (catName: string) => {
-    return localProducts.filter(
-      (p) => p.category === catName
-    ).length;
-  };
+  const [products, setProducts] = useState<Product[]>(localProducts);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const live = await getProducts();
+        if (live && live.length > 0) {
+          setProducts(live);
+        }
+      } catch {
+        // Keeps local fallback
+      }
+    }
+    loadData();
+  }, []);
+
+  const categoryCards = getCategoryCardList(products);
 
   return (
     <section id="categories" className="py-16 sm:py-20 bg-surface border-b border-border/60">
@@ -66,29 +43,27 @@ export default function CategoriesGrid() {
 
         {/* Categories Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {categoryList.map((cat, idx) => {
-            const count = getCount(cat.name);
-            return (
-              <motion.div
-                key={cat.slug}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.08 }}
-              >
-                <CategoryCard
-                  name={cat.name}
-                  slug={cat.slug}
-                  tagline={cat.tagline}
-                  image={cat.image}
-                  emoji={cat.emoji}
-                  count={count > 0 ? count : undefined}
-                />
-              </motion.div>
-            );
-          })}
+          {categoryCards.map((cat, idx) => (
+            <motion.div
+              key={cat.slug}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: idx * 0.08 }}
+            >
+              <CategoryCard
+                name={cat.name}
+                slug={cat.slug}
+                tagline={cat.tagline}
+                image={cat.image}
+                emoji={cat.emoji}
+                count={cat.count > 0 ? cat.count : undefined}
+              />
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
   );
 }
+

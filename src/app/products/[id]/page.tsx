@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { products as localProducts } from "@/data/products";
+import { slugifyCategory } from "@/lib/categories";
 import { getProducts } from "@/lib/api";
 import ProductDetailClient from "./ProductDetailClient";
 
@@ -168,10 +169,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 "@type": "ListItem",
                 "position": 3,
                 "name": product.category,
-                "item": `https://www.kayalsamayal.in/category/${product.category
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, "-")
-                  .replace(/(^-|-$)/g, "")}`,
+                "item": `https://www.kayalsamayal.in/category/${slugifyCategory(product.category)}`,
               },
               {
                 "@type": "ListItem",

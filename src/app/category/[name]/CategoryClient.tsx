@@ -3,16 +3,13 @@
 import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { products as localProducts, categories, type Product } from "@/data/products";
+import { products as localProducts, type Product } from "@/data/products";
 import { getProducts } from "@/lib/api";
+import { getUniqueCategories, findCategoryBySlug, slugifyCategory } from "@/lib/categories";
 import { ProductGrid } from "@/components/shop/ProductGrid";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-
-function slugifyCategory(cat: string) {
-  return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
 
 interface PageProps {
   params: Promise<{ name: string }>;
@@ -21,13 +18,16 @@ interface PageProps {
 export default function CategoryClient({ params }: PageProps) {
   const resolvedParams = React.use(params);
   const canonicalSlug = resolvedParams.name.toLowerCase();
-  const matched = categories.find((c) => slugifyCategory(c) === canonicalSlug);
-  const initialCat = matched || decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
+  
+  const initialCategories = getUniqueCategories(localProducts);
+  const initialMatched = findCategoryBySlug(initialCategories, canonicalSlug);
+  const initialCat = initialMatched || decodeURIComponent(resolvedParams.name).replace(/-/g, " ");
+
   const initialItems = localProducts.filter(
-    (p) => p.category.toLowerCase() === initialCat.toLowerCase()
+    (p) => p.active !== false && slugifyCategory(p.category) === canonicalSlug
   );
 
-  const categoryName = initialCat;
+  const [categoryName, setCategoryName] = useState<string>(initialCat);
   const [products, setProducts] = useState<Product[]>(initialItems);
 
   useEffect(() => {
@@ -35,8 +35,13 @@ export default function CategoryClient({ params }: PageProps) {
       try {
         const data = await getProducts();
         if (data && data.length > 0) {
+          const uniqueCats = getUniqueCategories(data);
+          const matchedName = findCategoryBySlug(uniqueCats, canonicalSlug);
+          if (matchedName) {
+            setCategoryName(matchedName);
+          }
           const items = data.filter(
-            (p) => p.category.toLowerCase() === initialCat.toLowerCase()
+            (p) => p.active !== false && slugifyCategory(p.category) === canonicalSlug
           );
           setProducts(items);
         }
@@ -45,7 +50,7 @@ export default function CategoryClient({ params }: PageProps) {
       }
     }
     loadData();
-  }, [initialCat]);
+  }, [canonicalSlug]);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

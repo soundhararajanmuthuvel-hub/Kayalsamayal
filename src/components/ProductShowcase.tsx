@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { products as localProducts, categories, type Category, type Product } from "@/data/products";
+import { products as localProducts, type Product } from "@/data/products";
+import { getUniqueCategories, normalizeCategory } from "@/lib/categories";
 import { getProducts } from "@/lib/api";
 import { ProductCard } from "@/components/shop/ProductCard";
 import Link from "next/link";
@@ -9,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 export default function ProductShowcase() {
-  const [activeCategory, setActiveCategory] = useState<Category>("Traditional Masalas");
   const [allProducts, setAllProducts] = useState<Product[]>(localProducts);
+  const dynamicCategories = getUniqueCategories(allProducts);
+  const [activeCategory, setActiveCategory] = useState<string>(dynamicCategories[0] || "Traditional Masalas");
 
   useEffect(() => {
     async function loadData() {
@@ -18,6 +20,14 @@ export default function ProductShowcase() {
         const data = await getProducts();
         if (data && data.length > 0) {
           setAllProducts(data);
+          const liveCats = getUniqueCategories(data);
+          if (liveCats.length > 0) {
+            setActiveCategory((current) => {
+              return liveCats.some((c) => normalizeCategory(c) === normalizeCategory(current))
+                ? current
+                : liveCats[0];
+            });
+          }
         }
       } catch {
         // Keeps local fallback
@@ -27,7 +37,7 @@ export default function ProductShowcase() {
   }, []);
 
   const displayedProducts = allProducts.filter(
-    (p) => p.category === activeCategory
+    (p) => p.active !== false && normalizeCategory(p.category) === normalizeCategory(activeCategory)
   );
 
   return (
@@ -47,8 +57,8 @@ export default function ProductShowcase() {
 
         {/* Category Tabs (Scrollable on Mobile) */}
         <div className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-8 sm:mb-12 px-1">
-          {categories.map((cat) => {
-            const isActive = activeCategory === cat;
+          {dynamicCategories.map((cat) => {
+            const isActive = normalizeCategory(activeCategory) === normalizeCategory(cat);
             return (
               <button
                 key={cat}

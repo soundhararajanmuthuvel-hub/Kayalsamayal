@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
-import { products as localProducts, categories } from "@/data/products";
+import { products as localProducts } from "@/data/products";
 import { getProducts } from "@/lib/api";
+import { getUniqueCategories, slugifyCategory } from "@/lib/categories";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://www.kayalsamayal.in";
@@ -40,18 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // 2. Dynamic Categories
-  const categoryPages: MetadataRoute.Sitemap = categories.map((cat) => {
-    const slug = cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    return {
-      url: `${baseUrl}/category/${slug}`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    };
-  });
-
-  // 3. Dynamic Products from Google Sheets API / Local Data
+  // 2. Fetch Products from Google Sheets API / Local Data
   let productList = localProducts;
   try {
     const remoteProducts = await getProducts();
@@ -61,6 +51,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch {
     productList = localProducts;
   }
+
+  // 3. Dynamic Categories from active products
+  const uniqueCategories = getUniqueCategories(productList);
+  const categoryPages: MetadataRoute.Sitemap = uniqueCategories.map((cat) => {
+    const slug = slugifyCategory(cat);
+    return {
+      url: `${baseUrl}/category/${slug}`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    };
+  });
 
   const productPages: MetadataRoute.Sitemap = productList
     .filter((p) => p.active !== false && p.id && p.name)

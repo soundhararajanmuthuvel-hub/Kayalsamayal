@@ -1,8 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MessageCircle, Phone, Mail, MapPin, ArrowRight } from "lucide-react";
 import { brand, whatsappLink } from "@/lib/brand";
+import { products as localProducts } from "@/data/products";
+import { getUniqueCategories, slugifyCategory } from "@/lib/categories";
+import { getProducts } from "@/lib/api";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -12,16 +16,33 @@ const navLinks = [
   { label: "Contact & Support", href: "/contact" },
 ];
 
-const categories = [
-  { label: "Traditional Masalas", href: "/category/traditional-masalas" },
-  { label: "Podi Products", href: "/category/podi-products" },
-  { label: "Specialty Noodles", href: "/category/specialty-noodles" },
-  { label: "Health Mixes & Malts", href: "/category/health-mixes-malts" },
-  { label: "PeruKalam Legiyam", href: "/category/perukalam-legiyam" },
-];
-
 export default function Footer() {
   const year = new Date().getFullYear();
+  const [activeCategories, setActiveCategories] = useState(() =>
+    getUniqueCategories(localProducts).map((cat) => ({
+      label: cat,
+      href: `/category/${slugifyCategory(cat)}`,
+    }))
+  );
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const live = await getProducts();
+        if (live && live.length > 0) {
+          setActiveCategories(
+            getUniqueCategories(live).map((cat) => ({
+              label: cat,
+              href: `/category/${slugifyCategory(cat)}`,
+            }))
+          );
+        }
+      } catch {
+        // Keeps local fallback
+      }
+    }
+    loadCategories();
+  }, []);
 
   return (
     <footer className="relative bg-primary text-primary-foreground border-t border-gold/20 pt-14 sm:pt-20 pb-10">
@@ -89,7 +110,7 @@ export default function Footer() {
               Product Range
             </h3>
             <ul className="space-y-0.5 text-xs sm:text-sm">
-              {categories.map((cat) => (
+              {activeCategories.map((cat) => (
                 <li key={cat.href}>
                   <Link
                     href={cat.href}

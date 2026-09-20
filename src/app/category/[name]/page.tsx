@@ -1,27 +1,25 @@
 import type { Metadata } from "next";
-import { categories } from "@/data/products";
+import { products } from "@/data/products";
+import { getUniqueCategories, findCategoryBySlug, slugifyCategory } from "@/lib/categories";
 import CategoryClient from "./CategoryClient";
 
-// Pre-render all 5 category pages at build time (○ Static instead of ƒ Dynamic)
+// Pre-render all active category pages at build time
 export function generateStaticParams() {
-  return categories.map((cat) => ({
-    name: cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+  const dynamicCategories = getUniqueCategories(products);
+  return dynamicCategories.map((cat) => ({
+    name: slugifyCategory(cat),
   }));
 }
-
 
 interface PageProps {
   params: Promise<{ name: string }>;
 }
 
-function slugifyCategory(cat: string) {
-  return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolved = await params;
   const canonicalSlug = resolved.name.toLowerCase();
-  const matched = categories.find((c) => slugifyCategory(c) === canonicalSlug);
+  const dynamicCategories = getUniqueCategories(products);
+  const matched = findCategoryBySlug(dynamicCategories, canonicalSlug);
   const titleName = matched || decodeURIComponent(resolved.name).replace(/-/g, " ");
 
   // Category specific title & description strategy per SEO Master Prompt v1.0
@@ -77,7 +75,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CategoryPage({ params }: PageProps) {
   const resolved = await params;
   const canonicalSlug = resolved.name.toLowerCase();
-  const matched = categories.find((c) => slugifyCategory(c) === canonicalSlug);
+  const dynamicCategories = getUniqueCategories(products);
+  const matched = findCategoryBySlug(dynamicCategories, canonicalSlug);
   const titleName = matched || decodeURIComponent(resolved.name).replace(/-/g, " ");
 
   const breadcrumbJsonLd = {
