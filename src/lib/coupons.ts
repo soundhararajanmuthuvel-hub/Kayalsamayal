@@ -96,36 +96,6 @@ export function evaluateCoupon(
     return { valid: false, discountAmount: 0, error: "Invalid coupon code" };
   }
 
-  // Dedicated test coupon handler for ₹1 sample test orders
-  if (normalized === "TEST1RS") {
-    if (subtotal < 100) {
-      return {
-        valid: false,
-        discountAmount: 0,
-        error: "Minimum order value is ₹100 to use this coupon",
-      };
-    }
-    if (
-      typeof options?.existingCustomerUses === "number" &&
-      options.existingCustomerUses >= 1
-    ) {
-      return {
-        valid: false,
-        discountAmount: 0,
-        error: "You have already used this coupon",
-      };
-    }
-    const testDiscount = Math.max(0, subtotal - 1);
-    return {
-      valid: true,
-      code: "TEST1RS",
-      discountAmount: testDiscount,
-      discountType: "fixed",
-      discountValue: testDiscount,
-      message: `✅ TEST1RS Applied - Save ₹${testDiscount}!`,
-    };
-  }
-
   const catalog = options?.availableCoupons && options.availableCoupons.length > 0
     ? options.availableCoupons
     : DEFAULT_COUPONS;

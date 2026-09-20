@@ -55,10 +55,9 @@ export async function POST(req: NextRequest) {
       }
 
       const discountAmount = Number(backendResult.discountAmount || 0);
-      const isTest1Rs = normalized === "TEST1RS";
-      const isFreeShipping = isTest1Rs || subtotal >= brand.freeShippingOver;
-      const shipping = isTest1Rs ? 0 : (isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0);
-      const grandTotal = isTest1Rs ? 1 : Math.max(0, subtotal + shipping - discountAmount);
+      const isFreeShipping = subtotal >= brand.freeShippingOver;
+      const shipping = isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0;
+      const grandTotal = Math.max(0, subtotal + shipping - discountAmount);
 
       return NextResponse.json({
         valid: true,
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
         discountType: backendResult.discountType || "percentage",
         discountValue: backendResult.discountValue ?? 0,
         maximumDiscount: backendResult.maximumDiscount,
-        minOrder: backendResult.minimumOrder ?? (isTest1Rs ? 100 : 0),
+        minOrder: backendResult.minimumOrder ?? 0,
         message: backendResult.message || `${backendResult.code || normalized} applied! You saved ₹${discountAmount}.`,
         subtotal,
         shipping,
@@ -90,10 +89,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const isTest1Rs = normalized === "TEST1RS";
-    const isFreeShipping = isTest1Rs || subtotal >= brand.freeShippingOver;
-    const shipping = isTest1Rs ? 0 : (isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0);
-    const grandTotal = isTest1Rs ? 1 : Math.max(0, subtotal + shipping - localEval.discountAmount);
+    const isFreeShipping = subtotal >= brand.freeShippingOver;
+    const shipping = isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0;
+    const grandTotal = Math.max(0, subtotal + shipping - localEval.discountAmount);
 
     return NextResponse.json({
       valid: true,
@@ -102,7 +100,7 @@ export async function POST(req: NextRequest) {
       discountType: localEval.discountType || "percentage",
       discountValue: localEval.discountValue ?? 0,
       maximumDiscount: localEval.maximumDiscount,
-      minOrder: isTest1Rs ? 100 : 0,
+      minOrder: 0,
       message: localEval.message || `${localEval.code || normalized} applied! You saved ₹${localEval.discountAmount}.`,
       subtotal,
       shipping,

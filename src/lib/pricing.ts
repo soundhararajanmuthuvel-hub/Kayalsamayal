@@ -147,10 +147,7 @@ export function calculateOrderTotals(
   const freeShippingThreshold = brand.freeShippingOver; // 500
   const shippingCharge = brand.shippingFlat; // 60
 
-  const rawCode = options?.couponValidation?.code || options?.couponCode;
-  const isTest1Rs = Boolean(rawCode && String(rawCode).trim().toUpperCase() === "TEST1RS");
-
-  const shipping = isTest1Rs ? 0 : (subtotal >= freeShippingThreshold ? 0 : shippingCharge);
+  const shipping = subtotal >= freeShippingThreshold ? 0 : (subtotal > 0 ? shippingCharge : 0);
 
   // Authoritative Coupon Evaluation
   let discount = 0;
@@ -158,7 +155,7 @@ export function calculateOrderTotals(
   if (options?.couponValidation) {
     couponResult = options.couponValidation;
     if (couponResult.valid) {
-      discount = isTest1Rs ? Math.max(0, subtotal - 1) : couponResult.discountAmount;
+      discount = Math.min(subtotal, Math.max(0, Math.round(Number(couponResult.discountAmount) || 0)));
     }
   } else if (options?.couponCode && options.couponCode.trim()) {
     couponResult = evaluateCoupon(options.couponCode, subtotal, {
@@ -167,15 +164,15 @@ export function calculateOrderTotals(
       availableCoupons: options.availableCoupons,
     });
     if (couponResult.valid) {
-      discount = isTest1Rs ? Math.max(0, subtotal - 1) : couponResult.discountAmount;
+      discount = Math.min(subtotal, Math.max(0, Math.round(Number(couponResult.discountAmount) || 0)));
     }
   }
 
-  // grandTotal may be 0 when a 100% coupon applies to subtotal and shipping/GST is also 0.
-  // When TEST1RS is applied and valid, grandTotal is strictly ₹1 (100 paise for Razorpay).
-  const grandTotal = isTest1Rs && couponResult?.valid
-    ? 1
-    : Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
+  // Authoritative payable grand total: subtotal + shipping + gst - discount
+  // 100% discount legitimate free orders total ₹0.
+  // Any amount >= ₹1 is a valid payable total.
+  const rawPayable = subtotal + shipping + gstTotal - discount;
+  const grandTotal = Math.max(0, Math.round(rawPayable));
   const amountInPaise = Math.round(grandTotal * 100);
 
   if (!Number.isFinite(grandTotal) || grandTotal < 0) {

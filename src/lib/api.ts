@@ -227,12 +227,18 @@ export async function createCustomer(
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
     if (process.env.NODE_ENV !== "production") {
-      console.log("createCustomer:", { action: payload.action, customer, response: json });
+      console.log("[CREATE_CUSTOMER_SUCCESS]:", { action: payload.action, customer, response: json });
     }
     return json;
-  } catch (err) {
-    console.error("Failed to create customer:", err);
-    return { success: false, code: "NETWORK_ERROR", message: "We couldn't connect to our order system. Please check your connection and try again." };
+  } catch (err: unknown) {
+    const errorDetails = err instanceof Error ? err.message : String(err);
+    console.error("[CREATE_CUSTOMER_ERROR]:", { error: errorDetails, customerMobile: customer.mobile });
+    return {
+      success: false,
+      code: "NETWORK_ERROR",
+      message: "Unable to reach the customer database. Please try again or contact support on WhatsApp.",
+      error: errorDetails,
+    };
   }
 }
 
@@ -248,34 +254,49 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    if (!res.ok) {
+      console.error("[CREATE_ORDER_HTTP_ERROR]:", { status: res.status, statusText: res.statusText });
+      throw new Error(`Order system HTTP ${res.status}: ${res.statusText || "Service Unavailable"}`);
+    }
     const json = await res.json();
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("createOrder:", {
+      console.log("[CREATE_ORDER_RESPONSE]:", {
         action: payload.action,
-        customer: payload.customer,
-        items:    payload.items,
+        customerName: payload.customer?.name,
+        itemsCount: payload.items?.length,
         paymentMethod: payload.paymentMethod,
-        response: json,
+        success: json?.success,
+        orderId: json?.orderId,
       });
     }
 
     if (!json.success) {
       const errMsg = json.error || json.message || "Something went wrong while placing your order. Please try again.";
+      console.error("[CREATE_ORDER_BUSINESS_ERROR]:", { error: errMsg, code: json.code });
       return { ...json, success: false, code: json.code || "API_ERROR", message: errMsg, error: errMsg };
     }
 
     return json;
-  } catch (err) {
-    console.error("Failed to create order:", err);
+  } catch (err: unknown) {
+    const errorDetails = err instanceof Error ? err.message : String(err);
+    console.error("[CREATE_ORDER_EXCEPTION]:", { error: errorDetails, paymentMethod: order.paymentMethod });
     return {
-      success: false, code: "NETWORK_ERROR",
-      orderId: "", customerId: "",
-      subtotal: 0, shipping: 0, discount: 0, gst: 0, grandTotal: 0,
-      paymentStatus: "Failed", paymentMethod: order.paymentMethod, orderStatus: "Pending",
+      success: false,
+      code: "ORDER_SERVICE_UNAVAILABLE",
+      orderId: "",
+      customerId: "",
+      subtotal: 0,
+      shipping: 0,
+      discount: 0,
+      gst: 0,
+      grandTotal: 0,
+      paymentStatus: "Failed",
+      paymentMethod: order.paymentMethod,
+      orderStatus: "Pending",
       items: [],
-      message: "We couldn't connect to our order system. Please check your connection and try again.",
+      error: errorDetails,
+      message: "Unable to connect to our order system. Please check your connection or contact support on WhatsApp.",
     };
   }
 }
@@ -374,8 +395,9 @@ export async function validateCouponBackend(
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
     return json;
-  } catch (err) {
-    console.warn("Backend coupon validation fetch failed:", err);
+  } catch (err: unknown) {
+    const errDetails = err instanceof Error ? err.message : String(err);
+    console.error("[COUPON_VALIDATION_ERROR]:", { couponCode: normalized, error: errDetails });
     return {
       success: false,
       valid: false,

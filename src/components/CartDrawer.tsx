@@ -29,11 +29,10 @@ export default function CartDrawer() {
 
   if (!isCartOpen) return null;
 
-  const isTest1Rs = appliedCoupon?.code === "TEST1RS";
-  const isFreeShipping = isTest1Rs || cartSubtotal >= brand.freeShippingOver;
-  const shipping = isTest1Rs ? 0 : (isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0);
+  const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
+  const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-  const grandTotal = isTest1Rs ? 1 : Math.max(0, cartSubtotal + shipping - discountAmount);
+  const grandTotal = Math.max(0, cartSubtotal + shipping - discountAmount);
   const neededForFreeShipping = brand.freeShippingOver - cartSubtotal;
 
   const checkoutHref = appliedCoupon

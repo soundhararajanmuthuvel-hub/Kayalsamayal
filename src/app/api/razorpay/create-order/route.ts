@@ -61,14 +61,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!Number.isFinite(calc.grandTotal) || calc.grandTotal < 0) {
-      console.error("[Razorpay Order Create] Invalid payable grandTotal:", calc.grandTotal);
-      return NextResponse.json(
-        { success: false, error: "Invalid payable order total." },
-        { status: 400 }
-      );
-    }
-
     // Free-order path: 100% coupon (or similar) results in ₹0 grand total.
     // Never send ₹0 to Razorpay — return freeOrder flag; checkout will use /api/orders/free.
     if (calc.grandTotal === 0) {
@@ -84,9 +76,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.log(
-      `[Razorpay Order Create] Subtotal: ₹${calc.subtotal}, Discount: ₹${calc.discount} (${calc.couponCode || "None"}), Shipping: ₹${calc.shipping}, GST: ₹${calc.gstTotal}, GrandTotal: ₹${calc.grandTotal}, Paise: ${calc.amountInPaise}`
-    );
+    // Explicit numeric validation: Allow any valid payable amount >= ₹1
+    if (!Number.isFinite(calc.grandTotal) || calc.grandTotal < 1) {
+      console.error("[RAZORPAY_CREATE_ORDER] Invalid payable total for Razorpay:", calc.grandTotal);
+      return NextResponse.json(
+        { success: false, error: "Payable order total must be at least ₹1." },
+        { status: 400 }
+      );
+    }
+
+    // Structured diagnostics (never log secrets, API keys, signatures, or sensitive customer details)
+    console.log("[RAZORPAY_CREATE_ORDER]", {
+      subtotal: calc.subtotal,
+      discount: calc.discount,
+      shipping: calc.shipping,
+      payableTotal: calc.grandTotal,
+      amountPaise: calc.amountInPaise,
+      currency: "INR",
+      couponCode: calc.couponCode || null,
+      productIds: calc.items.map((it) => it.productId),
+    });
 
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;

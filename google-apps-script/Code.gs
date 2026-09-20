@@ -953,11 +953,7 @@ function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) 
       calculatedDiscount = maxDisc;
     }
   } else if (discType === "fixed") {
-    if (codeNorm === "TEST1RS") {
-      calculatedDiscount = Math.max(0, subtotal - 1);
-    } else {
-      calculatedDiscount = discVal;
-    }
+    calculatedDiscount = discVal;
   }
 
   // Discount cannot exceed subtotal
