@@ -77,6 +77,23 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+export function computeCouponDiscount(
+  coupon: Pick<AppliedCoupon, "discountType" | "discountValue" | "maxDiscount">,
+  subtotal: number
+): number {
+  if (!coupon || subtotal <= 0) return 0;
+  let rawDiscount = 0;
+  if (coupon.discountType === "percentage") {
+    rawDiscount = Math.round((subtotal * (coupon.discountValue || 0)) / 100);
+    if (coupon.maxDiscount && coupon.maxDiscount > 0) {
+      rawDiscount = Math.min(rawDiscount, coupon.maxDiscount);
+    }
+  } else {
+    rawDiscount = Math.round(coupon.discountValue || 0);
+  }
+  return Math.max(0, Math.min(rawDiscount, subtotal));
+}
+
 // Helper to assign default prices if not present (e.g. for fallback products)
 export function getProductPrice(product: Product): number {
   if (product.price && product.price > 0) return product.price;
@@ -96,15 +113,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen]           = useState(false);
   const [checkoutStep, setCheckoutStep]       = useState<CheckoutStep>("cart");
   const [lastOrderResponse, setLastOrderResponse] = useState<OrderResponse | null>(null);
-  const [appliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(() => {
+  const [rawAppliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(() => {
     // Restore persisted coupon from localStorage synchronously on first render.
-    // This avoids calling setState inside a useEffect (lint rule: set-state-in-effect).
     if (typeof window === "undefined") return null;
     try {
       const saved = localStorage.getItem(COUPON_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as AppliedCoupon;
-        if (parsed && parsed.code) return parsed;
+        if (parsed && parsed.code) {
+          return {
+            ...parsed,
+            code: parsed.code.trim().toUpperCase(),
+          };
+        }
       }
     } catch { /* ignore */ }
     return null;
@@ -219,16 +240,38 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(COUPON_STORAGE_KEY);
   };
 
+  const cartCount    = cart.reduce((total, item) => total + item.quantity, 0);
+  const cartSubtotal = cart.reduce((total, item) => total + getProductPrice(item.product) * item.quantity, 0);
+
+  // Derive active coupon with dynamic discountAmount matching current cartSubtotal
+  const appliedCoupon: AppliedCoupon | null = rawAppliedCoupon
+    ? {
+        ...rawAppliedCoupon,
+        discountAmount: computeCouponDiscount(rawAppliedCoupon, cartSubtotal),
+      }
+    : null;
+
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState<boolean>(false);
 
   /** Persist and set coupon — shared between Cart and Checkout. */
   const setAppliedCoupon = (coupon: AppliedCoupon | null) => {
-    setAppliedCouponState(coupon);
     if (coupon) {
-      localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(coupon));
+      const normalizedCode = String(coupon.code || "").trim().toUpperCase();
+      const updatedCoupon: AppliedCoupon = {
+        ...coupon,
+        code: normalizedCode,
+        discountAmount: computeCouponDiscount(coupon, cartSubtotal),
+      };
+      setAppliedCouponState(updatedCoupon);
+      try {
+        localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(updatedCoupon));
+      } catch { /* ignore */ }
     } else {
-      localStorage.removeItem(COUPON_STORAGE_KEY);
+      setAppliedCouponState(null);
+      try {
+        localStorage.removeItem(COUPON_STORAGE_KEY);
+      } catch { /* ignore */ }
     }
   };
 
@@ -241,13 +284,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setAppliedCouponState((prev) => {
       if (!prev) return null;
       const updated = { ...prev, ...partial };
-      localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(updated));
+      } catch { /* ignore */ }
       return updated;
     });
   };
-
-  const cartCount    = cart.reduce((total, item) => total + item.quantity, 0);
-  const cartSubtotal = cart.reduce((total, item) => total + getProductPrice(item.product) * item.quantity, 0);
 
   /**
    * Client-side direct order placement is intentionally disabled for security.

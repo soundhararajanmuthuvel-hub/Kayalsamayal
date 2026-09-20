@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Tag } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { CouponInput } from "./CouponInput";
@@ -36,6 +36,7 @@ export function CouponSection({
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const userRemovedCouponRef = useRef(false);
 
   const handleApplyCoupon = async (rawCode: string) => {
     const code = rawCode.trim().toUpperCase();
@@ -44,8 +45,8 @@ export function CouponSection({
       return;
     }
 
-    // Edge Case 6: Check if the exact same coupon is already applied
-    if (appliedCoupon && appliedCoupon.code === code) {
+    // Check if the exact same coupon is already applied
+    if (appliedCoupon && appliedCoupon.code.trim().toUpperCase() === code) {
       setToast({
         id: Date.now().toString(),
         type: "info",
@@ -90,11 +91,13 @@ export function CouponSection({
       );
       const minOrder = catalogMatch ? catalogMatch.minimumOrderSubtotal : (data.minOrder ?? 0);
       const maxDiscount = data.maximumDiscount ?? catalogMatch?.maximumDiscount;
+      const discountType = data.discountType || catalogMatch?.discountType || "percentage";
+      const discountValue = data.discountValue ?? catalogMatch?.discountValue ?? 0;
 
       setAppliedCoupon({
         code: data.code || code,
-        discountType: data.discountType || "percentage",
-        discountValue: data.discountValue ?? 0,
+        discountType,
+        discountValue,
         discountAmount: data.discountAmount || 0,
         maxDiscount,
         minOrder,
@@ -121,23 +124,44 @@ export function CouponSection({
     }
   };
 
-  // Auto-apply from URL query param if present and no coupon is currently active
+  // Auto-apply from URL query param if present
   useEffect(() => {
     if (typeof window === "undefined") return;
     const urlCoupon = new URLSearchParams(window.location.search).get("coupon");
     if (!urlCoupon || !urlCoupon.trim()) return;
+    if (userRemovedCouponRef.current) return;
+
+    const normalizedUrl = urlCoupon.trim().toUpperCase();
+
+    // If this coupon is already active in CartContext, do nothing
+    if (appliedCoupon && appliedCoupon.code.trim().toUpperCase() === normalizedUrl) {
+      return;
+    }
 
     const timer = setTimeout(() => {
-      handleApplyCoupon(urlCoupon.trim());
+      handleApplyCoupon(normalizedUrl);
     }, 50);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [appliedCoupon?.code]);
 
   const handleRemoveCoupon = () => {
+    userRemovedCouponRef.current = true;
     const removedCode = appliedCoupon?.code;
     clearAppliedCoupon();
     setCouponError(null);
+
+    // Strip ?coupon= from browser URL so it does not resurrect on page refresh
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("coupon")) {
+          url.searchParams.delete("coupon");
+          window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+        }
+      } catch { /* ignore */ }
+    }
+
     if (removedCode) {
       setToast({
         id: Date.now().toString(),

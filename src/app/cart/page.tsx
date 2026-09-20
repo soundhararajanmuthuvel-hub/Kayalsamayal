@@ -58,6 +58,9 @@ export default function CartPage() {
     if (appliedCoupon.discountType === "percentage") {
       return `Discount (${appliedCoupon.discountValue}%)`;
     }
+    if (appliedCoupon.discountValue) {
+      return `Discount (${formatINR(appliedCoupon.discountValue)})`;
+    }
     return `Discount (${appliedCoupon.code})`;
   })();
 
