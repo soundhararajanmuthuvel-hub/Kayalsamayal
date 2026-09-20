@@ -146,7 +146,11 @@ export function calculateOrderTotals(
   const gstTotal = items.reduce((sum, it) => sum + it.gstAmount, 0);
   const freeShippingThreshold = brand.freeShippingOver; // 500
   const shippingCharge = brand.shippingFlat; // 60
-  const shipping = subtotal >= freeShippingThreshold ? 0 : shippingCharge;
+
+  const rawCode = options?.couponValidation?.code || options?.couponCode;
+  const isTest1Rs = Boolean(rawCode && String(rawCode).trim().toUpperCase() === "TEST1RS");
+
+  const shipping = isTest1Rs ? 0 : (subtotal >= freeShippingThreshold ? 0 : shippingCharge);
 
   // Authoritative Coupon Evaluation
   let discount = 0;
@@ -154,7 +158,7 @@ export function calculateOrderTotals(
   if (options?.couponValidation) {
     couponResult = options.couponValidation;
     if (couponResult.valid) {
-      discount = couponResult.discountAmount;
+      discount = isTest1Rs ? Math.max(0, subtotal - 1) : couponResult.discountAmount;
     }
   } else if (options?.couponCode && options.couponCode.trim()) {
     couponResult = evaluateCoupon(options.couponCode, subtotal, {
@@ -163,14 +167,15 @@ export function calculateOrderTotals(
       availableCoupons: options.availableCoupons,
     });
     if (couponResult.valid) {
-      discount = couponResult.discountAmount;
+      discount = isTest1Rs ? Math.max(0, subtotal - 1) : couponResult.discountAmount;
     }
   }
 
   // grandTotal may be 0 when a 100% coupon applies to subtotal and shipping/GST is also 0.
-  // The Razorpay create-order route handles this by returning freeOrder:true instead of creating
-  // a ₹0 Razorpay order. COD and Free Order paths accept ₹0 naturally.
-  const grandTotal = Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
+  // When TEST1RS is applied and valid, grandTotal is strictly ₹1 (100 paise for Razorpay).
+  const grandTotal = isTest1Rs && couponResult?.valid
+    ? 1
+    : Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
   const amountInPaise = Math.round(grandTotal * 100);
 
   if (!Number.isFinite(grandTotal) || grandTotal < 0) {

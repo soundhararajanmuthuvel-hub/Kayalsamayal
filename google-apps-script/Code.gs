@@ -312,7 +312,9 @@ function setupDatabaseSheets() {
       // WELCOME10: 10% off, max ₹100, min ₹299, 1 per customer
       ["CPN-WELCOME10", "WELCOME10", "percentage", 10,  100, 299, "", 0, 1, "", "", "TRUE", new Date(), new Date()],
       // KAYAL100: 100% off, no max discount, no min order, 1 per customer — PRIVATE
-      ["CPN-KAYAL100",  "KAYAL100",  "percentage", 100, "",  0,   "", 0, 1, "", "", "TRUE", new Date(), new Date()]
+      ["CPN-KAYAL100",  "KAYAL100",  "percentage", 100, "",  0,   "", 0, 1, "", "", "TRUE", new Date(), new Date()],
+      // TEST1RS: ₹1 sample test order coupon, brings subtotal to ₹1, min order ₹100, 1 per customer — PRIVATE
+      ["CPN-TEST1RS",   "TEST1RS",   "fixed",      149, 999, 100, "", 0, 1, "", "", "TRUE", new Date(), new Date()]
     ];
 
     defaultCoupons.forEach(function(row) {
@@ -633,6 +635,22 @@ function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) 
     };
   }
 
+  // Fallback: recognize built-in TEST1RS for ₹1 sample test order flow
+  if (!coupon && codeNorm === "TEST1RS") {
+    coupon = {
+      "Coupon ID": "CPN-TEST1RS",
+      "Code": "TEST1RS",
+      "Discount Type": "fixed",
+      "Discount Value": Math.max(0, subtotal - 1),
+      "Maximum Discount": 999,
+      "Minimum Order": 100,
+      "Usage Limit": "",
+      "Used Count": 0,
+      "Per Customer Limit": 1,
+      "Active": "TRUE"
+    };
+  }
+
   if (!coupon) {
     return {
       valid: false,
@@ -730,7 +748,11 @@ function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) 
       calculatedDiscount = maxDisc;
     }
   } else if (discType === "fixed") {
-    calculatedDiscount = discVal;
+    if (codeNorm === "TEST1RS") {
+      calculatedDiscount = Math.max(0, subtotal - 1);
+    } else {
+      calculatedDiscount = discVal;
+    }
   }
 
   // Discount cannot exceed subtotal
@@ -776,8 +798,8 @@ function getPublicCoupons(ss) {
     var code = String(r["Code"] || "").trim().toUpperCase();
     if (!code) continue;
 
-    // Filter out private/staff coupons - NEVER expose KAYAL100 publicly in available coupons
-    if (code === "KAYAL100") continue;
+    // Filter out private/staff coupons - NEVER expose KAYAL100 or TEST1RS publicly in available coupons
+    if (code === "KAYAL100" || code === "TEST1RS") continue;
 
     // Check active
     var cActiveVal = (r["Active"] !== undefined) ? r["Active"] : r["active"];
@@ -1190,6 +1212,23 @@ function processOrderTransaction(ss, data) {
         matchedCouponSheetRowNum = 0; // not in sheet, cannot increment
       }
 
+      // Fallback: recognize built-in TEST1RS for ₹1 sample test orders
+      if (!coupon && couponCodeInput === "TEST1RS") {
+        coupon = {
+          "Coupon ID": "CPN-TEST1RS",
+          "Code": "TEST1RS",
+          "Discount Type": "fixed",
+          "Discount Value": Math.max(0, subtotal - 1),
+          "Maximum Discount": 999,
+          "Minimum Order": 100,
+          "Usage Limit": "",
+          "Used Count": 0,
+          "Per Customer Limit": 1,
+          "Active": "TRUE"
+        };
+        matchedCouponSheetRowNum = 0;
+      }
+
       if (!coupon) {
         return {
           success: false,
@@ -1283,7 +1322,11 @@ function processOrderTransaction(ss, data) {
           calculatedDiscount = maxDisc;
         }
       } else if (discType === "fixed") {
-        calculatedDiscount = discVal;
+        if (couponCodeInput === "TEST1RS") {
+          calculatedDiscount = Math.max(0, subtotal - 1);
+        } else {
+          calculatedDiscount = discVal;
+        }
       }
 
       // Discount cannot exceed subtotal
@@ -1291,9 +1334,14 @@ function processOrderTransaction(ss, data) {
       discount = Math.round(calculatedDiscount);
     }
 
+    if (couponCodeInput === "TEST1RS") {
+      shipping = 0;
+      discount = Math.max(0, subtotal - 1);
+    }
+
     // grandTotal may be 0 for fully free orders (e.g. 100% coupon + free shipping + 0 GST).
-    // Math.max(0, ...) allows ₹0 — the Next.js free-order route handles this without Razorpay.
-    var grandTotal = Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
+    // When TEST1RS is applied, grandTotal is strictly ₹1.
+    var grandTotal = couponCodeInput === "TEST1RS" ? 1 : Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
 
     // Reconciliation check for Razorpay: ensure amount matches authoritative backend calculation exactly
     if (isRazorpay) {

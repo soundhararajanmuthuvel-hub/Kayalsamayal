@@ -46,6 +46,15 @@ export const DEFAULT_COUPONS: CouponDefinition[] = [
     perCustomerLimit: 1,
     active: true,
   },
+  {
+    id: "CPN-TEST1RS",
+    code: "TEST1RS",
+    discountType: "fixed",
+    discountValue: 149,
+    minimumOrderSubtotal: 100,
+    perCustomerLimit: 1,
+    active: true,
+  },
 ];
 
 export interface CouponValidationResult {
@@ -85,6 +94,36 @@ export function evaluateCoupon(
   const normalized = normalizeCouponCode(code);
   if (!normalized) {
     return { valid: false, discountAmount: 0, error: "Invalid coupon code" };
+  }
+
+  // Dedicated test coupon handler for ₹1 sample test orders
+  if (normalized === "TEST1RS") {
+    if (subtotal < 100) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        error: "Minimum order value is ₹100 to use this coupon",
+      };
+    }
+    if (
+      typeof options?.existingCustomerUses === "number" &&
+      options.existingCustomerUses >= 1
+    ) {
+      return {
+        valid: false,
+        discountAmount: 0,
+        error: "You have already used this coupon",
+      };
+    }
+    const testDiscount = Math.max(0, subtotal - 1);
+    return {
+      valid: true,
+      code: "TEST1RS",
+      discountAmount: testDiscount,
+      discountType: "fixed",
+      discountValue: testDiscount,
+      message: `✅ TEST1RS Applied - Save ₹${testDiscount}!`,
+    };
   }
 
   const catalog = options?.availableCoupons && options.availableCoupons.length > 0

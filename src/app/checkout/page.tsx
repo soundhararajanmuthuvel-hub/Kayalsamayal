@@ -91,11 +91,12 @@ export default function CheckoutPage() {
     }
   }, [cart, step, router]);
 
-  const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
-  const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
+  const isTest1Rs = appliedCoupon?.code === "TEST1RS";
+  const isFreeShipping = isTest1Rs || cartSubtotal >= brand.freeShippingOver;
+  const shipping = isTest1Rs ? 0 : (isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0);
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-  // Mirror the server: Math.max(0, ...) — free orders (100% coupon) legitimately total ₹0
-  const grandTotal = Math.max(0, cartSubtotal + shipping - discountAmount);
+  // Mirror the server: Math.max(0, ...) — free orders (100% coupon) legitimately total ₹0, TEST1RS is ₹1
+  const grandTotal = isTest1Rs ? 1 : Math.max(0, cartSubtotal + shipping - discountAmount);
 
   /** Dynamic discount label — derived from coupon definition, never hardcoded. */
   const discountLabel = (() => {
@@ -456,6 +457,12 @@ export default function CheckoutPage() {
                     <span>- {formatINR(orderResponse.discount)}</span>
                   </div>
                 ) : null}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount Paid:</span>
+                  <span className="font-extrabold text-foreground text-sm">
+                    {formatINR(orderResponse?.grandTotal ?? grandTotal)}
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Payment Status:</span>
                   <span className={`font-bold ${orderResponse?.paymentStatus === "Paid" ? "text-leaf" : "text-secondary"}`}>
