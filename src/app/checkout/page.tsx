@@ -167,12 +167,28 @@ export default function CheckoutPage() {
     setLoading(true);
     setLoadingStatusText("Preparing secure payment...");
 
+    if (process.env.NODE_ENV !== "production") {
+      console.log("CHECKOUT PAYMENT REQUEST", {
+        subtotal: cartSubtotal,
+        discount: discountAmount,
+        shipping,
+        payableTotal: grandTotal,
+        couponCode: appliedCoupon?.code,
+        items: cart.map((i) => ({
+          name: i.product.name,
+          qty: i.quantity,
+          price: i.product.price,
+        })),
+      });
+    }
+
     try {
       // 1. Create Razorpay order on server with validated pricing and coupon
       const createRes = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          frontendTotal: grandTotal,
           items: cart.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,

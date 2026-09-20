@@ -85,16 +85,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Verify frontend total if supplied matches authoritative calculation
+    if (body.frontendTotal !== undefined && typeof body.frontendTotal === "number") {
+      if (Math.abs(body.frontendTotal - calc.grandTotal) > 0.01) {
+        console.error("Order amount mismatch detected:", {
+          frontendTotal: body.frontendTotal,
+          authoritativeTotal: calc.grandTotal,
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Order amount mismatch detected. Please review your cart and try again.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Structured diagnostics (never log secrets, API keys, signatures, or sensitive customer details)
-    console.log("[RAZORPAY_CREATE_ORDER]", {
-      subtotal: calc.subtotal,
-      discount: calc.discount,
-      shipping: calc.shipping,
-      payableTotal: calc.grandTotal,
-      amountPaise: calc.amountInPaise,
-      currency: "INR",
-      couponCode: calc.couponCode || null,
-      productIds: calc.items.map((it) => it.productId),
+    console.log("CREATE ORDER - DIAGNOSTICS", {
+      frontendTotal: body.frontendTotal ?? null,
+      serverCalculatedTotal: calc.grandTotal,
+      authoritativeTotal: calc.grandTotal,
+      razorpayAmountPaise: calc.amountInPaise,
+      cartItems: calc.items.map((it) => ({
+        name: it.productName,
+        qty: it.quantity,
+        price: it.unitPrice,
+      })),
+      couponCode: calc.couponCode || "None",
     });
 
     const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;

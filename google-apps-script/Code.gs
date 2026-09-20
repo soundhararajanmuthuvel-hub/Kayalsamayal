@@ -846,7 +846,7 @@ function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) 
       "Coupon ID": "CPN-TEST1RS",
       "Code": "TEST1RS",
       "Discount Type": "fixed",
-      "Discount Value": Math.max(0, subtotal - 1),
+      "Discount Value": 539,
       "Maximum Discount": 999,
       "Minimum Order": 100,
       "Usage Limit": "",
