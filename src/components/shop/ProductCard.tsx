@@ -62,7 +62,6 @@ export function ProductCard({ product, className }: ProductCardProps) {
               srcSet={product.image.replace(/\.jpg$/, ".webp")}
               type="image/webp"
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={product.image}
               alt={`${product.name} - Kayal Samayal`}

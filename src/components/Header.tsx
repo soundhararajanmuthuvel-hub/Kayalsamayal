@@ -79,7 +79,6 @@ export default function Header() {
             >
               <picture>
                 <source srcSet="/logo-header.webp" type="image/webp" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/logo-header.png"
                   alt="Kayal Samayal"

@@ -55,7 +55,6 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-3">
               <picture>
                 <source srcSet="/logo-card.webp" type="image/webp" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/logo-card.png"
                   alt="Kayal Samayal Logo"

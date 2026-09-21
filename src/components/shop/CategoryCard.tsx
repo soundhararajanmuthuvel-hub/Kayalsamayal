@@ -36,7 +36,6 @@ export function CategoryCard({
               srcSet={image.replace(/\.jpg$/, ".webp")}
               type="image/webp"
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={image}
               alt={`${name} from Kayal Samayal`}
