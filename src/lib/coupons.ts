@@ -53,7 +53,7 @@ export const DEFAULT_COUPONS: CouponDefinition[] = [
     discountValue: 539,
     maximumDiscount: 999,
     minimumOrderSubtotal: 100,
-    perCustomerLimit: 1,
+    perCustomerLimit: 0,
     active: true,
   },
 ];

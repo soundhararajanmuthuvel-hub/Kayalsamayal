@@ -847,7 +847,7 @@ function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) 
       "Minimum Order": 100,
       "Usage Limit": "",
       "Used Count": 0,
-      "Per Customer Limit": 1,
+      "Per Customer Limit": 0,
       "Active": "TRUE"
     };
   }
@@ -1415,7 +1415,7 @@ function processOrderTransaction(ss, data) {
           "Minimum Order": 100,
           "Usage Limit": "",
           "Used Count": 0,
-          "Per Customer Limit": 1,
+          "Per Customer Limit": 0,
           "Active": "TRUE"
         };
         matchedCouponSheetRowNum = 0;
@@ -1472,7 +1472,7 @@ function processOrderTransaction(ss, data) {
       }
 
       // 5. Per-customer limit
-      var perCustLimit = Number(coupon["Per Customer Limit"] || 1);
+      var perCustLimit = couponCodeInput === "TEST1RS" ? 0 : Number(coupon["Per Customer Limit"] || 1);
       if (perCustLimit > 0 && customerInput && customerInput.mobile) {
         var custOrders   = getSheetRowsAsJSON(ordersSheet);
         var normMobile   = String(customerInput.mobile).replace(/\D/g, "").slice(-10);

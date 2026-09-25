@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, ShoppingBag, Printer, MessageCircle, Truck } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { getOrder } from "@/lib/api";
 
 function ThankYouContent() {
   const { lastOrderResponse, customerDetails } = useCart();
@@ -18,6 +19,7 @@ function ThankYouContent() {
   const [orderId] = useState(() => {
     return urlOrderId || lastOrderResponse?.orderId || `KS-${Math.floor(100000 + Math.random() * 900000)}`;
   });
+
   const [orderDate] = useState(() => {
     return new Date().toLocaleDateString("en-IN", {
       day: "numeric",
@@ -26,7 +28,74 @@ function ThankYouContent() {
     });
   });
 
-  const grandTotal = lastOrderResponse?.grandTotal || 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [remoteOrder, setRemoteOrder] = useState<any>(null);
+
+  useEffect(() => {
+    if (orderId && !lastOrderResponse) {
+      getOrder(orderId)
+        .then((res) => {
+          if (res.success && res.data) {
+            setRemoteOrder(res.data);
+          }
+        })
+        .catch((e) => console.warn("Failed to fetch order details on reload", e));
+    }
+  }, [orderId, lastOrderResponse]);
+
+  const grandTotal =
+    lastOrderResponse?.grandTotal ??
+    (remoteOrder?.order?.["Grand Total"] !== undefined ? Number(remoteOrder.order["Grand Total"]) : 0);
+
+  const discount =
+    lastOrderResponse?.discount ??
+    (remoteOrder?.order?.["Discount"] !== undefined ? Number(remoteOrder.order["Discount"]) : 0);
+
+  const paymentMethod =
+    lastOrderResponse?.paymentMethod ||
+    remoteOrder?.order?.["Payment Method"] ||
+    "Razorpay Online";
+
+  const paymentStatus =
+    lastOrderResponse?.paymentStatus ||
+    remoteOrder?.order?.["Payment Status"] ||
+    "Paid";
+
+  const customerName =
+    customerDetails.name ||
+    remoteOrder?.order?.["Full Name"] ||
+    remoteOrder?.customer?.[0]?.["Full Name"] ||
+    "";
+
+  const shippingAddress =
+    customerDetails.address ||
+    remoteOrder?.order?.["Shipping Address"] ||
+    "";
+
+  const city =
+    customerDetails.city ||
+    remoteOrder?.order?.["City/Town"] ||
+    "";
+
+  const state =
+    customerDetails.state ||
+    remoteOrder?.order?.["State"] ||
+    "Tamil Nadu";
+
+  const pincode =
+    customerDetails.pincode ||
+    remoteOrder?.order?.["Pincode"] ||
+    "";
+
+  const mobile =
+    customerDetails.mobile ||
+    remoteOrder?.order?.["Mobile"] ||
+    "";
+
+  const email =
+    customerDetails.email ||
+    remoteOrder?.order?.["Email"] ||
+    "";
 
   const handlePrint = () => {
     if (typeof window !== "undefined") {
@@ -76,37 +145,41 @@ function ThankYouContent() {
                 <p className="font-display font-black text-xl text-secondary">
                   {grandTotal > 0 ? formatINR(grandTotal) : "FREE (₹0)"}
                 </p>
-                {lastOrderResponse?.discount && lastOrderResponse.discount > 0 ? (
+                {discount > 0 ? (
                   <span className="text-[0.7rem] font-bold text-leaf block">
-                    Saved {formatINR(lastOrderResponse.discount)} with promo
+                    Saved {formatINR(discount)} with promo
                   </span>
                 ) : null}
               </div>
               <div>
                 <span className="text-xs font-bold text-muted-foreground uppercase">Payment Status</span>
-                {lastOrderResponse?.paymentMethod === "Free Order (Coupon)" || grandTotal === 0 ? (
+                {paymentMethod === "Free Order (Coupon)" || grandTotal === 0 ? (
                   <p className="font-bold text-xs sm:text-sm text-leaf flex items-center gap-1 mt-1">
                     <CheckCircle2 className="h-4 w-4" /> 100% Promo (No Payment Needed)
                   </p>
-                ) : lastOrderResponse?.paymentMethod === "Cash on Delivery" || lastOrderResponse?.paymentMethod === "COD" ? (
+                ) : paymentMethod === "Cash on Delivery" || paymentMethod === "COD" ? (
                   <p className="font-bold text-xs sm:text-sm text-amber-600 flex items-center gap-1 mt-1">
                     <CheckCircle2 className="h-4 w-4" /> Pending (Pay on Delivery)
                   </p>
                 ) : (
                   <p className="font-bold text-xs sm:text-sm text-leaf flex items-center gap-1 mt-1">
-                    <CheckCircle2 className="h-4 w-4" /> Paid via Razorpay
+                    <CheckCircle2 className="h-4 w-4" /> {paymentStatus === "Paid" ? "Paid via Razorpay" : paymentStatus}
                   </p>
                 )}
               </div>
             </div>
 
             {/* Customer Details */}
-            {customerDetails.name && (
+            {customerName && (
               <div className="space-y-1 text-xs sm:text-sm text-muted-foreground pt-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-foreground">Delivery To:</span>
-                <p className="font-bold text-foreground">{customerDetails.name}</p>
-                <p>{customerDetails.address}, {customerDetails.city}, {customerDetails.state} – {customerDetails.pincode}</p>
-                <p>Phone: {customerDetails.mobile} {customerDetails.email ? `• ${customerDetails.email}` : ""}</p>
+                <p className="font-bold text-foreground">{customerName}</p>
+                {shippingAddress && (
+                  <p>{shippingAddress}{city ? `, ${city}` : ""}{state ? `, ${state}` : ""}{pincode ? ` – ${pincode}` : ""}</p>
+                )}
+                {mobile && (
+                  <p>Phone: {mobile} {email ? `• ${email}` : ""}</p>
+                )}
               </div>
             )}
 
@@ -114,7 +187,7 @@ function ThankYouContent() {
             <div className="rounded-2xl bg-accent p-4 text-xs text-primary flex items-start gap-3">
               <Truck className="h-5 w-5 text-secondary shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                You will receive shipping and dispatch tracking updates directly on WhatsApp ({customerDetails.mobile || brand.phone}).
+                You will receive shipping and dispatch tracking updates directly on WhatsApp ({mobile || brand.phone}).
               </p>
             </div>
 

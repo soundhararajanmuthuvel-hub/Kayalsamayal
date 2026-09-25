@@ -64,6 +64,7 @@ interface CartContextType {
   cartNotice: string;
   clearCartNotice: () => void;
   lastOrderResponse: OrderResponse | null;
+  setLastOrderResponse: (response: OrderResponse | null) => void;
   /** Applied coupon — shared between Cart and Checkout. Persisted to localStorage. */
   appliedCoupon: AppliedCoupon | null;
   setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
@@ -115,7 +116,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart]                       = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen]           = useState(false);
   const [checkoutStep, setCheckoutStep]       = useState<CheckoutStep>("cart");
-  const [lastOrderResponse, setLastOrderResponse] = useState<OrderResponse | null>(null);
+  const [lastOrderResponse, setLastOrderResponseState] = useState<OrderResponse | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = sessionStorage.getItem("kayal_last_order");
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return null;
+  });
+
+  const setLastOrderResponse = (resp: OrderResponse | null) => {
+    setLastOrderResponseState(resp);
+    if (typeof window !== "undefined") {
+      try {
+        if (resp) {
+          sessionStorage.setItem("kayal_last_order", JSON.stringify(resp));
+        } else {
+          sessionStorage.removeItem("kayal_last_order");
+        }
+      } catch { /* ignore */ }
+    }
+  };
+
   const [rawAppliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(() => {
     // Restore persisted coupon from localStorage synchronously on first render.
     if (typeof window === "undefined") return null;
@@ -338,6 +360,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartNotice,
         clearCartNotice: () => setCartNotice(""),
         lastOrderResponse,
+        setLastOrderResponse,
         appliedCoupon,
         setAppliedCoupon,
         clearAppliedCoupon,

@@ -62,7 +62,7 @@ declare global {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon } = useCart();
+  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon, setLastOrderResponse } = useCart();
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirm">("shipping");
   const [formData, setFormData] = useState({
@@ -242,10 +242,16 @@ export default function CheckoutPage() {
           if (!freeRes.ok || !freeData.success) {
             throw new Error(freeData.error || "Failed to complete order. Please try again.");
           }
-          clearCart();
-          setOrderResponse(freeData.orderResponse);
+          const confirmedFree = freeData.orderResponse || freeData;
+          setLastOrderResponse?.(confirmedFree);
+          setOrderResponse(confirmedFree);
           setStep("confirm");
+          clearCart();
           window.scrollTo({ top: 0, behavior: "smooth" });
+          const freeRef = confirmedFree.orderId;
+          if (freeRef) {
+            router.push(`/thank-you?orderId=${encodeURIComponent(freeRef)}`);
+          }
         } finally {
           setLoading(false);
           setLoadingStatusText("");
@@ -288,6 +294,11 @@ export default function CheckoutPage() {
         handler: async (response) => {
           // 3. Server-side verification of payment signature using server-stored order token
           setLoadingStatusText("Confirming your payment...");
+          console.log("[PAYMENT_FLOW] 1 CHECKOUT_SUCCESS", {
+            paymentId: response.razorpay_payment_id,
+            orderId: response.razorpay_order_id,
+          });
+
           try {
             const verifyRes = await fetch("/api/razorpay/verify-payment", {
               method: "POST",
@@ -295,6 +306,7 @@ export default function CheckoutPage() {
               body: JSON.stringify({
                 orderToken: orderData.orderToken,
                 razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id || orderData.orderId,
                 razorpay_signature: response.razorpay_signature,
                 customer: {
                   name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -315,13 +327,25 @@ export default function CheckoutPage() {
 
             const verifyData = await verifyRes.json();
             if (!verifyRes.ok || !verifyData.success) {
+              console.error("[PAYMENT_FLOW] 9 FRONTEND_VERIFICATION_FAILED", verifyData);
               throw new Error(verifyData.error || "Payment verification failed. Please contact support.");
             }
 
-            clearCart();
-            setOrderResponse(verifyData.orderResponse);
+            console.log("[PAYMENT_FLOW] 9 FRONTEND_SUCCESS", {
+              orderId: verifyData.orderId || verifyData.orderResponse?.orderId,
+              paymentStatus: verifyData.paymentStatus || "Paid",
+            });
+
+            const confirmedOrder: OrderResponse = verifyData.orderResponse || verifyData;
+            setLastOrderResponse?.(confirmedOrder);
+            setOrderResponse(confirmedOrder);
             setStep("confirm");
+            clearCart();
             window.scrollTo({ top: 0, behavior: "smooth" });
+
+            const orderRef = confirmedOrder.orderId || orderData.orderId;
+            console.log("[PAYMENT_FLOW] 10 CONFIRMATION_REDIRECT", { orderRef });
+            router.push(`/thank-you?orderId=${encodeURIComponent(orderRef)}`);
           } catch (verErr: unknown) {
             console.error("Verification error:", verErr);
             const msg = verErr instanceof Error ? verErr.message : "Payment verification failed.";
@@ -387,10 +411,16 @@ export default function CheckoutPage() {
         throw new Error(data.error || "Failed to place Cash on Delivery order. Please try again.");
       }
 
-      clearCart();
-      setOrderResponse(data.orderResponse);
+      const confirmedCod = data.orderResponse || data;
+      setLastOrderResponse?.(confirmedCod);
+      setOrderResponse(confirmedCod);
       setStep("confirm");
+      clearCart();
       window.scrollTo({ top: 0, behavior: "smooth" });
+      const codRef = confirmedCod.orderId;
+      if (codRef) {
+        router.push(`/thank-you?orderId=${encodeURIComponent(codRef)}`);
+      }
     } catch (err: unknown) {
       console.error("COD placement error:", err);
       const msg = err instanceof Error ? err.message : "Failed to place Cash on Delivery order. Please try again.";
