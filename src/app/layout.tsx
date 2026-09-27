@@ -113,9 +113,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${playfair.variable} ${plusJakarta.variable} scroll-smooth`}
     >
-      <body className="min-h-screen bg-background text-foreground font-sans antialiased selection:bg-secondary/20 selection:text-secondary">
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-background text-foreground font-sans antialiased selection:bg-secondary/20 selection:text-secondary"
+      >
         <CartProvider>
           {children}
           <CartDrawer />
