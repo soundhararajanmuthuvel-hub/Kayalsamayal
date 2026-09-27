@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateOrderTotals, getProductPrice } from "@/lib/pricing";
 import { createOrderToken } from "@/lib/orderToken";
-import { validateCouponBackend } from "@/lib/api";
+import { validateCouponBackend, createPendingOrder } from "@/lib/api";
 import { products } from "@/data/products";
 import { CouponValidationResult } from "@/lib/coupons";
 
@@ -184,11 +184,42 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(
-      `[Razorpay Order Create] Successfully created order ${orderData.id} for ₹${calc.grandTotal} (${orderData.amount} paise)`
+      `[Razorpay Order Create] Successfully created Razorpay gateway order ${orderData.id} for ₹${calc.grandTotal} (${orderData.amount} paise)`
     );
 
-    // 3. Issue server-signed token locking razorpayOrderId + amount + couponCode
+    // 3. Create/store pending order in Google Sheets database BEFORE customer pays
+    const pendingOrder = await createPendingOrder({
+      customer: {
+        name: String(customer.name).trim(),
+        mobile: String(customer.mobile).trim(),
+        email: customer.email ? String(customer.email).trim() : "",
+        address: customer.address ? String(customer.address).trim() : "",
+        city: customer.city ? String(customer.city).trim() : "",
+        state: customer.state ? String(customer.state).trim() : "Tamil Nadu",
+        pincode: customer.pincode ? String(customer.pincode).trim() : "",
+        notes: customer.notes ? String(customer.notes).trim() : "",
+      },
+      items: calc.items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+      })),
+      paymentMethod: "Razorpay Online",
+      razorpayOrderId: orderData.id,
+      razorpayAmount: calc.grandTotal,
+      couponCode: calc.couponCode,
+      discount: calc.discount,
+    });
+
+    const backendOrderId = pendingOrder.orderId || "";
+    console.log("[RAZORPAY_CREATE_ORDER] Initialized database order:", {
+      backendOrderId,
+      razorpayOrderId: orderData.id,
+      success: pendingOrder.success,
+    });
+
+    // 4. Issue server-signed token locking backendOrderId + razorpayOrderId + amount + couponCode
     const orderToken = createOrderToken({
+      backendOrderId,
       razorpayOrderId: orderData.id,
       expectedAmountPaise: calc.amountInPaise,
       customerMobile: customer.mobile,
@@ -198,7 +229,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      orderId: orderData.id,
+      orderId: backendOrderId || orderData.id,
+      backendOrderId,
+      razorpayOrderId: orderData.id,
       orderToken,
       amount: orderData.amount,
       currency: orderData.currency,

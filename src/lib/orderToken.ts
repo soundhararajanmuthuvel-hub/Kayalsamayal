@@ -4,6 +4,7 @@ const ORDER_TOKEN_SECRET =
   process.env.RAZORPAY_KEY_SECRET || "kayal-samayal-internal-token-secret-salt-2026";
 
 export interface OrderTokenPayload {
+  backendOrderId?: string;
   razorpayOrderId: string;
   expectedAmountPaise: number;
   customerMobile: string;
@@ -17,7 +18,8 @@ export interface OrderTokenPayload {
  */
 export function createOrderToken(payload: OrderTokenPayload): string {
   const cpn = payload.couponCode ? payload.couponCode.trim().toUpperCase() : "";
-  const data = `${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${cpn}:${payload.timestamp}`;
+  const bOrd = payload.backendOrderId || "";
+  const data = `${bOrd}:${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${cpn}:${payload.timestamp}`;
   const signature = crypto
     .createHmac("sha256", ORDER_TOKEN_SECRET)
     .update(data)
@@ -38,7 +40,8 @@ export function verifyOrderToken(token: string): OrderTokenPayload | null {
     const payload: OrderTokenPayload = JSON.parse(payloadStr);
 
     const cpn = payload.couponCode ? payload.couponCode.trim().toUpperCase() : "";
-    const expectedData = `${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${cpn}:${payload.timestamp}`;
+    const bOrd = payload.backendOrderId || "";
+    const expectedData = `${bOrd}:${payload.razorpayOrderId}:${payload.expectedAmountPaise}:${payload.customerMobile}:${cpn}:${payload.timestamp}`;
     const expectedSignature = crypto
       .createHmac("sha256", ORDER_TOKEN_SECRET)
       .update(expectedData)

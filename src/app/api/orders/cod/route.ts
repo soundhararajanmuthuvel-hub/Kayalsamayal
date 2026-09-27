@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { calculateOrderTotals, getProductPrice } from "@/lib/pricing";
-import { createOrder, validateCouponBackend } from "@/lib/api";
+import { createOrder, validateCouponBackend, getSettings } from "@/lib/api";
 import { products } from "@/data/products";
 import { CouponValidationResult } from "@/lib/coupons";
 
@@ -8,6 +8,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { customer, items, couponCode } = body;
+
+    // 0. Server-Side Gate: Verify COD availability from Google Sheets Settings
+    const settingsRes = await getSettings();
+    if (settingsRes.settings.cod_enabled === false) {
+      return NextResponse.json(
+        { success: false, error: "Cash on Delivery is currently disabled. Please pay online via Razorpay." },
+        { status: 403 }
+      );
+    }
 
     if (!customer || !customer.name || !customer.mobile || !customer.address || !customer.city || !customer.pincode) {
       return NextResponse.json(

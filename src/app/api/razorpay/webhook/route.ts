@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { createOrder } from "@/lib/api";
+import { confirmRazorpayOrder } from "@/lib/api";
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,7 +84,12 @@ export async function POST(req: NextRequest) {
           .update(`KAYAL_ORDER_AUTH:${cleanOrderId}:${cleanPaymentId}`)
           .digest("hex");
 
-        await createOrder({
+        await confirmRazorpayOrder({
+          razorpayOrderId,
+          razorpayPaymentId,
+          razorpaySignature: "webhook_verified",
+          razorpayAmount: Math.round(amountPaise / 100),
+          serverAuthToken,
           customer: {
             name: notes.customerName || "Customer",
             mobile: notes.customerMobile || "0000000000",
@@ -94,13 +99,7 @@ export async function POST(req: NextRequest) {
             state: "Tamil Nadu",
             pincode: "600001",
           },
-          items: [], // Idempotent check in Apps Script resolves by Razorpay Payment ID if already submitted
-          paymentMethod: "Razorpay Online",
-          razorpayOrderId,
-          razorpayPaymentId,
-          razorpaySignature: "webhook_verified",
-          razorpayAmount: Math.round(amountPaise / 100),
-          serverAuthToken,
+          items: [],
         });
       }
     }

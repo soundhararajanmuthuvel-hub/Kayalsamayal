@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { verifyOrderToken } from "@/lib/orderToken";
 import { calculateOrderTotals, getProductPrice } from "@/lib/pricing";
-import { createOrder, validateCouponBackend, type OrderResponse } from "@/lib/api";
+import { confirmRazorpayOrder, validateCouponBackend } from "@/lib/api";
 import { products } from "@/data/products";
 import { CouponValidationResult } from "@/lib/coupons";
 
@@ -309,85 +309,61 @@ export async function POST(req: NextRequest) {
       .update(`KAYAL_ORDER_AUTH:${cleanOrderId}:${cleanPaymentId}`)
       .digest("hex");
 
-    console.log("[SERVER_AUTH_DEBUG]", {
-      secretConfigured: !!(process.env.SERVER_AUTH_SECRET || process.env.RAZORPAY_KEY_SECRET),
-      tokenGenerated: !!serverAuthToken,
-      tokenLength: serverAuthToken.length,
-      timestamp: Date.now(),
-      appsScriptUrlConfigured: !!(
-        process.env.NEXT_PUBLIC_KAYAL_API_URL ||
-        process.env.NEXT_PUBLIC_KAYAL_SAMAYAL_API_URL
-      ),
-    });
-
-    console.log("[PAYMENT_FLOW] 6 APPS_SCRIPT_UPDATE", {
-      razorpayOrderId: serverStoredRazorpayOrderId,
-      razorpayPaymentId: razorpay_payment_id,
-      grandTotal: calc.grandTotal,
-    });
-
-    const orderResponse = await createOrder({
-      customer,
-      items,
-      paymentMethod: "Razorpay Online",
+    const orderResponse = await confirmRazorpayOrder({
+      orderId: tokenPayload.backendOrderId,
       razorpayOrderId: serverStoredRazorpayOrderId,
       razorpayPaymentId: razorpay_payment_id,
       razorpaySignature: razorpay_signature,
       razorpayAmount: calc.grandTotal,
+      serverAuthToken,
+      customer: {
+        name: String(customer?.name || "").trim(),
+        mobile: String(customer?.mobile || "").trim(),
+        email: customer?.email ? String(customer.email).trim() : "",
+        address: customer?.address ? String(customer.address).trim() : "",
+        city: customer?.city ? String(customer.city).trim() : "",
+        state: customer?.state ? String(customer.state).trim() : "Tamil Nadu",
+        pincode: customer?.pincode ? String(customer.pincode).trim() : "",
+        notes: customer?.notes ? String(customer.notes).trim() : "",
+      },
+      items: calc.items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+      })),
       couponCode: calc.couponCode,
       discount: calc.discount,
-      serverAuthToken,
-    });
-
-    console.log("[PAYMENT_FLOW] 7 APPS_SCRIPT_RESPONSE", {
-      success: orderResponse?.success,
-      orderId: orderResponse?.orderId,
-      customerId: orderResponse?.customerId,
-      paymentStatus: orderResponse?.paymentStatus,
-      orderStatus: orderResponse?.orderStatus,
-      idempotent: !!orderResponse?.idempotent,
     });
 
     if (!orderResponse || !orderResponse.success) {
-      const errMsg = orderResponse?.error || orderResponse?.message || "Failed to record confirmed order.";
-      console.warn("[PAYMENT_FLOW] 7 APPS_SCRIPT_RESPONSE_NOTE - Using verified gateway confirmation fallback", {
-        error: errMsg,
-        code: orderResponse?.code,
-        paymentId: razorpay_payment_id,
+      const errMsg = orderResponse?.error || orderResponse?.message || "Failed to persist order in database.";
+      console.error("[PAYMENT_VERIFICATION_PERSISTENCE_FAILED]", {
+        backendOrderId: orderResponse?.orderId || null,
         razorpayOrderId: serverStoredRazorpayOrderId,
+        razorpayPaymentId: razorpay_payment_id,
+        appsScriptSuccess: orderResponse?.success ?? false,
+        appsScriptStep: orderResponse?.step || "createOrder",
+        ordersRowCreated: false,
+        error: errMsg,
       });
 
-      const fallbackOrderId = `KS-${Date.now().toString().slice(-6)}`;
-      const fallbackResponse: OrderResponse = {
-        success: true,
-        orderId: fallbackOrderId,
-        customerId: "",
-        subtotal: calc.subtotal,
-        shipping: calc.shipping,
-        discount: calc.discount,
-        gst: calc.gstTotal,
-        grandTotal: calc.grandTotal,
-        paymentStatus: "Paid",
-        paymentMethod: "Razorpay Online",
-        orderStatus: "Confirmed",
-        items: items || [],
-        message: "Payment verified successfully. Order confirmed.",
-      };
-
-      return NextResponse.json({
-        success: true,
-        orderId: fallbackOrderId,
-        grandTotal: calc.grandTotal,
-        paymentStatus: "Paid",
-        paymentMethod: "Razorpay Online",
-        orderResponse: fallbackResponse,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Payment was verified with gateway, but order could not be recorded in database (${errMsg}). Please contact support with Payment ID: ${razorpay_payment_id}.`,
+          paymentId: razorpay_payment_id,
+          razorpayOrderId: serverStoredRazorpayOrderId,
+        },
+        { status: 502 }
+      );
     }
 
-    console.log("[PAYMENT_FLOW] 8 VERIFY_RESPONSE", {
-      success: true,
-      orderId: orderResponse.orderId,
-      paymentStatus: "Paid",
+    console.log("[PAYMENT_VERIFICATION_SUCCESS]", {
+      backendOrderId: orderResponse.orderId,
+      razorpayOrderId: serverStoredRazorpayOrderId,
+      razorpayPaymentId: razorpay_payment_id,
+      appsScriptSuccess: true,
+      appsScriptStep: orderResponse.step || "Completed",
+      ordersRowCreated: true,
       idempotent: !!orderResponse.idempotent,
     });
 

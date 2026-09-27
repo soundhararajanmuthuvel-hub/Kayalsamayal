@@ -87,6 +87,34 @@ export default function CheckoutPage() {
   const [orderErr, setOrderErr] = useState("");
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
+  const [codEnabled, setCodEnabled] = useState<boolean>(false);
+
+  // Fetch dynamic payment settings (COD availability) from backend with zero cache
+  useEffect(() => {
+    let isMounted = true;
+    async function loadStorefrontSettings() {
+      try {
+        const res = await fetch("/api/settings", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data?.success && data?.settings) {
+            const isCod = data.settings.cod_enabled === true || String(data.settings.cod_enabled).toLowerCase() === "true";
+            setCodEnabled(isCod);
+            if (!isCod && paymentMethod === "cod") {
+              setPaymentMethod("razorpay");
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch storefront payment settings:", err);
+        if (isMounted) setCodEnabled(false);
+      }
+    }
+    loadStorefrontSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, [paymentMethod]);
 
   // Redirect if cart is empty and not on confirm step (only after storage hydration)
   useEffect(() => {
@@ -347,7 +375,7 @@ export default function CheckoutPage() {
             clearCart();
             window.scrollTo({ top: 0, behavior: "smooth" });
 
-            const orderRef = confirmedOrder.orderId || orderData.orderId;
+            const orderRef = confirmedOrder.orderId;
             console.log("[PAYMENT_FLOW] 10 CONFIRMATION_REDIRECT", { orderRef });
             router.push(`/confirmation?orderId=${encodeURIComponent(orderRef)}`);
           } catch (verErr: unknown) {
@@ -383,6 +411,10 @@ export default function CheckoutPage() {
    * Cash on Delivery (COD) Order Flow
    */
   const handleCodOrder = async () => {
+    if (!codEnabled) {
+      setOrderErr("Cash on Delivery is currently disabled. Please choose Online Payment.");
+      return;
+    }
     setOrderErr("");
     setLoading(true);
     setLoadingStatusText("Placing your Cash on Delivery order...");
@@ -771,44 +803,46 @@ export default function CheckoutPage() {
                           )}
                         </div>
 
-                        {/* Option 2: Cash on Delivery (COD) */}
-                        <div
-                          onClick={() => setPaymentMethod("cod")}
-                          className={`rounded-2xl border-2 p-5 transition-all cursor-pointer space-y-3 ${
-                            paymentMethod === "cod"
-                              ? "border-secondary bg-accent shadow-xs ring-1 ring-secondary/30"
-                              : "border-border bg-card hover:border-secondary/40"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                  paymentMethod === "cod" ? "border-secondary" : "border-muted-foreground"
-                                }`}
-                              >
-                                {paymentMethod === "cod" && (
-                                  <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
-                                )}
+                        {/* Option 2: Cash on Delivery (COD) - Dynamically controlled from Google Sheets Settings */}
+                        {codEnabled && (
+                          <div
+                            onClick={() => setPaymentMethod("cod")}
+                            className={`rounded-2xl border-2 p-5 transition-all cursor-pointer space-y-3 ${
+                              paymentMethod === "cod"
+                                ? "border-secondary bg-accent shadow-xs ring-1 ring-secondary/30"
+                                : "border-border bg-card hover:border-secondary/40"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                    paymentMethod === "cod" ? "border-secondary" : "border-muted-foreground"
+                                  }`}
+                                >
+                                  {paymentMethod === "cod" && (
+                                    <div className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="font-display font-bold text-base text-primary">
+                                    Cash on Delivery (COD)
+                                  </h3>
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Pay with Cash or UPI upon doorstep delivery
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <h3 className="font-display font-bold text-base text-primary">
-                                  Cash on Delivery (COD)
-                                </h3>
-                                <p className="text-xs font-medium text-muted-foreground">
-                                  Pay with Cash or UPI upon doorstep delivery
-                                </p>
-                              </div>
+                              <Banknote className="h-6 w-6 text-secondary" />
                             </div>
-                            <Banknote className="h-6 w-6 text-secondary" />
+                            {paymentMethod === "cod" && (
+                              <div className="border-t border-border/80 pt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                                <ShieldCheck className="h-3.5 w-3.5 text-leaf shrink-0 mt-0.5" />
+                                <span>Inspect your authentic spices batch upon delivery before paying.</span>
+                              </div>
+                            )}
                           </div>
-                          {paymentMethod === "cod" && (
-                            <div className="border-t border-border/80 pt-3 flex items-start gap-2 text-xs text-muted-foreground">
-                              <ShieldCheck className="h-3.5 w-3.5 text-leaf shrink-0 mt-0.5" />
-                              <span>Inspect your authentic spices batch upon delivery before paying.</span>
-                            </div>
-                          )}
-                        </div>
+                        )}
                       </div>
                     )}
 

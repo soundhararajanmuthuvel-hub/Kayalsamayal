@@ -292,6 +292,7 @@ function setupDatabaseSheets() {
       ["shipping_charge",         "60",             "Flat shipping charge in INR",                       new Date()],
       ["free_shipping_threshold", "500",            "Cart subtotal threshold for free shipping (INR)",   new Date()],
       ["default_gst",             "0.05",           "Standard GST rate (0.05 = 5%)",                     new Date()],
+      ["cod_enabled",             "TRUE",           "Enable or disable Cash on Delivery (TRUE/FALSE)",   new Date()],
       ["upi_id",                  "",               "UPI ID for manual UPI payments — configure in Settings", new Date()],
       ["admin_email",             "",               "Owner email for order notifications — CONFIGURE BEFORE GOING LIVE", new Date()]
     ];
@@ -319,6 +320,8 @@ function setupDatabaseSheets() {
       ["CPN-WELCOME10", "WELCOME10", "percentage", 10,  100, 299, "", 0, 1, "", "", "TRUE", new Date(), new Date()],
       // KAYAL100: 100% off, no max discount, no min order, 1 per customer — PRIVATE
       ["CPN-KAYAL100",  "KAYAL100",  "percentage", 100, "",  0,   "", 0, 1, "", "", "TRUE", new Date(), new Date()],
+      // HI: 100% test discount / private test coupon
+      ["CPN-HI",        "HI",        "percentage", 100, "",  0,   "", 0, 1, "", "", "TRUE", new Date(), new Date()],
       // TEST1RS: ₹1 sample test order coupon, brings subtotal to ₹1, min order ₹100, 1 per customer — PRIVATE
       ["CPN-TEST1RS",   "TEST1RS",   "fixed",      149, 999, 100, "", 0, 1, "", "", "TRUE", new Date(), new Date()]
     ];
@@ -597,47 +600,8 @@ function doGet(e) {
       return jsonResponse({ success: true, data: filtered });
     }
 
-    if (action === "settings") {
-      var sSheet = getSheetSafely(ss, TABS.SETTINGS);
-      if (!sSheet) return jsonResponse({ success: true, data: {} });
-      var settingsMap = {};
-
-      // Public allowed storefront settings whitelist
-      var publicAllowedKeys = {
-        "business_name": true,
-        "whatsapp_number": true,
-        "shipping_charge": true,
-        "free_shipping_threshold": true,
-        "default_gst": true,
-        "upi_id": true
-      };
-
-      if (typeof findSettingsHeaderRow === "function") {
-        var sHeaderInfo = findSettingsHeaderRow(sSheet, 10);
-        if (sHeaderInfo) {
-          var sLastRow = sSheet.getLastRow();
-          var sStartRow = sHeaderInfo.headerRowNumber + 1;
-          if (sLastRow >= sStartRow) {
-            var sNumRows = sLastRow - sHeaderInfo.headerRowNumber;
-            var sDisplayValues = sSheet.getRange(sStartRow, 1, sNumRows, sSheet.getLastColumn()).getDisplayValues();
-            for (var si = 0; si < sDisplayValues.length; si++) {
-              var sKey = String(sDisplayValues[si][sHeaderInfo.keyCol] || "").trim();
-              if (sKey && publicAllowedKeys[sKey]) {
-                settingsMap[sKey] = sDisplayValues[si][sHeaderInfo.valCol];
-              }
-            }
-            return jsonResponse({ success: true, data: settingsMap });
-          }
-        }
-      }
-
-      getSheetRowsAsJSON(sSheet).forEach(function(row) {
-        var rowK = String(row["Key"] || "").trim();
-        if (rowK && publicAllowedKeys[rowK]) {
-          settingsMap[rowK] = row["Value"];
-        }
-      });
-      return jsonResponse({ success: true, data: settingsMap });
+    if (action === "settings" || action === "getSettings") {
+      return jsonResponse(getSafeSettings(ss));
     }
 
     if (action === "order") {
@@ -729,6 +693,22 @@ function doPost(e) {
       }
       if (!custSheet) return jsonResponse({ success: false, error: "Customers sheet not found", step: "Customers Sheet Lookup" });
       return jsonResponse({ success: true, customerId: findOrCreateCustomer(custSheet, postData) });
+    }
+
+    if (action === "settings" || action === "getSettings") {
+      return jsonResponse(getSafeSettings(ss));
+    }
+
+    if (action === "createPendingOrder") {
+      return jsonResponse(createPendingOrder(ss, postData));
+    }
+
+    if (action === "confirmRazorpayOrder") {
+      return jsonResponse(confirmRazorpayOrder(ss, postData));
+    }
+
+    if (action === "createCodOrder") {
+      return jsonResponse(createCodOrder(ss, postData));
     }
 
     if (action === "createOrder") {
@@ -844,6 +824,77 @@ function doPost(e) {
   }
 }
 
+// ── STOREFRONT SETTINGS HELPERS ──────────────────────────────────────────────
+
+/**
+ * Reads public storefront settings safely from Settings sheet.
+ * Never exposes server secrets, private API keys, or admin passwords.
+ */
+function getSafeSettings(ss) {
+  var sSheet = getSheetSafely(ss, TABS.SETTINGS);
+  var codEnabled = true; // default true
+  var shippingCharge = 60;
+  var freeShippingThreshold = 500;
+  var defaultGst = 0.05;
+  var businessName = "Kayal Samayal";
+  var whatsappNumber = "+91 9003860616";
+  var upiId = "";
+
+  if (sSheet && sSheet.getLastRow() > 1) {
+    try {
+      var rows = getSheetRowsAsJSON(sSheet);
+      rows.forEach(function(r) {
+        var key = String(r["Key"] || "").trim().toLowerCase();
+        var rawVal = r["Value"] !== undefined ? r["Value"] : "";
+        var val = String(rawVal).trim();
+
+        if (key === "cod_enabled") {
+          codEnabled = (val.toLowerCase() !== "false" && val !== "0" && val.toLowerCase() !== "no");
+        } else if (key === "shipping_charge") {
+          var sc = Number(val);
+          if (!isNaN(sc) && sc >= 0) shippingCharge = sc;
+        } else if (key === "free_shipping_threshold") {
+          var fst = Number(val);
+          if (!isNaN(fst) && fst >= 0) freeShippingThreshold = fst;
+        } else if (key === "default_gst") {
+          var gst = Number(val);
+          if (!isNaN(gst) && gst >= 0) defaultGst = gst;
+        } else if (key === "business_name" && val) {
+          businessName = val;
+        } else if (key === "whatsapp_number" && val) {
+          whatsappNumber = val;
+        } else if (key === "upi_id" && val) {
+          upiId = val;
+        }
+      });
+    } catch (e) {
+      Logger.log("Error reading safe settings: " + e.toString());
+    }
+  }
+
+  return {
+    success: true,
+    settings: {
+      cod_enabled: codEnabled,
+      shipping_charge: shippingCharge,
+      free_shipping_threshold: freeShippingThreshold,
+      default_gst: defaultGst,
+      business_name: businessName,
+      whatsapp_number: whatsappNumber,
+      upi_id: upiId
+    },
+    data: {
+      cod_enabled: codEnabled ? "TRUE" : "FALSE",
+      shipping_charge: String(shippingCharge),
+      free_shipping_threshold: String(freeShippingThreshold),
+      default_gst: String(defaultGst),
+      business_name: businessName,
+      whatsapp_number: whatsappNumber,
+      upi_id: upiId
+    }
+  };
+}
+
 // ── DYNAMIC COUPON HELPERS ───────────────────────────────────────────────────
 
 /**
@@ -883,6 +934,38 @@ function evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerMobile) 
       "Discount Value": 10,
       "Maximum Discount": 100,
       "Minimum Order": 299,
+      "Usage Limit": "",
+      "Used Count": 0,
+      "Per Customer Limit": 1,
+      "Active": "TRUE"
+    };
+  }
+
+  // Fallback: recognize built-in KAYAL100
+  if (!coupon && codeNorm === "KAYAL100") {
+    coupon = {
+      "Coupon ID": "CPN-KAYAL100",
+      "Code": "KAYAL100",
+      "Discount Type": "percentage",
+      "Discount Value": 100,
+      "Maximum Discount": "",
+      "Minimum Order": 0,
+      "Usage Limit": "",
+      "Used Count": 0,
+      "Per Customer Limit": 1,
+      "Active": "TRUE"
+    };
+  }
+
+  // Fallback: recognize built-in HI
+  if (!coupon && codeNorm === "HI") {
+    coupon = {
+      "Coupon ID": "CPN-HI",
+      "Code": "HI",
+      "Discount Type": "percentage",
+      "Discount Value": 100,
+      "Maximum Discount": "",
+      "Minimum Order": 0,
       "Usage Limit": "",
       "Used Count": 0,
       "Per Customer Limit": 1,
@@ -1100,6 +1183,7 @@ function getPublicCoupons(ss) {
 
 /**
  * Find existing customer by mobile or create a new one.
+ * Uses dynamic header mapping to update and create customers.
  */
 function findOrCreateCustomer(sheet, data) {
   var name    = data.name    || "Anonymous";
@@ -1110,25 +1194,56 @@ function findOrCreateCustomer(sheet, data) {
   var state   = data.state   || "";
   var pincode = String(data.pincode || "").trim();
 
+  var headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+  var colMap = {};
+  headers.forEach(function(h, i) {
+    colMap[String(h).trim().toLowerCase()] = i + 1;
+  });
+
   var customers = getSheetRowsAsJSON(sheet);
-  var existing  = customers.filter(function(c) { return String(c["Mobile"]).trim() === mobile; })[0];
+  var targetMobile = mobile.replace(/\D/g, "");
+  var existing  = customers.filter(function(c) {
+    var m = String(c["Mobile"] || c["mobile"] || c["Phone"] || "").trim().replace(/\D/g, "");
+    return m === targetMobile || (m.length >= 10 && targetMobile.length >= 10 && m.slice(-10) === targetMobile.slice(-10));
+  })[0];
 
   if (existing) {
     var rowIndex = customers.indexOf(existing) + 2;
-    sheet.getRange(rowIndex, 2).setValue(name);
-    sheet.getRange(rowIndex, 4).setValue(email);
-    sheet.getRange(rowIndex, 5).setValue(address);
-    sheet.getRange(rowIndex, 6).setValue(city);
-    sheet.getRange(rowIndex, 7).setValue(state);
-    sheet.getRange(rowIndex, 8).setValue(pincode);
-    sheet.getRange(rowIndex, 10).setValue(new Date());
-    return existing["Customer ID"];
+    if (colMap["name"] || colMap["customer name"]) sheet.getRange(rowIndex, colMap["name"] || colMap["customer name"]).setValue(name);
+    if (email && (colMap["email"] || colMap["email address"])) sheet.getRange(rowIndex, colMap["email"] || colMap["email address"]).setValue(email);
+    if (address && colMap["address"]) sheet.getRange(rowIndex, colMap["address"]).setValue(address);
+    if (city && colMap["city"]) sheet.getRange(rowIndex, colMap["city"]).setValue(city);
+    if (state && colMap["state"]) sheet.getRange(rowIndex, colMap["state"]).setValue(state);
+    if (pincode && (colMap["pincode"] || colMap["pin code"])) sheet.getRange(rowIndex, colMap["pincode"] || colMap["pin code"]).setValue(pincode);
+    if (colMap["updated at"]) sheet.getRange(rowIndex, colMap["updated at"]).setValue(new Date());
+    if (colMap["last order date"]) sheet.getRange(rowIndex, colMap["last order date"]).setValue(new Date());
+    return String(existing["Customer ID"] || existing["customerId"] || ("CUS-" + targetMobile.slice(-10)));
   }
 
   var dateStr   = Utilities.formatDate(new Date(), "GMT+5:30", "yyyyMMdd");
   var countStr  = String(customers.length + 1).padStart(4, "0");
   var customerId = "CUS-" + dateStr + "-" + countStr;
-  sheet.appendRow([customerId, name, mobile, email, address, city, state, pincode, new Date(), new Date()]);
+
+  var newRow = new Array(headers.length).fill("");
+  headers.forEach(function(h, i) {
+    var hl = String(h).trim().toLowerCase();
+    if (hl === "customer id" || hl === "customerid" || hl === "id") newRow[i] = customerId;
+    else if (hl === "name" || hl === "customer name") newRow[i] = name;
+    else if (hl === "mobile" || hl === "phone") newRow[i] = mobile;
+    else if (hl === "email" || hl === "email address") newRow[i] = email;
+    else if (hl === "address") newRow[i] = address;
+    else if (hl === "city") newRow[i] = city;
+    else if (hl === "state") newRow[i] = state;
+    else if (hl === "pincode" || hl === "pin code") newRow[i] = pincode;
+    else if (hl === "created at" || hl === "createddate") newRow[i] = new Date();
+    else if (hl === "updated at" || hl === "last order date") newRow[i] = new Date();
+  });
+
+  if (newRow.filter(function(v) { return v !== ""; }).length === 0) {
+    sheet.appendRow([customerId, name, mobile, email, address, city, state, pincode, new Date(), new Date()]);
+  } else {
+    sheet.appendRow(newRow);
+  }
   return customerId;
 }
 
@@ -1176,8 +1291,544 @@ function savePaymentScreenshotToDrive(base64Data, filename) {
 // ── ORDER PROCESSING ─────────────────────────────────────────────────────────
 
 /**
+ * 1. Creates a "Payment Pending" order in Orders sheet BEFORE opening Razorpay.
+ * Stores customer, calculations, and razorpayOrderId.
+ * Does NOT deduct stock and does NOT add Order Items yet.
+ */
+function createPendingOrder(ss, data) {
+  var lock = LockService.getScriptLock();
+  var hasLock = false;
+  try {
+    hasLock = lock.tryLock(20000);
+    if (!hasLock) {
+      return { success: false, error: "Server is busy. Please try again in a few moments.", step: "Lock Acquisition" };
+    }
+
+    var productsSheet  = getSheetSafely(ss, TABS.PRODUCTS,    ["products_export", "products"]);
+    var ordersSheet    = getSheetSafely(ss, TABS.ORDERS,      ["Order", "Orders Sheet"]);
+    var customersSheet = getSheetSafely(ss, TABS.CUSTOMERS,   ["Customer", "Customers Sheet"]);
+
+    if (!productsSheet || !ordersSheet || !customersSheet) {
+      setupDatabaseSheets();
+      productsSheet  = getSheetSafely(ss, TABS.PRODUCTS,    ["products_export", "products"]);
+      ordersSheet    = getSheetSafely(ss, TABS.ORDERS,      ["Order", "Orders Sheet"]);
+      customersSheet = getSheetSafely(ss, TABS.CUSTOMERS,   ["Customer", "Customers Sheet"]);
+    }
+
+    if (!productsSheet)  return { success: false, error: "Products sheet not found", step: "Products" };
+    if (!ordersSheet)    return { success: false, error: "Orders sheet not found", step: "Orders" };
+    if (!customersSheet) return { success: false, error: "Customers sheet not found", step: "Customers" };
+
+    var customerInput   = data.customer;
+    var itemsInput      = data.items;
+    var razorpayOrderId = String(data.razorpayOrderId || "").trim();
+    var couponCodeInput = String(data.couponCode || "").trim().toUpperCase();
+
+    if (!customerInput || !customerInput.name || !customerInput.mobile) {
+      return { success: false, error: "Customer name and mobile are required", step: "Customer Validation" };
+    }
+    if (!itemsInput || !Array.isArray(itemsInput) || itemsInput.length === 0) {
+      return { success: false, error: "Cart is empty", step: "Items Validation" };
+    }
+
+    // Check if order already exists with this razorpayOrderId
+    if (razorpayOrderId) {
+      var existingOrders = getSheetRowsAsJSON(ordersSheet);
+      var match = existingOrders.filter(function(o) {
+        return String(o["Razorpay Order ID"] || "").trim() === razorpayOrderId;
+      })[0];
+      if (match) {
+        return {
+          success: true,
+          orderId: match["Order ID"],
+          customerId: match["Customer ID"],
+          paymentStatus: match["Payment Status"],
+          orderStatus: match["Order Status"],
+          grandTotal: Number(match["Grand Total"] || 0),
+          idempotent: true
+        };
+      }
+    }
+
+    // Validate products & calculate totals
+    var products = getSheetRowsAsJSON(productsSheet);
+    var subtotal = 0;
+    var gstTotal = 0;
+
+    for (var i = 0; i < itemsInput.length; i++) {
+      var item = itemsInput[i];
+      var product = products.filter(function(p) {
+        return String(p["Product ID"] || p["id"] || p["productId"]) === String(item.productId);
+      })[0];
+      if (!product) {
+        return { success: false, error: "Product not found: " + item.productId, step: "Product Lookup" };
+      }
+      var unitPrice = Number(product["Price"] || product["price"] || 0);
+      if (!unitPrice || unitPrice <= 0) unitPrice = 100;
+      var gstRate = Number(product["GST"] || product["gst"] || 0);
+      var requestedQty = Number(item.quantity || 1);
+      var lineTotal = unitPrice * requestedQty;
+      subtotal += lineTotal;
+      gstTotal += (lineTotal * gstRate);
+    }
+
+    var shippingCharge = 60;
+    var freeShippingThreshold = 500;
+    var settingsSheet = getSheetSafely(ss, TABS.SETTINGS);
+    if (settingsSheet) {
+      try {
+        var settings = getSheetRowsAsJSON(settingsSheet);
+        var shipVal = settings.filter(function(s) { return s["Key"] === "shipping_charge"; })[0];
+        var threshVal = settings.filter(function(s) { return s["Key"] === "free_shipping_threshold"; })[0];
+        if (shipVal && shipVal["Value"] !== "") shippingCharge = Number(shipVal["Value"]);
+        if (threshVal && threshVal["Value"] !== "") freeShippingThreshold = Number(threshVal["Value"]);
+      } catch (e) { /* use defaults */ }
+    }
+
+    var shipping = (subtotal >= freeShippingThreshold) ? 0 : shippingCharge;
+    var discount = 0;
+    if (couponCodeInput) {
+      var evalRes = evaluateCouponFromSheet(ss, couponCodeInput, subtotal, customerInput.mobile);
+      if (evalRes && evalRes.valid) {
+        discount = Math.min(subtotal, Math.round(Number(evalRes.discountAmount) || 0));
+      }
+    }
+
+    var grandTotal = Math.max(0, Math.round(subtotal + shipping + gstTotal - discount));
+
+    // Find or create customer in Customers sheet
+    var customerId = findOrCreateCustomer(customersSheet, customerInput);
+
+    // Generate authoritative backend Order ID
+    var orders = getSheetRowsAsJSON(ordersSheet);
+    var dateStr = Utilities.formatDate(new Date(), "GMT+5:30", "yyyyMMdd");
+    var orderCountStr = String(orders.length + 1).padStart(4, "0");
+    var orderId = "KYS-" + dateStr + "-" + orderCountStr;
+
+    var combinedNotes = customerInput.notes || "";
+    if (couponCodeInput && discount > 0) {
+      combinedNotes = combinedNotes ? (combinedNotes + " | Coupon: " + couponCodeInput) : ("Coupon: " + couponCodeInput);
+    }
+
+    // Build order row dynamically using existing headers
+    var orderHeaders = ordersSheet.getRange(1, 1, 1, Math.max(1, ordersSheet.getLastColumn())).getValues()[0];
+    var newRow = new Array(orderHeaders.length).fill("");
+    orderHeaders.forEach(function(h, i) {
+      var hl = String(h).trim().toLowerCase();
+      if (hl === "order id" || hl === "orderid") newRow[i] = orderId;
+      else if (hl === "customer id" || hl === "customerid") newRow[i] = customerId;
+      else if (hl === "created at" || hl === "order date" || hl === "created date") newRow[i] = new Date();
+      else if (hl === "customer name" || hl === "name") newRow[i] = customerInput.name;
+      else if (hl === "mobile" || hl === "phone") newRow[i] = customerInput.mobile;
+      else if (hl === "email" || hl === "email address") newRow[i] = customerInput.email || "";
+      else if (hl === "address") newRow[i] = customerInput.address || "";
+      else if (hl === "city") newRow[i] = customerInput.city || "";
+      else if (hl === "state") newRow[i] = customerInput.state || "";
+      else if (hl === "pincode" || hl === "pin code") newRow[i] = customerInput.pincode || "";
+      else if (hl === "order notes" || hl === "notes") newRow[i] = combinedNotes;
+      else if (hl === "subtotal") newRow[i] = subtotal;
+      else if (hl === "gst" || hl === "gst amount" || hl === "tax") newRow[i] = gstTotal;
+      else if (hl === "shipping" || hl === "delivery charges" || hl === "shipping charges") newRow[i] = shipping;
+      else if (hl === "discount") newRow[i] = discount;
+      else if (hl === "grand total" || hl === "total amount" || hl === "total") newRow[i] = grandTotal;
+      else if (hl === "payment status") newRow[i] = "Pending";
+      else if (hl === "order status") newRow[i] = "Payment Pending";
+      else if (hl === "payment method") newRow[i] = "Razorpay Online";
+      else if (hl === "payment gateway") newRow[i] = "Razorpay";
+      else if (hl === "razorpay order id") newRow[i] = razorpayOrderId;
+      else if (hl === "payment submitted at") newRow[i] = new Date();
+      else if (hl === "coupon code") newRow[i] = (couponCodeInput && discount > 0) ? couponCodeInput : "";
+    });
+
+    if (newRow.filter(function(v) { return v !== ""; }).length === 0) {
+      ordersSheet.appendRow([
+        orderId, customerId, new Date(), customerInput.name, customerInput.mobile,
+        customerInput.email || "", customerInput.address || "", customerInput.city || "",
+        customerInput.state || "", customerInput.pincode || "", combinedNotes,
+        subtotal, gstTotal, shipping, discount, grandTotal,
+        "Pending", "Payment Pending", new Date()
+      ]);
+    } else {
+      ordersSheet.appendRow(newRow);
+    }
+
+    var newOrderRowNum = ordersSheet.getLastRow();
+    var orderHeaderVals = ordersSheet.getRange(1, 1, 1, ordersSheet.getLastColumn()).getValues()[0];
+
+    function setOrderCol(colName, value) {
+      var idx = orderHeaderVals.indexOf(colName) + 1;
+      if (idx > 0) ordersSheet.getRange(newOrderRowNum, idx).setValue(value);
+    }
+
+    setOrderCol("Payment Method", "Razorpay Online");
+    setOrderCol("Payment Gateway", "Razorpay");
+    setOrderCol("Razorpay Order ID", razorpayOrderId);
+    setOrderCol("Payment Submitted At", new Date());
+    setOrderCol("Coupon Code", couponCodeInput && discount > 0 ? couponCodeInput : "");
+
+    Logger.log("Created Payment Pending order: " + orderId + " (Razorpay Order ID: " + razorpayOrderId + ")");
+
+    return {
+      success: true,
+      orderId: orderId,
+      customerId: customerId,
+      subtotal: subtotal,
+      shipping: shipping,
+      discount: discount,
+      gst: gstTotal,
+      grandTotal: grandTotal,
+      paymentStatus: "Pending",
+      orderStatus: "Payment Pending",
+      paymentMethod: "Razorpay Online",
+      razorpayOrderId: razorpayOrderId
+    };
+
+  } catch (err) {
+    Logger.log("createPendingOrder error: " + err.toString());
+    return { success: false, error: err.toString(), step: "createPendingOrder Exception" };
+  } finally {
+    if (hasLock) lock.releaseLock();
+  }
+}
+
+/**
+ * 2. Confirms a paid Razorpay order.
+ * Updates the existing Orders row to Paid + Confirmed.
+ * Appends Order Items and deducts stock exactly ONCE (idempotent).
+ */
+function confirmRazorpayOrder(ss, data) {
+  var lock = LockService.getScriptLock();
+  var hasLock = false;
+  try {
+    hasLock = lock.tryLock(20000);
+    if (!hasLock) {
+      return { success: false, error: "Server is busy. Please try again in a few moments.", step: "Lock Acquisition" };
+    }
+
+    var ordersSheet    = getSheetSafely(ss, TABS.ORDERS,      ["Order", "Orders Sheet"]);
+    var itemsSheet     = getSheetSafely(ss, TABS.ORDER_ITEMS, ["OrderItems", "Order_Items"]);
+    var productsSheet  = getSheetSafely(ss, TABS.PRODUCTS,    ["products_export", "products"]);
+    var customersSheet = getSheetSafely(ss, TABS.CUSTOMERS,   ["Customer", "Customers Sheet"]);
+
+    if (!ordersSheet || !itemsSheet || !productsSheet) {
+      return { success: false, error: "Required database sheets not found", step: "Sheet Lookup" };
+    }
+
+    var razorpayOrderId   = String(data.razorpayOrderId || "").trim();
+    var razorpayPaymentId = String(data.razorpayPaymentId || "").trim();
+    var razorpaySignature = String(data.razorpaySignature || "").trim();
+    var serverAuthToken   = String(data.serverAuthToken || "").trim();
+    var inputOrderId      = String(data.orderId || "").trim();
+
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature || !serverAuthToken) {
+      return { success: false, error: "Missing required Razorpay payment credentials.", step: "Payment Credentials Validation" };
+    }
+
+    // Verify server authentication token against candidate secrets
+    var scriptProps = PropertiesService.getScriptProperties();
+    var candidateSecrets = [];
+    if (scriptProps) {
+      var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
+      var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
+      if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
+      if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
+    }
+    candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
+
+    var isSigValid = false;
+    for (var cs = 0; cs < candidateSecrets.length; cs++) {
+      var secretToTest = candidateSecrets[cs];
+      var expectedBytes = Utilities.computeHmacSha256Signature(
+        "KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId,
+        secretToTest
+      );
+      var expectedToken = expectedBytes.map(function(b) {
+        var byteVal = (b < 0 ? b + 256 : b);
+        return ("0" + byteVal.toString(16)).slice(-2);
+      }).join("");
+
+      if (safeStringCompare(serverAuthToken.toLowerCase(), expectedToken.toLowerCase())) {
+        isSigValid = true;
+        break;
+      }
+    }
+
+    if (!isSigValid) {
+      return { success: false, error: "Unauthorized order confirmation: Invalid authentication token.", step: "Server Authentication Validation" };
+    }
+
+    // Search for existing order row
+    var orderRows = getSheetRowsAsJSON(ordersSheet);
+    var orderHeaderVals = ordersSheet.getRange(1, 1, 1, ordersSheet.getLastColumn()).getValues()[0];
+    var matchedRowObj = null;
+    var matchedRowIndex = -1; // 1-based sheet row number
+
+    for (var r = 0; r < orderRows.length; r++) {
+      var row = orderRows[r];
+      var rPayId = String(row["Razorpay Payment ID"] || "").trim();
+      var rOrdId = String(row["Razorpay Order ID"] || "").trim();
+      var rId    = String(row["Order ID"] || "").trim();
+
+      if ((razorpayPaymentId && rPayId === razorpayPaymentId) ||
+          (razorpayOrderId && rOrdId === razorpayOrderId) ||
+          (inputOrderId && rId === inputOrderId)) {
+        matchedRowObj = row;
+        matchedRowIndex = r + 2; // +1 header, +1 1-based
+        break;
+      }
+    }
+
+    // Idempotency: If order is already Paid / Confirmed, return existing order (do not double-deduct stock)
+    if (matchedRowObj && (matchedRowObj["Payment Status"] === "Paid" || matchedRowObj["Order Status"] === "Confirmed")) {
+      Logger.log("Idempotent order confirmation return for: " + matchedRowObj["Order ID"]);
+      return {
+        success: true,
+        orderId: matchedRowObj["Order ID"],
+        customerId: matchedRowObj["Customer ID"],
+        paymentMethod: matchedRowObj["Payment Method"] || "Razorpay Online",
+        paymentStatus: "Paid",
+        orderStatus: "Confirmed",
+        subtotal: Number(matchedRowObj["Subtotal"] || 0),
+        shipping: Number(matchedRowObj["Shipping"] || 0),
+        discount: Number(matchedRowObj["Discount"] || 0),
+        gst: Number(matchedRowObj["GST"] || 0),
+        grandTotal: Number(matchedRowObj["Grand Total"] || 0),
+        razorpayOrderId: razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId,
+        idempotent: true,
+        emailSent: true,
+        message: "Order already confirmed."
+      };
+    }
+
+    // If order was not created prior (safety fallback)
+    if (!matchedRowObj) {
+      if (hasLock) lock.releaseLock();
+      return processOrderTransaction(ss, data);
+    }
+
+    var orderId = String(matchedRowObj["Order ID"]);
+    var customerId = String(matchedRowObj["Customer ID"]);
+    var customerInput = data.customer || {};
+    var itemsInput = data.items || [];
+    var couponCodeInput = String(data.couponCode || (matchedRowObj ? matchedRowObj["Coupon Code"] : "") || "").trim().toUpperCase();
+
+    // Update existing row to Paid & Confirmed
+    function updateCol(colName, value) {
+      var idx = orderHeaderVals.indexOf(colName) + 1;
+      if (idx > 0) ordersSheet.getRange(matchedRowIndex, idx).setValue(value);
+    }
+
+    updateCol("Payment Status", "Paid");
+    updateCol("Order Status", "Confirmed");
+    updateCol("Razorpay Payment ID", razorpayPaymentId);
+    updateCol("Razorpay Signature", razorpaySignature);
+    updateCol("Payment Verified At", new Date());
+
+    var colStatusIdx = orderHeaderVals.indexOf("Payment Status") + 1;
+    if (colStatusIdx <= 0) ordersSheet.getRange(matchedRowIndex, 17).setValue("Paid");
+    var colOrdStatusIdx = orderHeaderVals.indexOf("Order Status") + 1;
+    if (colOrdStatusIdx <= 0) ordersSheet.getRange(matchedRowIndex, 18).setValue("Confirmed");
+
+    // Validate and append Order Items & deduct stock
+    var products = getSheetRowsAsJSON(productsSheet);
+    var validatedItems = [];
+
+    if (Array.isArray(itemsInput) && itemsInput.length > 0) {
+      for (var i = 0; i < itemsInput.length; i++) {
+        var item = itemsInput[i];
+        var product = products.filter(function(p) {
+          return String(p["Product ID"] || p["id"] || p["productId"]) === String(item.productId);
+        })[0];
+        if (product) {
+          var unitPrice = Number(product["Price"] || product["price"] || 0);
+          var gstRate = Number(product["GST"] || product["gst"] || 0);
+          var requestedQty = Number(item.quantity || 1);
+          var lineTotal = unitPrice * requestedQty;
+          validatedItems.push({
+            product: product,
+            productId: String(product["Product ID"] || item.productId),
+            productName: String(product["Product Name"] || product["name"] || ""),
+            tier: String(product["Tier"] || product["tier"] || "regular"),
+            quantity: requestedQty,
+            unitPrice: unitPrice,
+            gstRate: gstRate,
+            lineTotal: lineTotal
+          });
+        }
+      }
+    }
+
+    // Append to Order Items sheet
+    var itemsHeaders = itemsSheet.getRange(1, 1, 1, Math.max(1, itemsSheet.getLastColumn())).getValues()[0];
+    validatedItems.forEach(function(item, index) {
+      var orderItemId = orderId + "-ITEM-" + String(index + 1).padStart(3, "0");
+      var itemRow = new Array(itemsHeaders.length).fill("");
+      itemsHeaders.forEach(function(h, idx) {
+        var hl = String(h).trim().toLowerCase();
+        if (hl === "order item id" || hl === "item id" || hl === "id") itemRow[idx] = orderItemId;
+        else if (hl === "order id" || hl === "orderid") itemRow[idx] = orderId;
+        else if (hl === "product id" || hl === "productid") itemRow[idx] = item.productId;
+        else if (hl === "product name" || hl === "product") itemRow[idx] = item.productName;
+        else if (hl === "tier" || hl === "variant") itemRow[idx] = item.tier;
+        else if (hl === "quantity" || hl === "qty") itemRow[idx] = item.quantity;
+        else if (hl === "unit price" || hl === "price") itemRow[idx] = item.unitPrice;
+        else if (hl === "gst rate" || hl === "tax rate") itemRow[idx] = item.gstRate;
+        else if (hl === "gst amount" || hl === "tax amount") itemRow[idx] = item.lineTotal * item.gstRate;
+        else if (hl === "line total" || hl === "total" || hl === "total price") itemRow[idx] = item.lineTotal;
+        else if (hl === "created at" || hl === "date") itemRow[idx] = new Date();
+      });
+
+      if (itemRow.filter(function(v) { return v !== ""; }).length === 0) {
+        itemsSheet.appendRow([
+          orderItemId,
+          orderId,
+          item.productId,
+          item.productName,
+          item.tier,
+          item.quantity,
+          item.unitPrice,
+          item.gstRate,
+          item.lineTotal * item.gstRate,
+          item.lineTotal,
+          new Date()
+        ]);
+      } else {
+        itemsSheet.appendRow(itemRow);
+      }
+
+      // Deduct stock
+      var pIndex = products.indexOf(item.product) + 2;
+      var currentStock = Number((item.product["Stock"] !== undefined) ? item.product["Stock"] : ((item.product["stock"] !== undefined) ? item.product["stock"] : 0));
+      var newStock = Math.max(0, currentStock - item.quantity);
+      var prodHeaders = productsSheet.getRange(1, 1, 1, productsSheet.getLastColumn()).getValues()[0];
+      var stockColIdx = -1;
+      prodHeaders.forEach(function(h, idx) { if (String(h).trim().toLowerCase() === "stock") stockColIdx = idx + 1; });
+      if (stockColIdx > 0) {
+        productsSheet.getRange(pIndex, stockColIdx).setValue(newStock);
+      }
+    });
+
+    // Increment coupon used count if applicable
+    if (couponCodeInput) {
+      try {
+        var couponsSheet = getSheetSafely(ss, TABS.COUPONS, ["coupons"]);
+        if (couponsSheet && couponsSheet.getLastRow() > 1) {
+          var cRows = getSheetRowsAsJSON(couponsSheet);
+          for (var cri = 0; cri < cRows.length; cri++) {
+            if (String(cRows[cri]["Code"] || "").trim().toUpperCase() === couponCodeInput) {
+              var cRowNum = cri + 2;
+              var cHeaders = couponsSheet.getRange(1, 1, 1, couponsSheet.getLastColumn()).getValues()[0];
+              var usedCol = -1;
+              cHeaders.forEach(function(h, idx) { if (String(h).trim().toLowerCase() === "used count") usedCol = idx + 1; });
+              if (usedCol > 0) {
+                var curUsed = Number(cRows[cri]["Used Count"] || 0);
+                couponsSheet.getRange(cRowNum, usedCol).setValue(curUsed + 1);
+              }
+              break;
+            }
+          }
+        }
+      } catch (cpnErr) {
+        Logger.log("Coupon increment note: " + cpnErr.toString());
+      }
+    }
+
+    // Send emails
+    var orderData = {
+      orderId: orderId,
+      customerId: customerId,
+      customerInput: {
+        name: matchedRowObj["Customer Name"] || customerInput.name || "",
+        mobile: matchedRowObj["Mobile"] || customerInput.mobile || "",
+        email: matchedRowObj["Email"] || customerInput.email || "",
+        address: matchedRowObj["Address"] || customerInput.address || "",
+        city: matchedRowObj["City"] || customerInput.city || "",
+        state: matchedRowObj["State"] || customerInput.state || "Tamil Nadu",
+        pincode: matchedRowObj["Pincode"] || customerInput.pincode || "",
+        notes: matchedRowObj["Notes"] || customerInput.notes || ""
+      },
+      validatedItems: validatedItems,
+      subtotal: Number(matchedRowObj["Subtotal"] || 0),
+      gstTotal: Number(matchedRowObj["GST"] || 0),
+      shipping: Number(matchedRowObj["Shipping"] || 0),
+      discount: Number(matchedRowObj["Discount"] || 0),
+      grandTotal: Number(matchedRowObj["Grand Total"] || 0),
+      paymentMethod: "Razorpay Online",
+      paymentStatus: "Paid",
+      paymentGateway: "Razorpay",
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId
+    };
+
+    var emailSent = false;
+    try {
+      if (orderData.customerInput.email) {
+        sendOrderConfirmationEmail(ss, orderData);
+      }
+      sendAdminNotificationEmail(ss, orderData);
+      emailSent = true;
+    } catch (eErr) {
+      Logger.log("Email notification error: " + eErr.toString());
+    }
+
+    logApiAction(ss, {
+      action: "confirmRazorpayOrder",
+      method: "POST",
+      orderId: orderId,
+      customerId: customerId,
+      status: "SUCCESS",
+      message: "Order confirmed. razorpayPaymentId=" + razorpayPaymentId + " emailSent=" + emailSent
+    });
+
+    return {
+      success: true,
+      orderId: orderId,
+      customerId: customerId,
+      paymentMethod: "Razorpay Online",
+      paymentStatus: "Paid",
+      paymentGateway: "Razorpay",
+      razorpayOrderId: razorpayOrderId,
+      razorpayPaymentId: razorpayPaymentId,
+      subtotal: Number(matchedRowObj["Subtotal"] || 0),
+      shipping: Number(matchedRowObj["Shipping"] || 0),
+      discount: Number(matchedRowObj["Discount"] || 0),
+      gst: Number(matchedRowObj["GST"] || 0),
+      grandTotal: Number(matchedRowObj["Grand Total"] || 0),
+      orderStatus: "Confirmed",
+      emailSent: emailSent,
+      idempotent: false,
+      step: "Completed"
+    };
+
+  } catch (err) {
+    Logger.log("confirmRazorpayOrder error: " + err.toString());
+    return { success: false, error: err.toString(), step: "confirmRazorpayOrder Exception" };
+  } finally {
+    if (hasLock) lock.releaseLock();
+  }
+}
+
+/**
+ * 3. Creates Cash on Delivery order if COD is enabled in Settings.
+ */
+function createCodOrder(ss, data) {
+  var sCheck = getSafeSettings(ss);
+  if (sCheck.settings && sCheck.settings.cod_enabled === false) {
+    return {
+      success: false,
+      error: "Cash on Delivery is currently disabled.",
+      step: "COD Availability Check"
+    };
+  }
+
+  data.paymentMethod = "Cash on Delivery";
+  return processOrderTransaction(ss, data);
+}
+
+/**
  * Full order transaction.
- * Accepts paymentMethod: "Razorpay Online" or "COD" (Cash on Delivery).
+ * Accepts paymentMethod: "Razorpay Online", "COD" (Cash on Delivery), or "Free Order".
  * Backend computes authoritative totals and stock — never trusts frontend calculations.
  */
 function processOrderTransaction(ss, data) {
@@ -1229,6 +1880,18 @@ function processOrderTransaction(ss, data) {
         error: "Invalid payment method: " + paymentMethod + ". Allowed: Razorpay Online, COD, Free Order",
         step: "Payment Method Validation"
       };
+    }
+
+    // COD check
+    if (isCod) {
+      var sCheck = getSafeSettings(ss);
+      if (sCheck.settings && sCheck.settings.cod_enabled === false) {
+        return {
+          success: false,
+          error: "Cash on Delivery is currently disabled.",
+          step: "COD Availability Check"
+        };
+      }
     }
 
     // Security Gate: Razorpay orders must have valid payment credentials verified by server
@@ -1476,6 +2139,40 @@ function processOrderTransaction(ss, data) {
           "Active": "TRUE"
         };
         matchedCouponSheetRowNum = 0; // not in sheet, cannot increment
+      }
+
+      // Fallback: recognize built-in KAYAL100
+      if (!coupon && couponCodeInput === "KAYAL100") {
+        coupon = {
+          "Coupon ID": "CPN-KAYAL100",
+          "Code": "KAYAL100",
+          "Discount Type": "percentage",
+          "Discount Value": 100,
+          "Maximum Discount": "",
+          "Minimum Order": 0,
+          "Usage Limit": "",
+          "Used Count": 0,
+          "Per Customer Limit": 1,
+          "Active": "TRUE"
+        };
+        matchedCouponSheetRowNum = 0;
+      }
+
+      // Fallback: recognize built-in HI
+      if (!coupon && couponCodeInput === "HI") {
+        coupon = {
+          "Coupon ID": "CPN-HI",
+          "Code": "HI",
+          "Discount Type": "percentage",
+          "Discount Value": 100,
+          "Maximum Discount": "",
+          "Minimum Order": 0,
+          "Usage Limit": "",
+          "Used Count": 0,
+          "Per Customer Limit": 1,
+          "Active": "TRUE"
+        };
+        matchedCouponSheetRowNum = 0;
       }
 
       // Fallback: recognize built-in TEST1RS for ₹1 sample test orders

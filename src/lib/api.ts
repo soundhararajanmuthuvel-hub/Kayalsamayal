@@ -67,6 +67,7 @@ export interface OrderResponse {
   message?: string;
   code?: string;
   error?: string;
+  step?: string;
 }
 
 export interface SettingsResponse {
@@ -197,7 +198,17 @@ export async function getReviews(): Promise<Testimonial[]> {
 
 // ── GET SETTINGS ──────────────────────────────────────────────────────────────
 
-export async function getSettings(): Promise<SettingsResponse> {
+export interface StorefrontSettings {
+  cod_enabled: boolean;
+  shipping_charge: number;
+  free_shipping_threshold: number;
+  default_gst?: number;
+  business_name?: string;
+  whatsapp_number?: string;
+  upi_id?: string;
+}
+
+export async function getSettings(): Promise<{ success: boolean; settings: StorefrontSettings }> {
   try {
     const res = await fetch(`${API_URL}?action=settings`, {
       method: "GET",
@@ -206,11 +217,41 @@ export async function getSettings(): Promise<SettingsResponse> {
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
-    if (json && json.success) return json.data || {};
-    return {};
+    if (json && json.success) {
+      const s = json.settings || json.data || {};
+      const codVal = s.cod_enabled !== undefined ? s.cod_enabled : (json.data?.cod_enabled);
+      const isCod = codVal === true || String(codVal).toLowerCase() === "true" || codVal === "1";
+      return {
+        success: true,
+        settings: {
+          cod_enabled: codVal === undefined ? true : isCod,
+          shipping_charge: Number(s.shipping_charge || 60),
+          free_shipping_threshold: Number(s.free_shipping_threshold || 500),
+          default_gst: Number(s.default_gst || 0.05),
+          business_name: String(s.business_name || "Kayal Samayal"),
+          whatsapp_number: String(s.whatsapp_number || "+91 9003860616"),
+          upi_id: String(s.upi_id || ""),
+        }
+      };
+    }
+    return {
+      success: true,
+      settings: {
+        cod_enabled: true,
+        shipping_charge: 60,
+        free_shipping_threshold: 500,
+      }
+    };
   } catch (err) {
     console.warn("Failed to fetch settings from API.", err);
-    return {};
+    return {
+      success: false,
+      settings: {
+        cod_enabled: false, // Fail closed on network error
+        shipping_charge: 60,
+        free_shipping_threshold: 500,
+      }
+    };
   }
 }
 
@@ -335,6 +376,103 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
     error: errorDetails,
     message: errorDetails || "Unable to connect to our order system. Please check your connection or contact support on WhatsApp.",
   };
+}
+
+// ── CREATE PENDING ORDER ──────────────────────────────────────────────────────
+
+export async function createPendingOrder(order: OrderInput): Promise<OrderResponse> {
+  try {
+    const payload = { action: "createPendingOrder", ...order };
+    const res = await fetch(API_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(25000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Order database responded with HTTP ${res.status}`);
+    }
+
+    const rawText = await res.text();
+    const json: OrderResponse = JSON.parse(rawText);
+    return json;
+  } catch (err: unknown) {
+    const errorDetails = err instanceof Error ? err.message : String(err);
+    console.error("[CREATE_PENDING_ORDER_EXCEPTION]:", { error: errorDetails, razorpayOrderId: order.razorpayOrderId });
+    return {
+      success: false,
+      code: "ORDER_PENDING_FAILED",
+      orderId: "",
+      customerId: "",
+      subtotal: 0,
+      shipping: 0,
+      discount: 0,
+      gst: 0,
+      grandTotal: 0,
+      paymentStatus: "Pending",
+      paymentMethod: order.paymentMethod,
+      orderStatus: "Payment Pending",
+      items: [],
+      error: errorDetails,
+      message: errorDetails || "Could not initialize order in database.",
+    };
+  }
+}
+
+// ── CONFIRM RAZORPAY ORDER ───────────────────────────────────────────────────
+
+export async function confirmRazorpayOrder(data: {
+  orderId?: string;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+  razorpayAmount: number;
+  serverAuthToken: string;
+  customer?: CustomerInput;
+  items?: OrderItemInput[];
+  couponCode?: string;
+  discount?: number;
+}): Promise<OrderResponse> {
+  try {
+    const payload = { action: "confirmRazorpayOrder", ...data };
+    const res = await fetch(API_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(25000),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Order database responded with HTTP ${res.status}`);
+    }
+
+    const rawText = await res.text();
+    const json: OrderResponse = JSON.parse(rawText);
+    return json;
+  } catch (err: unknown) {
+    const errorDetails = err instanceof Error ? err.message : String(err);
+    console.error("[CONFIRM_RAZORPAY_ORDER_EXCEPTION]:", { error: errorDetails, razorpayPaymentId: data.razorpayPaymentId });
+    return {
+      success: false,
+      code: "ORDER_CONFIRMATION_FAILED",
+      orderId: data.orderId || "",
+      customerId: "",
+      subtotal: 0,
+      shipping: 0,
+      discount: 0,
+      gst: 0,
+      grandTotal: data.razorpayAmount,
+      paymentStatus: "Paid",
+      paymentMethod: "Razorpay Online",
+      orderStatus: "Confirmed",
+      items: [],
+      error: errorDetails,
+      message: errorDetails || "Could not confirm order in database.",
+    };
+  }
 }
 
 // ── UPDATE ORDER ──────────────────────────────────────────────────────────────
