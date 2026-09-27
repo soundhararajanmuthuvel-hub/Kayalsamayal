@@ -306,7 +306,7 @@ export default function CheckoutPage() {
         name: brand.name,
         description: `Order Payment (${cart.length} items)`,
         image: "https://www.kayalsamayal.in/logo.png",
-        order_id: orderData.orderId,
+        order_id: orderData.razorpayOrderId || orderData.orderId,
         one_click_checkout: false,
         prefill: {
           name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -338,7 +338,7 @@ export default function CheckoutPage() {
               body: JSON.stringify({
                 orderToken: orderData.orderToken,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id || orderData.orderId,
+                razorpay_order_id: response.razorpay_order_id || orderData.razorpayOrderId || orderData.orderId,
                 razorpay_signature: response.razorpay_signature,
                 customer: {
                   name: `${formData.firstName} ${formData.lastName}`.trim(),

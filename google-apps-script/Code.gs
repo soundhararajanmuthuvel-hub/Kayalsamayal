@@ -725,6 +725,7 @@ function doPost(e) {
         if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
         if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
       }
+      candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
       candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
       var serverAuthToken = String(postData.serverAuthToken || "").trim();
@@ -1533,6 +1534,7 @@ function confirmRazorpayOrder(ss, data) {
       if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
       if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
     }
+    candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
     candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
     var isSigValid = false;
@@ -1918,6 +1920,7 @@ function processOrderTransaction(ss, data) {
         if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
         if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
       }
+      candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
       candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
       if (!serverAuthToken) {
