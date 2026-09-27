@@ -254,7 +254,7 @@ export default function CheckoutPage() {
           window.scrollTo({ top: 0, behavior: "smooth" });
           const freeRef = confirmedFree.orderId;
           if (freeRef) {
-            router.push(`/thank-you?orderId=${encodeURIComponent(freeRef)}`);
+            router.push(`/confirmation?orderId=${encodeURIComponent(freeRef)}`);
           }
         } finally {
           setLoading(false);
@@ -349,7 +349,7 @@ export default function CheckoutPage() {
 
             const orderRef = confirmedOrder.orderId || orderData.orderId;
             console.log("[PAYMENT_FLOW] 10 CONFIRMATION_REDIRECT", { orderRef });
-            router.push(`/thank-you?orderId=${encodeURIComponent(orderRef)}`);
+            router.push(`/confirmation?orderId=${encodeURIComponent(orderRef)}`);
           } catch (verErr: unknown) {
             console.error("Verification error:", verErr);
             const msg = verErr instanceof Error ? verErr.message : "Payment verification failed.";
@@ -423,7 +423,7 @@ export default function CheckoutPage() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       const codRef = confirmedCod.orderId;
       if (codRef) {
-        router.push(`/thank-you?orderId=${encodeURIComponent(codRef)}`);
+        router.push(`/confirmation?orderId=${encodeURIComponent(codRef)}`);
       }
     } catch (err: unknown) {
       console.error("COD placement error:", err);
