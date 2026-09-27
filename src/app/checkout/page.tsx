@@ -65,17 +65,43 @@ export default function CheckoutPage() {
   const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon, setLastOrderResponse } = useCart();
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirm">("shipping");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    mobile: customerDetails.mobile || "",
-    email: customerDetails.email || "",
-    address: customerDetails.address || "",
-    city: customerDetails.city || "",
-    state: customerDetails.state || "Tamil Nadu",
-    pincode: customerDetails.pincode || "",
-    notes: customerDetails.notes || "",
+    mobile: "",
+    email: "",
+    address: "",
+    city: "",
+    state: "Tamil Nadu",
+    pincode: "",
+    notes: "",
   });
+
+  useEffect(() => {
+    if (customerDetails) {
+      const nameParts = (customerDetails.name || "").trim().split(/\s+/);
+      const fName = nameParts[0] || "";
+      const lName = nameParts.slice(1).join(" ") || "";
+      setFormData((prev) => ({
+        ...prev,
+        firstName: prev.firstName || fName,
+        lastName: prev.lastName || lName,
+        mobile: prev.mobile || customerDetails.mobile || "",
+        email: prev.email || customerDetails.email || "",
+        address: prev.address || customerDetails.address || "",
+        city: prev.city || customerDetails.city || "",
+        state: prev.state || customerDetails.state || "Tamil Nadu",
+        pincode: prev.pincode || customerDetails.pincode || "",
+        notes: prev.notes || customerDetails.notes || "",
+      }));
+    }
+  }, [customerDetails]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -86,10 +112,10 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty and not on confirm step
   useEffect(() => {
-    if (cart.length === 0 && step !== "confirm") {
+    if (mounted && cart.length === 0 && step !== "confirm") {
       router.push("/cart");
     }
-  }, [cart, step, router]);
+  }, [cart, step, router, mounted]);
 
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
