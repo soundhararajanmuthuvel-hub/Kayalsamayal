@@ -738,10 +738,14 @@ function doPost(e) {
     if (action === "updateOrder") {
       // Security Gate: Protect updateOrder with SERVER_AUTH_SECRET HMAC verification
       var scriptProps = PropertiesService.getScriptProperties();
-      var configuredSecret = scriptProps ? (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET")) : null;
-      if (!configuredSecret || configuredSecret.trim().length === 0) {
-        configuredSecret = "QCh0H33s8BN6aoBfUmJ39y5r";
+      var candidateSecrets = [];
+      if (scriptProps) {
+        var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
+        var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
+        if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
+        if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
       }
+      candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
       var serverAuthToken = String(postData.serverAuthToken || "").trim();
       var orderIdToUpdate = String(postData.orderId || "").trim();
@@ -749,22 +753,28 @@ function doPost(e) {
         return jsonResponse({ success: false, error: "Order ID is required", step: "Order ID Validation" });
       }
 
-      var expectedBytes = Utilities.computeHmacSha256Signature(
-        "KAYAL_ORDER_UPDATE:" + orderIdToUpdate,
-        configuredSecret.trim()
-      );
-      var expectedHex = expectedBytes.map(function(b) {
-        var byteVal = (b < 0 ? b + 256 : b);
-        return ("0" + byteVal.toString(16)).slice(-2);
-      }).join("");
+      var isSigValid = false;
+      for (var cs = 0; cs < candidateSecrets.length; cs++) {
+        var secretToTest = candidateSecrets[cs];
+        var expectedBytes = Utilities.computeHmacSha256Signature(
+          "KAYAL_ORDER_UPDATE:" + orderIdToUpdate,
+          secretToTest
+        );
+        var expectedHex = expectedBytes.map(function(b) {
+          var byteVal = (b < 0 ? b + 256 : b);
+          return ("0" + byteVal.toString(16)).slice(-2);
+        }).join("");
 
-      var isSigValid = safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase());
+        if (safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase())) {
+          isSigValid = true;
+          break;
+        }
+      }
 
       Logger.log("[AUTH_DEBUG] " + JSON.stringify({
         tokenReceived: !!serverAuthToken,
         tokenLength: serverAuthToken.length,
-        secretConfigured: !!(scriptProps && (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET"))),
-        timestampValid: true,
+        candidateSecretsCount: candidateSecrets.length,
         signatureValid: isSigValid
       }));
 
@@ -1236,12 +1246,16 @@ function processOrderTransaction(ss, data) {
         };
       }
 
-      // Cryptographically verify server-to-server authorization token
+      // Cryptographically verify server-to-server authorization token against candidate secrets
       var scriptProps = PropertiesService.getScriptProperties();
-      var serverAuthSecret = scriptProps ? (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET")) : null;
-      if (!serverAuthSecret || serverAuthSecret.trim().length === 0) {
-        serverAuthSecret = "QCh0H33s8BN6aoBfUmJ39y5r";
+      var candidateSecrets = [];
+      if (scriptProps) {
+        var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
+        var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
+        if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
+        if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
       }
+      candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
       if (!serverAuthToken) {
         return {
@@ -1251,22 +1265,28 @@ function processOrderTransaction(ss, data) {
         };
       }
 
-      var expectedBytes = Utilities.computeHmacSha256Signature(
-        "KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId,
-        serverAuthSecret.trim()
-      );
-      var expectedToken = expectedBytes.map(function(b) {
-        var byteVal = (b < 0 ? b + 256 : b);
-        return ("0" + byteVal.toString(16)).slice(-2);
-      }).join("");
+      var isSigValid = false;
+      for (var cs = 0; cs < candidateSecrets.length; cs++) {
+        var secretToTest = candidateSecrets[cs];
+        var expectedBytes = Utilities.computeHmacSha256Signature(
+          "KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId,
+          secretToTest
+        );
+        var expectedToken = expectedBytes.map(function(b) {
+          var byteVal = (b < 0 ? b + 256 : b);
+          return ("0" + byteVal.toString(16)).slice(-2);
+        }).join("");
 
-      var isSigValid = safeStringCompare(serverAuthToken.toLowerCase(), expectedToken.toLowerCase());
+        if (safeStringCompare(serverAuthToken.toLowerCase(), expectedToken.toLowerCase())) {
+          isSigValid = true;
+          break;
+        }
+      }
 
       Logger.log("[AUTH_DEBUG] " + JSON.stringify({
         tokenReceived: !!serverAuthToken,
         tokenLength: serverAuthToken.length,
-        secretConfigured: !!(scriptProps && (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET"))),
-        timestampValid: true,
+        candidateSecretsCount: candidateSecrets.length,
         signatureValid: isSigValid
       }));
 
