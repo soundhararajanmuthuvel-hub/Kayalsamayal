@@ -6,6 +6,34 @@ const RAZORPAY_KEY_SECRET = "QCh0H33s8BN6aoBfUmJ39y5r";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+async function postToGas(payload) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        if (attempt < 3) {
+          await sleep(2000);
+          continue;
+        }
+        throw new Error("Invalid non-JSON response from Google Apps Script: " + text.slice(0, 200));
+      }
+    } catch (err) {
+      if (attempt < 3) {
+        await sleep(2000);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 async function runTests() {
   console.log("=== STARTING COMPREHENSIVE PAYMENT FLOW TESTS ===");
 
@@ -26,33 +54,28 @@ async function runTests() {
     .update(`KAYAL_ORDER_AUTH:${test1OrderId}:${test1PaymentId}`)
     .digest("hex");
 
-  const gasRes1 = await fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action: "createOrder",
-      customer: {
-        name: "Test Customer Qty9",
-        mobile: testMobile1,
-        email: "test9@kayalsamayal.in",
-        address: "42 Coast Road",
-        city: "Kayalpatnam",
-        state: "Tamil Nadu",
-        pincode: "628204",
-      },
-      items: [{ productId: "kayal-curry-masala", quantity: 9 }],
-      paymentMethod: "Razorpay Online",
-      razorpayOrderId: test1OrderId,
-      razorpayPaymentId: test1PaymentId,
-      razorpaySignature: test1Signature,
-      razorpayAmount: 1,
-      couponCode: "TEST1RS",
-      discount: 539,
-      serverAuthToken: serverAuthToken1,
-    }),
+  const gasData1 = await postToGas({
+    action: "createOrder",
+    customer: {
+      name: "Test Customer Qty9",
+      mobile: testMobile1,
+      email: "test9@kayalsamayal.in",
+      address: "42 Coast Road",
+      city: "Kayalpatnam",
+      state: "Tamil Nadu",
+      pincode: "628204",
+    },
+    items: [{ productId: "kayal-curry-masala", quantity: 9 }],
+    paymentMethod: "Razorpay Online",
+    razorpayOrderId: test1OrderId,
+    razorpayPaymentId: test1PaymentId,
+    razorpaySignature: test1Signature,
+    razorpayAmount: 1,
+    couponCode: "TEST1RS",
+    discount: 539,
+    serverAuthToken: serverAuthToken1,
   });
 
-  const gasData1 = await gasRes1.json();
   console.log("[TEST 1 Result]", {
     success: gasData1.success,
     orderId: gasData1.orderId,
@@ -73,33 +96,28 @@ async function runTests() {
 
   // ── TEST 6: DUPLICATE VERIFICATION / IDEMPOTENCY ──
   console.log("\n[TEST 6] Testing Idempotency (calling verification twice with same payment data)...");
-  const gasResDup = await fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action: "createOrder",
-      customer: {
-        name: "Test Customer Qty9",
-        mobile: testMobile1,
-        email: "test9@kayalsamayal.in",
-        address: "42 Coast Road",
-        city: "Kayalpatnam",
-        state: "Tamil Nadu",
-        pincode: "628204",
-      },
-      items: [{ productId: "kayal-curry-masala", quantity: 9 }],
-      paymentMethod: "Razorpay Online",
-      razorpayOrderId: test1OrderId,
-      razorpayPaymentId: test1PaymentId,
-      razorpaySignature: test1Signature,
-      razorpayAmount: 1,
-      couponCode: "TEST1RS",
-      discount: 539,
-      serverAuthToken: serverAuthToken1,
-    }),
+  const gasDataDup = await postToGas({
+    action: "createOrder",
+    customer: {
+      name: "Test Customer Qty9",
+      mobile: testMobile1,
+      email: "test9@kayalsamayal.in",
+      address: "42 Coast Road",
+      city: "Kayalpatnam",
+      state: "Tamil Nadu",
+      pincode: "628204",
+    },
+    items: [{ productId: "kayal-curry-masala", quantity: 9 }],
+    paymentMethod: "Razorpay Online",
+    razorpayOrderId: test1OrderId,
+    razorpayPaymentId: test1PaymentId,
+    razorpaySignature: test1Signature,
+    razorpayAmount: 1,
+    couponCode: "TEST1RS",
+    discount: 539,
+    serverAuthToken: serverAuthToken1,
   });
 
-  const gasDataDup = await gasResDup.json();
   console.log("[TEST 6 Result]", {
     success: gasDataDup.success,
     orderId: gasDataDup.orderId,
@@ -128,31 +146,26 @@ async function runTests() {
     .update(`KAYAL_ORDER_AUTH:${test2OrderId}:${test2PaymentId}`)
     .digest("hex");
 
-  const gasRes2 = await fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action: "createOrder",
-      customer: {
-        name: "Test Customer Normal",
-        mobile: "98" + uniqueSuffix + "02",
-        email: "normal@kayalsamayal.in",
-        address: "78 Market Street",
-        city: "Madurai",
-        state: "Tamil Nadu",
-        pincode: "625001",
-      },
-      items: [{ productId: "kayal-curry-masala", quantity: 3 }],
-      paymentMethod: "Razorpay Online",
-      razorpayOrderId: test2OrderId,
-      razorpayPaymentId: test2PaymentId,
-      razorpaySignature: test2Signature,
-      razorpayAmount: 240, // 180 + 60 shipping
-      serverAuthToken: serverAuthToken2,
-    }),
+  const gasData2 = await postToGas({
+    action: "createOrder",
+    customer: {
+      name: "Test Customer Normal",
+      mobile: "98" + uniqueSuffix + "02",
+      email: "normal@kayalsamayal.in",
+      address: "78 Market Street",
+      city: "Madurai",
+      state: "Tamil Nadu",
+      pincode: "625001",
+    },
+    items: [{ productId: "kayal-curry-masala", quantity: 3 }],
+    paymentMethod: "Razorpay Online",
+    razorpayOrderId: test2OrderId,
+    razorpayPaymentId: test2PaymentId,
+    razorpaySignature: test2Signature,
+    razorpayAmount: 240, // 180 + 60 shipping
+    serverAuthToken: serverAuthToken2,
   });
 
-  const gasData2 = await gasRes2.json();
   console.log("[TEST 2 Result]", {
     success: gasData2.success,
     orderId: gasData2.orderId,
@@ -172,26 +185,21 @@ async function runTests() {
 
   // ── TEST 3: COD ORDER FLOW ──
   console.log("\n[TEST 3] Testing Cash on Delivery (COD) Order...");
-  const gasResCod = await fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action: "createOrder",
-      customer: {
-        name: "Test COD Customer",
-        mobile: "98" + uniqueSuffix + "03",
-        email: "cod@kayalsamayal.in",
-        address: "10 Temple Street",
-        city: "Tirunelveli",
-        state: "Tamil Nadu",
-        pincode: "627001",
-      },
-      items: [{ productId: "kayal-curry-masala", quantity: 1 }],
-      paymentMethod: "Cash on Delivery",
-    }),
+  const gasDataCod = await postToGas({
+    action: "createOrder",
+    customer: {
+      name: "Test COD Customer",
+      mobile: "98" + uniqueSuffix + "03",
+      email: "cod@kayalsamayal.in",
+      address: "10 Temple Street",
+      city: "Tirunelveli",
+      state: "Tamil Nadu",
+      pincode: "627001",
+    },
+    items: [{ productId: "kayal-curry-masala", quantity: 1 }],
+    paymentMethod: "Cash on Delivery",
   });
 
-  const gasDataCod = await gasResCod.json();
   console.log("[TEST 3 Result]", {
     success: gasDataCod.success,
     orderId: gasDataCod.orderId,
@@ -209,28 +217,23 @@ async function runTests() {
 
   // ── TEST 4: FREE ORDER FLOW ──
   console.log("\n[TEST 4] Testing Free Order (100% Promo)...");
-  const gasResFree = await fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action: "createOrder",
-      customer: {
-        name: "Test Free Order Customer",
-        mobile: "98" + uniqueSuffix + "04",
-        email: "free@kayalsamayal.in",
-        address: "5 Beach Road",
-        city: "Tuticorin",
-        state: "Tamil Nadu",
-        pincode: "628001",
-      },
-      items: [{ productId: "kayal-curry-masala", quantity: 1 }],
-      paymentMethod: "Free Order",
-      couponCode: "KAYAL100",
-      discount: 60,
-    }),
+  const gasDataFree = await postToGas({
+    action: "createOrder",
+    customer: {
+      name: "Test Free Order Customer",
+      mobile: "98" + uniqueSuffix + "04",
+      email: "free@kayalsamayal.in",
+      address: "5 Beach Road",
+      city: "Tuticorin",
+      state: "Tamil Nadu",
+      pincode: "628001",
+    },
+    items: [{ productId: "kayal-curry-masala", quantity: 1 }],
+    paymentMethod: "Free Order",
+    couponCode: "KAYAL100",
+    discount: 60,
   });
 
-  const gasDataFree = await gasResFree.json();
   console.log("[TEST 4 Result]", {
     success: gasDataFree.success,
     orderId: gasDataFree.orderId,
