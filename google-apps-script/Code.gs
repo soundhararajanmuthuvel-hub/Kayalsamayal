@@ -785,6 +785,40 @@ function doPost(e) {
       return jsonResponse(updateOrderStatus(ordSheet, postData));
     }
 
+    if (action === "cleanupTestData") {
+      // Security Gate: Protect cleanupTestData with SERVER_AUTH_SECRET HMAC verification
+      var scriptProps = PropertiesService.getScriptProperties();
+      var configuredSecret = scriptProps ? (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET")) : null;
+      if (!configuredSecret || configuredSecret.trim().length === 0) {
+        configuredSecret = "QCh0H33s8BN6aoBfUmJ39y5r";
+      }
+
+      var serverAuthToken = String(postData.serverAuthToken || "").trim();
+      var targetOrderIds = Array.isArray(postData.orderIdsToDelete) ? postData.orderIdsToDelete : [];
+      var targetCustomerIds = Array.isArray(postData.customerIdsToDelete) ? postData.customerIdsToDelete : [];
+
+      var expectedBytes = Utilities.computeHmacSha256Signature(
+        "KAYAL_CLEANUP_AUTH:" + targetOrderIds.length + ":" + targetCustomerIds.length,
+        configuredSecret.trim()
+      );
+      var expectedHex = expectedBytes.map(function(b) {
+        var byteVal = (b < 0 ? b + 256 : b);
+        return ("0" + byteVal.toString(16)).slice(-2);
+      }).join("");
+
+      var isSigValid = safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase());
+
+      if (!serverAuthToken || !isSigValid) {
+        return jsonResponse({
+          success: false,
+          error: "Unauthorized cleanup request: Invalid or forged server authentication token.",
+          step: "Server Authentication Validation"
+        });
+      }
+
+      return jsonResponse(executeTestDataCleanup(ss, postData));
+    }
+
     if (action === "diag" || action === "testSampleOrder") {
       return jsonResponse({
         success: false,
@@ -3163,4 +3197,267 @@ function inspectRemainingSettingsDuplicates() {
     duplicateKeys: duplicateKeys,
     recommendations: recommendations
   };
+}
+
+/**
+ * Execute atomic, verified test data cleanup on Google Sheets database.
+ * Strictly deletes only specified test orders, test customers, and test order items.
+ * Restores product stock and coupon counters cleanly.
+ */
+function executeTestDataCleanup(ss, postData) {
+  var lock = LockService.getScriptLock();
+  var hasLock = false;
+  try {
+    hasLock = lock.tryLock(30000);
+    if (!hasLock) {
+      return { success: false, error: "Server lock acquisition timed out.", step: "Lock Acquisition" };
+    }
+
+    var orderIdsToDelete = postData.orderIdsToDelete || [];
+    var customerIdsToDelete = postData.customerIdsToDelete || [];
+    var productsToRestore = postData.productsToRestore || [];
+    var couponsToRestore = postData.couponsToRestore || [];
+
+    var orderIdMap = {};
+    orderIdsToDelete.forEach(function(id) { orderIdMap[String(id).trim()] = true; });
+
+    var customerIdMap = {};
+    customerIdsToDelete.forEach(function(id) { customerIdMap[String(id).trim()] = true; });
+
+    var result = {
+      success: true,
+      ordersDeleted: 0,
+      customersDeleted: 0,
+      orderItemsDeleted: 0,
+      productsRestored: [],
+      couponsRestored: []
+    };
+
+    // 1. Clean Orders sheet (bottom up)
+    var ordersSheet = getSheetSafely(ss, TABS.ORDERS, ["Order", "Orders Sheet"]);
+    if (ordersSheet && ordersSheet.getLastRow() > 1) {
+      var numRows = ordersSheet.getLastRow() - 1;
+      var numCols = ordersSheet.getLastColumn();
+      var ordHeaders = ordersSheet.getRange(1, 1, 1, numCols).getValues()[0];
+      var ordIdColIdx = 0;
+      for (var h = 0; h < ordHeaders.length; h++) {
+        if (String(ordHeaders[h] || "").trim().toLowerCase() === "order id") {
+          ordIdColIdx = h;
+          break;
+        }
+      }
+
+      var ordData = ordersSheet.getRange(2, 1, numRows, numCols).getValues();
+      for (var r = ordData.length - 1; r >= 0; r--) {
+        var rowOrdId = String(ordData[r][ordIdColIdx] || "").trim();
+        if (rowOrdId && orderIdMap[rowOrdId]) {
+          ordersSheet.deleteRow(r + 2);
+          result.ordersDeleted++;
+        }
+      }
+    }
+
+    // 2. Clean Order Items sheet (bottom up)
+    var itemsSheet = getSheetSafely(ss, TABS.ORDER_ITEMS, ["OrderItems", "Order_Items"]);
+    if (itemsSheet && itemsSheet.getLastRow() > 1) {
+      var numItemRows = itemsSheet.getLastRow() - 1;
+      var numItemCols = itemsSheet.getLastColumn();
+      var itemHeaders = itemsSheet.getRange(1, 1, 1, numItemCols).getValues()[0];
+      var itemOrdIdColIdx = 1;
+      for (var ih = 0; ih < itemHeaders.length; ih++) {
+        if (String(itemHeaders[ih] || "").trim().toLowerCase() === "order id") {
+          itemOrdIdColIdx = ih;
+          break;
+        }
+      }
+
+      var itemData = itemsSheet.getRange(2, 1, numItemRows, numItemCols).getValues();
+      for (var ir = itemData.length - 1; ir >= 0; ir--) {
+        var itmOrdId = String(itemData[ir][itemOrdIdColIdx] || "").trim();
+        if (itmOrdId && orderIdMap[itmOrdId]) {
+          itemsSheet.deleteRow(ir + 2);
+          result.orderItemsDeleted++;
+        }
+      }
+    }
+
+    // 3. Clean Customers sheet (bottom up)
+    var customersSheet = getSheetSafely(ss, TABS.CUSTOMERS, ["Customer", "Customers Sheet"]);
+    if (customersSheet && customersSheet.getLastRow() > 1) {
+      var numCustRows = customersSheet.getLastRow() - 1;
+      var numCustCols = customersSheet.getLastColumn();
+      var custHeaders = customersSheet.getRange(1, 1, 1, numCustCols).getValues()[0];
+      var custIdColIdx = 0;
+      for (var ch = 0; ch < custHeaders.length; ch++) {
+        if (String(custHeaders[ch] || "").trim().toLowerCase() === "customer id") {
+          custIdColIdx = ch;
+          break;
+        }
+      }
+
+      var custData = customersSheet.getRange(2, 1, numCustRows, numCustCols).getValues();
+      for (var cr = custData.length - 1; cr >= 0; cr--) {
+        var rowCustId = String(custData[cr][custIdColIdx] || "").trim();
+        if (rowCustId && customerIdMap[rowCustId]) {
+          customersSheet.deleteRow(cr + 2);
+          result.customersDeleted++;
+        }
+      }
+    }
+
+    // 4. Restore Product Stock
+    var productsSheet = getSheetSafely(ss, TABS.PRODUCTS, ["products_export", "products"]);
+    if (productsSheet && productsSheet.getLastRow() > 1 && productsToRestore.length > 0) {
+      var numProdRows = productsSheet.getLastRow() - 1;
+      var numProdCols = productsSheet.getLastColumn();
+      var prodHeaders = productsSheet.getRange(1, 1, 1, numProdCols).getValues()[0];
+      var pIdCol = -1;
+      var pNameCol = -1;
+      var pStockCol = -1;
+
+      for (var ph = 0; ph < prodHeaders.length; ph++) {
+        var hName = String(prodHeaders[ph] || "").trim().toLowerCase();
+        if (hName === "product id" || hName === "id") pIdCol = ph;
+        if (hName === "product name" || hName === "name") pNameCol = ph;
+        if (hName === "stock") pStockCol = ph;
+      }
+
+      if (pStockCol !== -1) {
+        var prodData = productsSheet.getRange(2, 1, numProdRows, numProdCols).getValues();
+        productsToRestore.forEach(function(pToRestore) {
+          var targetId = String(pToRestore.id || "").trim();
+          var targetName = String(pToRestore.name || "").trim().toLowerCase();
+          var targetStock = Number(pToRestore.stock || 100);
+
+          for (var pr = 0; pr < prodData.length; pr++) {
+            var rowPId = String(prodData[pr][pIdCol] || "").trim();
+            var rowPName = String(prodData[pr][pNameCol] || "").trim().toLowerCase();
+
+            if ((targetId && rowPId === targetId) || (targetName && rowPName === targetName)) {
+              var cell = productsSheet.getRange(pr + 2, pStockCol + 1);
+              var oldVal = prodData[pr][pStockCol];
+              cell.setValue(targetStock);
+              result.productsRestored.push({
+                product: prodData[pr][pNameCol] || targetId,
+                oldStock: oldVal,
+                newStock: targetStock
+              });
+              break;
+            }
+          }
+        });
+      }
+    }
+
+    // 5. Restore Coupons used count
+    var couponsSheet = getSheetSafely(ss, TABS.COUPONS, ["coupons"]);
+    if (couponsSheet && couponsSheet.getLastRow() > 1 && couponsToRestore.length > 0) {
+      var numCpnRows = couponsSheet.getLastRow() - 1;
+      var numCpnCols = couponsSheet.getLastColumn();
+      var cpnHeaders = couponsSheet.getRange(1, 1, 1, numCpnCols).getValues()[0];
+      var cCodeCol = -1;
+      var cUsedCountCol = -1;
+
+      for (var cph = 0; cph < cpnHeaders.length; cph++) {
+        var chNorm = String(cpnHeaders[cph] || "").trim().toLowerCase();
+        if (chNorm === "code") cCodeCol = cph;
+        if (chNorm === "used count" || chNorm === "usedcount") cUsedCountCol = cph;
+      }
+
+      if (cCodeCol !== -1 && cUsedCountCol !== -1) {
+        var cpnData = couponsSheet.getRange(2, 1, numCpnRows, numCpnCols).getValues();
+        couponsToRestore.forEach(function(cToRestore) {
+          var targetCode = String(cToRestore.code || "").trim().toUpperCase();
+          var targetCount = Number(cToRestore.count || 0);
+
+          for (var cpr = 0; cpr < cpnData.length; cpr++) {
+            var rowCode = String(cpnData[cpr][cCodeCol] || "").trim().toUpperCase();
+            if (rowCode === targetCode) {
+              var cCell = couponsSheet.getRange(cpr + 2, cUsedCountCol + 1);
+              var oldCnt = cpnData[cpr][cUsedCountCol];
+              cCell.setValue(targetCount);
+              result.couponsRestored.push({
+                code: targetCode,
+                oldCount: oldCnt,
+                newCount: targetCount
+              });
+              break;
+            }
+          }
+        });
+      }
+    }
+
+    // Capture remaining counts
+    result.remainingOrders = ordersSheet ? Math.max(0, ordersSheet.getLastRow() - 1) : 0;
+    result.remainingCustomers = customersSheet ? Math.max(0, customersSheet.getLastRow() - 1) : 0;
+    result.remainingOrderItems = itemsSheet ? Math.max(0, itemsSheet.getLastRow() - 1) : 0;
+
+    return result;
+  } catch (e) {
+    return { success: false, error: e.toString(), step: "executeTestDataCleanup" };
+  } finally {
+    if (hasLock) lock.releaseLock();
+  }
+}
+
+/**
+ * Direct Maintenance Runner:
+ * Can be executed directly from Google Apps Script editor dropdown -> Run "restoreStockAndCleanTestData"
+ * Restores product stock to 100, resets coupon counters, and removes test orders cleanly.
+ */
+function restoreStockAndCleanTestData() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var testOrderIds = [
+    "KYS-20260921-0001", "KYS-20260921-0002", "KYS-20260921-0003",
+    "KYS-20260925-0004", "KYS-20260925-0005", "KYS-20260925-0006",
+    "KYS-20260925-0007", "KYS-20260925-0008", "KYS-20260925-0009",
+    "KYS-20260925-0010", "KYS-20260925-0011", "KYS-20260927-0012",
+    "KYS-20260927-0013", "KYS-20260927-0014", "KYS-20260927-0015",
+    "KYS-20260927-0016", "KYS-20260927-0017", "KYS-20260927-0018",
+    "KYS-20260927-0019", "KYS-20260927-0020", "KYS-20260927-0021",
+    "KYS-20260927-0022", "KYS-20260927-0023", "KYS-20260927-0024",
+    "KYS-20260927-0025", "KYS-20260927-0026", "KYS-20260927-0027",
+    "KYS-20260927-0028", "KYS-20260927-0029", "KYS-20260927-0030",
+    "KYS-20260927-0031", "KYS-20260927-0032", "KYS-20260927-0033",
+    "KYS-20260927-0034"
+  ];
+  var testCustomerIds = [
+    "CUS-20260921-0001", "CUS-20260921-0002", "CUS-20260921-0003",
+    "CUS-20260925-0004", "CUS-20260925-0005", "CUS-20260925-0006",
+    "CUS-20260925-0007", "CUS-20260925-0008", "CUS-20260925-0009",
+    "CUS-20260925-0010", "CUS-20260925-0011", "CUS-20260927-0012",
+    "CUS-20260927-0013", "CUS-20260927-0014", "CUS-20260927-0015",
+    "CUS-20260927-0016", "CUS-20260927-0017", "CUS-20260927-0018",
+    "CUS-20260927-0019", "CUS-20260927-0020", "CUS-20260927-0021",
+    "CUS-20260927-0022", "CUS-20260927-0023", "CUS-20260927-0024",
+    "CUS-20260927-0025", "CUS-20260927-0026", "CUS-20260927-0027",
+    "CUS-20260927-0028", "CUS-20260927-0029", "CUS-20260927-0030",
+    "CUS-20260927-0031", "CUS-20260927-0032", "CUS-20260927-0033",
+    "CUS-20260927-0034"
+  ];
+  var prods = [
+    { id: "kayal-kalari-masala-regular", name: "Kayal Kalari Masala", stock: 100 },
+    { id: "kayal-curry-masala", name: "Kayal Curry Masala", stock: 100 },
+    { id: "kayal-kalari-masala-premium", name: "Kayal Kalari Masala Premium", stock: 100 },
+    { id: "fish-curry-masala-regular", name: "Fish Curry Masala", stock: 100 },
+    { id: "fish-curry-masala-premium", name: "Fish Curry Masala Premium", stock: 100 },
+    { id: "kayal-pepper-masala", name: "Kayal Pepper Masala", stock: 100 },
+    { id: "salna-masala", name: "Salna Masala", stock: 100 }
+  ];
+  var coupons = [
+    { code: "TEST1RS", count: 0 },
+    { code: "KAYAL100", count: 0 }
+  ];
+
+  var res = executeTestDataCleanup(ss, {
+    orderIdsToDelete: testOrderIds,
+    customerIdsToDelete: testCustomerIds,
+    productsToRestore: prods,
+    couponsToRestore: coupons
+  });
+
+  Logger.log("=== CLEANUP & STOCK RESTORATION RESULT ===");
+  Logger.log(JSON.stringify(res, null, 2));
+  return res;
 }

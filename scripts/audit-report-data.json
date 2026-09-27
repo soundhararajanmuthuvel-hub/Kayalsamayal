@@ -1,0 +1,1755 @@
+{
+  "summary": {
+    "totalOrders": 34,
+    "testOrdersCount": 34,
+    "realOrdersCount": 0,
+    "totalSalesVolume": 3192,
+    "testSalesVolume": 3192,
+    "realSalesVolume": 0,
+    "customersCount": 34
+  },
+  "testOrders": [
+    {
+      "orderId": "KYS-20260921-0001",
+      "customerId": "CUS-20260921-0001",
+      "customerName": "Verification Tester",
+      "customerMobile": "9123456789",
+      "customerEmail": "tester@kayalsamayal.com",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-21T12:55:44.059Z",
+      "razorpayOrderId": "order_Teh6xrWMHH2B2s",
+      "razorpayPaymentId": "pay_test_95339236",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Verification Tester\")",
+        "Test Email (\"tester@kayalsamayal.com\")",
+        "Test Payment ID (pay_test_95339236)",
+        "Test Razorpay Order ID (order_Teh6xrWMHH2B2s)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Address (\"Test Address Line 1\")",
+        "Test Notes (\"Coupon: TEST1RS\")",
+        "Synthetic Test Mobile (9123456789)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260921-0002",
+      "customerId": "CUS-20260921-0002",
+      "customerName": "COD Verification User",
+      "customerMobile": "9123456788",
+      "customerEmail": "cod@kayalsamayal.com",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-21T12:56:15.834Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Kalari Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"COD Verification User\")",
+        "Test Address (\"456 Test Street\")",
+        "Synthetic Test Mobile (9123456788)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260921-0003",
+      "customerId": "CUS-20260921-0003",
+      "customerName": "Free Order Tester",
+      "customerMobile": "9123456787",
+      "customerEmail": "free@kayalsamayal.com",
+      "paymentMethod": "Free Order",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 60,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 60,
+      "coupon": "WELCOME10",
+      "createdAt": "2026-09-21T12:57:04.218Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Kalari Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Free Order Tester\")",
+        "Test Address (\"789 Test Lane\")",
+        "Synthetic Test Mobile (9123456787)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0004",
+      "customerId": "CUS-20260925-0004",
+      "customerName": "Test User",
+      "customerMobile": "9999999999",
+      "customerEmail": "test@example.com",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-25T13:05:32.686Z",
+      "razorpayOrderId": "order_test_123",
+      "razorpayPaymentId": "pay_test_123",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test User\")",
+        "Test Email (\"test@example.com\")",
+        "Test Payment ID (pay_test_123)",
+        "Test Razorpay Order ID (order_test_123)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Address (\"123 Test St\")",
+        "Test Notes (\"Coupon: TEST1RS\")",
+        "Synthetic Test Mobile (9999999999)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0005",
+      "customerId": "CUS-20260925-0005",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9876543210",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-25T13:18:39.412Z",
+      "razorpayOrderId": "order_test_1790342314827",
+      "razorpayPaymentId": "pay_test_1790342314827",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test_1790342314827)",
+        "Test Razorpay Order ID (order_test_1790342314827)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0006",
+      "customerId": "CUS-20260925-0006",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9867668001",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-25T13:24:40.754Z",
+      "razorpayOrderId": "order_test1_1790342676680",
+      "razorpayPaymentId": "pay_test1_1790342676680",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790342676680)",
+        "Test Razorpay Order ID (order_test1_1790342676680)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0007",
+      "customerId": "CUS-20260925-0007",
+      "customerName": "Test User",
+      "customerMobile": "9877946801",
+      "customerEmail": "test@example.com",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-25T13:26:23.981Z",
+      "razorpayOrderId": "order_test1_1790342779468",
+      "razorpayPaymentId": "pay_test1_1790342779468",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test User\")",
+        "Test Email (\"test@example.com\")",
+        "Test Payment ID (pay_test1_1790342779468)",
+        "Test Razorpay Order ID (order_test1_1790342779468)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0008",
+      "customerId": "CUS-20260925-0008",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9873348901",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-25T13:42:17.162Z",
+      "razorpayOrderId": "order_test1_1790343733489",
+      "razorpayPaymentId": "pay_test1_1790343733489",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790343733489)",
+        "Test Razorpay Order ID (order_test1_1790343733489)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0009",
+      "customerId": "CUS-20260925-0009",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9873348902",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-25T13:42:35.941Z",
+      "razorpayOrderId": "order_test2_1790343751490",
+      "razorpayPaymentId": "pay_test2_1790343751490",
+      "items": [
+        "Kayal Kalari Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790343751490)",
+        "Test Razorpay Order ID (order_test2_1790343751490)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0010",
+      "customerId": "CUS-20260925-0010",
+      "customerName": "Test COD Customer",
+      "customerMobile": "9873348903",
+      "customerEmail": "cod@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-25T13:42:45.662Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Kalari Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test COD Customer\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260925-0011",
+      "customerId": "CUS-20260925-0011",
+      "customerName": "Test Free Order Customer",
+      "customerMobile": "9873348904",
+      "customerEmail": "free@kayalsamayal.in",
+      "paymentMethod": "Free Order",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 60,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 60,
+      "coupon": "KAYAL100",
+      "createdAt": "2026-09-25T13:42:56.781Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Kalari Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Free Order Customer\")",
+        "Used 100% Staff/Dev Coupon (KAYAL100)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0012",
+      "customerId": "CUS-20260927-0012",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9850897701",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-27T00:55:13.134Z",
+      "razorpayOrderId": "order_test1_1790470508979",
+      "razorpayPaymentId": "pay_test1_1790470508979",
+      "items": [
+        "Kayal Kalari Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790470508979)",
+        "Test Razorpay Order ID (order_test1_1790470508979)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0013",
+      "customerId": "CUS-20260927-0013",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9850897702",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T00:55:29.360Z",
+      "razorpayOrderId": "order_test2_1790470526418",
+      "razorpayPaymentId": "pay_test2_1790470526418",
+      "items": [
+        "Kayal Kalari Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790470526418)",
+        "Test Razorpay Order ID (order_test2_1790470526418)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0014",
+      "customerId": "CUS-20260927-0014",
+      "customerName": "Test COD Customer",
+      "customerMobile": "9850897703",
+      "customerEmail": "cod@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T00:55:39.289Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Kalari Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test COD Customer\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0015",
+      "customerId": "CUS-20260927-0015",
+      "customerName": "Test Free Order Customer",
+      "customerMobile": "9850897704",
+      "customerEmail": "free@kayalsamayal.in",
+      "paymentMethod": "Free Order",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 60,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 60,
+      "coupon": "KAYAL100",
+      "createdAt": "2026-09-27T00:55:49.026Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Kalari Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Free Order Customer\")",
+        "Used 100% Staff/Dev Coupon (KAYAL100)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0016",
+      "customerId": "CUS-20260927-0016",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9870425701",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-27T00:58:26.810Z",
+      "razorpayOrderId": "order_test1_1790470704257",
+      "razorpayPaymentId": "pay_test1_1790470704257",
+      "items": [
+        "Kayal Curry Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790470704257)",
+        "Test Razorpay Order ID (order_test1_1790470704257)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0017",
+      "customerId": "CUS-20260927-0017",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9870425702",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T00:58:40.793Z",
+      "razorpayOrderId": "order_test2_1790470718471",
+      "razorpayPaymentId": "pay_test2_1790470718471",
+      "items": [
+        "Kayal Kalari Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790470718471)",
+        "Test Razorpay Order ID (order_test2_1790470718471)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0018",
+      "customerId": "CUS-20260927-0018",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9875371601",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-27T00:59:16.841Z",
+      "razorpayOrderId": "order_test1_1790470753716",
+      "razorpayPaymentId": "pay_test1_1790470753716",
+      "items": [
+        "Kayal Curry Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790470753716)",
+        "Test Razorpay Order ID (order_test1_1790470753716)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0019",
+      "customerId": "CUS-20260927-0019",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9875371602",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T00:59:33.488Z",
+      "razorpayOrderId": "order_test2_1790470770213",
+      "razorpayPaymentId": "pay_test2_1790470770213",
+      "items": [
+        "Kayal Curry Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790470770213)",
+        "Test Razorpay Order ID (order_test2_1790470770213)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0020",
+      "customerId": "CUS-20260927-0020",
+      "customerName": "Test COD Customer",
+      "customerMobile": "9875371603",
+      "customerEmail": "cod@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T00:59:42.916Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test COD Customer\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0021",
+      "customerId": "CUS-20260927-0021",
+      "customerName": "Test Free Order Customer",
+      "customerMobile": "9875371604",
+      "customerEmail": "free@kayalsamayal.in",
+      "paymentMethod": "Free Order",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 60,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 60,
+      "coupon": "KAYAL100",
+      "createdAt": "2026-09-27T00:59:51.784Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Free Order Customer\")",
+        "Used 100% Staff/Dev Coupon (KAYAL100)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0022",
+      "customerId": "CUS-20260927-0022",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9832398501",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-27T10:18:48.054Z",
+      "razorpayOrderId": "order_test1_1790504323986",
+      "razorpayPaymentId": "pay_test1_1790504323986",
+      "items": [
+        "Kayal Curry Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790504323986)",
+        "Test Razorpay Order ID (order_test1_1790504323986)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0023",
+      "customerId": "CUS-20260927-0023",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9832398502",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:19:07.985Z",
+      "razorpayOrderId": "order_test2_1790504342833",
+      "razorpayPaymentId": "pay_test2_1790504342833",
+      "items": [
+        "Kayal Curry Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790504342833)",
+        "Test Razorpay Order ID (order_test2_1790504342833)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0024",
+      "customerId": "CUS-20260927-0024",
+      "customerName": "Test COD Customer",
+      "customerMobile": "9832398503",
+      "customerEmail": "cod@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:19:21.035Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test COD Customer\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0025",
+      "customerId": "CUS-20260927-0025",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9843030001",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-27T10:20:33.543Z",
+      "razorpayOrderId": "order_test1_1790504430300",
+      "razorpayPaymentId": "pay_test1_1790504430300",
+      "items": [
+        "Kayal Curry Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790504430300)",
+        "Test Razorpay Order ID (order_test1_1790504430300)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0026",
+      "customerId": "CUS-20260927-0026",
+      "customerName": "Test Customer Qty9",
+      "customerMobile": "9844084501",
+      "customerEmail": "test9@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 1,
+      "subtotal": 540,
+      "shipping": 0,
+      "discount": 539,
+      "coupon": "TEST1RS",
+      "createdAt": "2026-09-27T10:20:44.441Z",
+      "razorpayOrderId": "order_test1_1790504440845",
+      "razorpayPaymentId": "pay_test1_1790504440845",
+      "items": [
+        "Kayal Curry Masala (Qty: 9, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Qty9\")",
+        "Test Email (\"test9@kayalsamayal.in\")",
+        "Test Payment ID (pay_test1_1790504440845)",
+        "Test Razorpay Order ID (order_test1_1790504440845)",
+        "Used Development Test Coupon (TEST1RS)",
+        "Test Notes (\"Coupon: TEST1RS\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0027",
+      "customerId": "CUS-20260927-0027",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9843030002",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:20:54.863Z",
+      "razorpayOrderId": "order_test2_1790504452781",
+      "razorpayPaymentId": "pay_test2_1790504452781",
+      "items": [
+        "Kayal Curry Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790504452781)",
+        "Test Razorpay Order ID (order_test2_1790504452781)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0028",
+      "customerId": "CUS-20260927-0028",
+      "customerName": "Test Customer Normal",
+      "customerMobile": "9844084502",
+      "customerEmail": "normal@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 240,
+      "subtotal": 180,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:21:00.470Z",
+      "razorpayOrderId": "order_test2_1790504457914",
+      "razorpayPaymentId": "pay_test2_1790504457914",
+      "items": [
+        "Kayal Curry Masala (Qty: 3, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Customer Normal\")",
+        "Test Payment ID (pay_test2_1790504457914)",
+        "Test Razorpay Order ID (order_test2_1790504457914)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0029",
+      "customerId": "CUS-20260927-0029",
+      "customerName": "Test COD Customer",
+      "customerMobile": "9843030003",
+      "customerEmail": "cod@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:21:05.100Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test COD Customer\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0030",
+      "customerId": "CUS-20260927-0030",
+      "customerName": "Test COD Customer",
+      "customerMobile": "9844084503",
+      "customerEmail": "cod@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:21:08.931Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test COD Customer\")"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0031",
+      "customerId": "CUS-20260927-0031",
+      "customerName": "Test Free Order Customer",
+      "customerMobile": "9843030004",
+      "customerEmail": "free@kayalsamayal.in",
+      "paymentMethod": "Free Order",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 60,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 60,
+      "coupon": "KAYAL100",
+      "createdAt": "2026-09-27T10:21:16.125Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Free Order Customer\")",
+        "Used 100% Staff/Dev Coupon (KAYAL100)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0032",
+      "customerId": "CUS-20260927-0032",
+      "customerName": "Test Free Order Customer",
+      "customerMobile": "9844084504",
+      "customerEmail": "free@kayalsamayal.in",
+      "paymentMethod": "Free Order",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 60,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 60,
+      "coupon": "KAYAL100",
+      "createdAt": "2026-09-27T10:21:23.661Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Test Free Order Customer\")",
+        "Used 100% Staff/Dev Coupon (KAYAL100)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0033",
+      "customerId": "CUS-20260927-0033",
+      "customerName": "Master E2E Test Customer",
+      "customerMobile": "9803888701",
+      "customerEmail": "master.test@kayalsamayal.in",
+      "paymentMethod": "Razorpay Online",
+      "paymentStatus": "Paid",
+      "orderStatus": "Confirmed",
+      "amount": 180,
+      "subtotal": 120,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:30:43.494Z",
+      "razorpayOrderId": "order_Th1qXZeIMZnkE1",
+      "razorpayPaymentId": "pay_e2e_1790505040939",
+      "items": [
+        "Kayal Curry Masala (Qty: 2, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"Master E2E Test Customer\")",
+        "Test Email (\"master.test@kayalsamayal.in\")",
+        "Test Payment ID (pay_e2e_1790505040939)",
+        "Test Razorpay Order ID (order_Th1qXZeIMZnkE1)"
+      ]
+    },
+    {
+      "orderId": "KYS-20260927-0034",
+      "customerId": "CUS-20260927-0034",
+      "customerName": "COD Test Customer",
+      "customerMobile": "9803888702",
+      "customerEmail": "cod.test@kayalsamayal.in",
+      "paymentMethod": "Cash on Delivery",
+      "paymentStatus": "Pending",
+      "orderStatus": "Confirmed",
+      "amount": 120,
+      "subtotal": 60,
+      "shipping": 60,
+      "discount": 0,
+      "coupon": "None",
+      "createdAt": "2026-09-27T10:31:05.255Z",
+      "razorpayOrderId": "",
+      "razorpayPaymentId": "",
+      "items": [
+        "Kayal Curry Masala (Qty: 1, ₹60)"
+      ],
+      "reasons": [
+        "Test Customer Name (\"COD Test Customer\")",
+        "Test Email (\"cod.test@kayalsamayal.in\")"
+      ]
+    }
+  ],
+  "possibleRealOrders": [],
+  "customers": [
+    {
+      "customerId": "CUS-20260921-0001",
+      "name": "Verification Tester",
+      "mobile": "9123456789",
+      "email": "tester@kayalsamayal.com",
+      "orders": [
+        "KYS-20260921-0001"
+      ]
+    },
+    {
+      "customerId": "CUS-20260921-0002",
+      "name": "COD Verification User",
+      "mobile": "9123456788",
+      "email": "cod@kayalsamayal.com",
+      "orders": [
+        "KYS-20260921-0002"
+      ]
+    },
+    {
+      "customerId": "CUS-20260921-0003",
+      "name": "Free Order Tester",
+      "mobile": "9123456787",
+      "email": "free@kayalsamayal.com",
+      "orders": [
+        "KYS-20260921-0003"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0004",
+      "name": "Test User",
+      "mobile": "9999999999",
+      "email": "test@example.com",
+      "orders": [
+        "KYS-20260925-0004"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0005",
+      "name": "Test Customer Qty9",
+      "mobile": "9876543210",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260925-0005"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0006",
+      "name": "Test Customer Qty9",
+      "mobile": "9867668001",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260925-0006"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0007",
+      "name": "Test User",
+      "mobile": "9877946801",
+      "email": "test@example.com",
+      "orders": [
+        "KYS-20260925-0007"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0008",
+      "name": "Test Customer Qty9",
+      "mobile": "9873348901",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260925-0008"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0009",
+      "name": "Test Customer Normal",
+      "mobile": "9873348902",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260925-0009"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0010",
+      "name": "Test COD Customer",
+      "mobile": "9873348903",
+      "email": "cod@kayalsamayal.in",
+      "orders": [
+        "KYS-20260925-0010"
+      ]
+    },
+    {
+      "customerId": "CUS-20260925-0011",
+      "name": "Test Free Order Customer",
+      "mobile": "9873348904",
+      "email": "free@kayalsamayal.in",
+      "orders": [
+        "KYS-20260925-0011"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0012",
+      "name": "Test Customer Qty9",
+      "mobile": "9850897701",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0012"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0013",
+      "name": "Test Customer Normal",
+      "mobile": "9850897702",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0013"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0014",
+      "name": "Test COD Customer",
+      "mobile": "9850897703",
+      "email": "cod@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0014"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0015",
+      "name": "Test Free Order Customer",
+      "mobile": "9850897704",
+      "email": "free@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0015"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0016",
+      "name": "Test Customer Qty9",
+      "mobile": "9870425701",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0016"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0017",
+      "name": "Test Customer Normal",
+      "mobile": "9870425702",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0017"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0018",
+      "name": "Test Customer Qty9",
+      "mobile": "9875371601",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0018"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0019",
+      "name": "Test Customer Normal",
+      "mobile": "9875371602",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0019"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0020",
+      "name": "Test COD Customer",
+      "mobile": "9875371603",
+      "email": "cod@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0020"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0021",
+      "name": "Test Free Order Customer",
+      "mobile": "9875371604",
+      "email": "free@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0021"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0022",
+      "name": "Test Customer Qty9",
+      "mobile": "9832398501",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0022"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0023",
+      "name": "Test Customer Normal",
+      "mobile": "9832398502",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0023"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0024",
+      "name": "Test COD Customer",
+      "mobile": "9832398503",
+      "email": "cod@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0024"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0025",
+      "name": "Test Customer Qty9",
+      "mobile": "9843030001",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0025"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0026",
+      "name": "Test Customer Qty9",
+      "mobile": "9844084501",
+      "email": "test9@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0026"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0027",
+      "name": "Test Customer Normal",
+      "mobile": "9843030002",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0027"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0028",
+      "name": "Test Customer Normal",
+      "mobile": "9844084502",
+      "email": "normal@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0028"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0029",
+      "name": "Test COD Customer",
+      "mobile": "9843030003",
+      "email": "cod@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0029"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0030",
+      "name": "Test COD Customer",
+      "mobile": "9844084503",
+      "email": "cod@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0030"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0031",
+      "name": "Test Free Order Customer",
+      "mobile": "9843030004",
+      "email": "free@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0031"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0032",
+      "name": "Test Free Order Customer",
+      "mobile": "9844084504",
+      "email": "free@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0032"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0033",
+      "name": "Master E2E Test Customer",
+      "mobile": "9803888701",
+      "email": "master.test@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0033"
+      ]
+    },
+    {
+      "customerId": "CUS-20260927-0034",
+      "name": "COD Test Customer",
+      "mobile": "9803888702",
+      "email": "cod.test@kayalsamayal.in",
+      "orders": [
+        "KYS-20260927-0034"
+      ]
+    }
+  ],
+  "productStockDeductions": [
+    [
+      "kayal-kalari-masala-regular",
+      {
+        "name": "Kayal Kalari Masala",
+        "qty": 78
+      }
+    ],
+    [
+      "kayal-curry-masala",
+      {
+        "name": "Kayal Curry Masala",
+        "qty": 67
+      }
+    ]
+  ],
+  "products": [
+    {
+      "Product ID": "kayal-curry-masala",
+      "Product Name": "Kayal Curry Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 25,
+      "Image": "/assets/kayal-curry-masala.jpg",
+      "Description": "A bold, aromatic blend of hand-picked coastal spices that transforms every curry into a feast of authentic Kayalpatnam flavour..",
+      "Highlights": "[\"No artificial colours\",\"Zero preservatives\",\"Traditional recipe\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-kalari-masala-regular",
+      "Product Name": "Kayal Kalari Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 0,
+      "Image": "/assets/kayal-kalari-masala.jpg",
+      "Description": "A versatile everyday masala crafted from whole spices, lending a warm, earthy depth to meat and vegetable dishes.",
+      "Highlights": "[\"Whole spice blend\",\"No MSG\",\"Stone-ground\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-kalari-masala-premium",
+      "Product Name": "Kayal Kalari Masala Premium",
+      "Category": "Traditional Masalas",
+      "Tier": "premium",
+      "Price": 120,
+      "MRP": 120,
+      "GST": 0,
+      "Stock": 98,
+      "Image": "/assets/kayal-kalari-masala-premium.jpg",
+      "Description": "Premium-grade Kalari Masala with richer whole spice proportions and slow-roasted aromatics for connoisseurs.",
+      "Highlights": "[\"Slow-roasted spices\",\"Enhanced aroma\",\"Limited batch\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "fish-curry-masala-regular",
+      "Product Name": "Fish Curry Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/fish-curry-masala.jpg",
+      "Description": "Specially balanced for coastal fish curries — tangy, spicy, and deeply aromatic with traditional Kayalpatnam know-how.",
+      "Highlights": "[\"Coastal recipe\",\"Perfect fish-spice balance\",\"No artificial flavour\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "fish-curry-masala-premium",
+      "Product Name": "Fish Curry Masala Premium",
+      "Category": "Traditional Masalas",
+      "Tier": "premium",
+      "Price": 120,
+      "MRP": 120,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/fish-curry-masala-premium.jpg",
+      "Description": "Premium Fish Curry Masala using superior whole dried chilies and hand-sorted coastal spices for an elevated catch-of-the-day experience.",
+      "Highlights": "[\"Superior dried chilies\",\"Hand-sorted\",\"Rich coastal depth\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-pepper-masala",
+      "Product Name": "Kayal Pepper Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/kayal-pepper-masala.jpg",
+      "Description": "A fiery pepper-forward masala for bold meat and egg dishes, capturing the heat-loving palate of Kayalpatnam kitchens.",
+      "Highlights": "[\"High black pepper content\",\"Zero fillers\",\"Authentic heat\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "tandoori-kebab-masala",
+      "Product Name": "Tandoori / Kebab Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/tandoori-kebab-masala.jpg",
+      "Description": "Smoky, aromatic tandoori spice blend perfect for grilling, baking, or pan-searing — delivering restaurant-quality results at home.",
+      "Highlights": "[\"Smoky undertone\",\"Versatile grilling blend\",\"No artificial colour\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "salna-masala",
+      "Product Name": "Salna Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/salna-masala.jpg",
+      "Description": "The soul of Tamil street food — a rich, layered masala that makes the perfect companion for parottas, chapatis, and biryani.",
+      "Highlights": "[\"Street food authentic\",\"Rich layered flavour\",\"Easy to use\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "instant-sambar-mix-regular",
+      "Product Name": "Instant Sambar Mix",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/instant-sambar-mix.jpg",
+      "Description": "Quick-brew sambar powder made from traditional South Indian spices — tangy, hearty, and comforting in minutes.",
+      "Highlights": "[\"Ready in minutes\",\"Traditional recipe\",\"No artificial agents\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "instant-sambar-mix-premium",
+      "Product Name": "Instant Sambar Mix Premium",
+      "Category": "Traditional Masalas",
+      "Tier": "premium",
+      "Price": 120,
+      "MRP": 120,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/instant-sambar-mix-premium.jpg",
+      "Description": "Premium Sambar Mix with a richer proportion of sun-dried tomatoes, Byadagi chilli, and aromatic curry leaves for a deeper, more layered bowl.",
+      "Highlights": "[\"Sun-dried tomatoes\",\"Byadagi chilli\",\"Deep aromatic profile\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "biriyani-masala",
+      "Product Name": "Biriyani Masala",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/biriyani-masala.jpg",
+      "Description": "Fragrant whole-spice biriyani blend with kewra-kissed warmth and slow-roasted bay leaf — every grain of rice soaks up the heritage.",
+      "Highlights": "[\"Whole spice dominant\",\"Slow roasted\",\"Aromatic layers\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "instant-rasam-mix",
+      "Product Name": "Instant Rasam Mix",
+      "Category": "Traditional Masalas",
+      "Tier": "regular",
+      "Price": 60,
+      "MRP": 60,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/instant-rasam-mix.jpg",
+      "Description": "Quick, comforting rasam powder with a tangy tamarind-pepper base and warming black pepper — ready in under 5 minutes.",
+      "Highlights": "[\"5-minute preparation\",\"Traditional tang\",\"Digestive spices\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-rasam-podi",
+      "Product Name": "Kayal Rasam Podi",
+      "Category": "Podi Products",
+      "Tier": "regular",
+      "Price": 50,
+      "MRP": 50,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/kayal-rasam-podi.jpg",
+      "Description": "Aromatic rasam podi stone-ground from whole black pepper, cumin, and coriander — the heartbeat of a South Indian kitchen.",
+      "Highlights": "[\"Stone-ground\",\"No additives\",\"Whole pepper & cumin\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-keerai-podi-regular",
+      "Product Name": "Kayal Keerai Podi",
+      "Category": "Podi Products",
+      "Tier": "regular",
+      "Price": 50,
+      "MRP": 50,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/kayal-keerai-podi.jpg",
+      "Description": "A nutritious greens podi crafted from dried spinach, lentils, and mild spices — healthy, quick, and deeply satisfying.",
+      "Highlights": "[\"Greens-rich\",\"Iron-boosting\",\"Balanced mild spice\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-keerai-podi-premium",
+      "Product Name": "Kayal Keerai Podi Premium",
+      "Category": "Podi Products",
+      "Tier": "premium",
+      "Price": 100,
+      "MRP": 100,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/kayal-keerai-podi-premium.jpg",
+      "Description": "Premium Keerai Podi with a higher proportion of dried drumstick leaves and moringa powder for enhanced nutrition.",
+      "Highlights": "[\"Moringa-enriched\",\"High nutrition\",\"Premium greens blend\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "beachside-secret-fish-podi-regular",
+      "Product Name": "Beachside Secret Fish Podi",
+      "Category": "Podi Products",
+      "Tier": "regular",
+      "Price": 50,
+      "MRP": 50,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/beachside-secret-fish-podi.jpg",
+      "Description": "An age-old coastal fish podi with secret Kayalpatnam spice proportions — the perfect companion for fried fish and rice.",
+      "Highlights": "[\"Secret coastal blend\",\"Perfect with fried fish\",\"Traditional recipe\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "beachside-secret-fish-podi-premium",
+      "Product Name": "Beachside Secret Fish Podi Premium",
+      "Category": "Podi Products",
+      "Tier": "premium",
+      "Price": 100,
+      "MRP": 100,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/beachside-secret-fish-podi-premium.jpg",
+      "Description": "Premium Beachside Fish Podi with hand-selected dried chilies and extra virgin sesame notes for an elevated coastal dining experience.",
+      "Highlights": "[\"Hand-selected chilies\",\"Sesame notes\",\"Premium coastal blend\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kayal-marunthu-satha-podi",
+      "Product Name": "Kayal Marunthu Satha Podi",
+      "Category": "Podi Products",
+      "Tier": "regular",
+      "Price": 50,
+      "MRP": 50,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/kayal-marunthu-satha-podi.jpg",
+      "Description": "A traditional healing rice podi made from medicinal herbs and warming spices — both nourishing and flavourful.",
+      "Highlights": "[\"Medicinal herbs\",\"Healing properties\",\"Traditional recipe\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "andhra-paruppu-sadham-podi-regular",
+      "Product Name": "Andhra Paruppu Sadham Podi",
+      "Category": "Podi Products",
+      "Tier": "regular",
+      "Price": 50,
+      "MRP": 50,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/andhra-paruppu-sadham-podi.jpg",
+      "Description": "A fiery Andhra-style dal rice podi with roasted lentils and bold spice — a quick and satisfying meal companion.",
+      "Highlights": "[\"Andhra bold spice\",\"Roasted lentils\",\"Hearty & satisfying\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "andhra-paruppu-sadham-podi-premium",
+      "Product Name": "Andhra Paruppu Sadham Podi Premium",
+      "Category": "Podi Products",
+      "Tier": "premium",
+      "Price": 100,
+      "MRP": 100,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/andhra-paruppu-sadham-podi-premium.jpg",
+      "Description": "Premium Andhra Podi with a higher lentil-to-spice ratio and slow-roasted garlic for a richer, bolder flavour profile.",
+      "Highlights": "[\"Slow-roasted garlic\",\"Higher lentil ratio\",\"Bold premium profile\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "red-rice-noodles",
+      "Product Name": "Red Rice Noodles",
+      "Category": "Specialty Noodles",
+      "Tier": "regular",
+      "Price": 80,
+      "MRP": 80,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/red-rice-noodles.jpg",
+      "Description": "Wholesome noodles crafted from traditional red rice — high in fibre, rich in antioxidants, and deliciously chewy.",
+      "Highlights": "[\"Whole grain red rice\",\"High fibre\",\"Antioxidant-rich\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "moringa-noodles",
+      "Product Name": "Moringa Noodles",
+      "Category": "Specialty Noodles",
+      "Tier": "regular",
+      "Price": 80,
+      "MRP": 80,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/moringa-noodles.jpg",
+      "Description": "Nutrient-dense noodles enriched with moringa leaf powder — a powerhouse of vitamins and minerals in every bite.",
+      "Highlights": "[\"Moringa-enriched\",\"Vitamin-dense\",\"Clean ingredients\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "golden-milk-magic-regular",
+      "Product Name": "Golden Milk Magic",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/golden-milk-magic.jpg",
+      "Description": "A warming turmeric-milk blend with black pepper, ginger, and cardamom — the South Indian golden latte experience.",
+      "Highlights": "[\"Turmeric-forward\",\"Ginger & cardamom\",\"Warming & soothing\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "golden-milk-magic-premium",
+      "Product Name": "Golden Milk Magic Premium",
+      "Category": "Health Mixes & Malts",
+      "Tier": "premium",
+      "Price": 320,
+      "MRP": 320,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/golden-milk-magic-premium.jpg",
+      "Description": "Premium Golden Milk with organic turmeric, long pepper, and ashwagandha for enhanced anti-inflammatory and adaptogenic benefits.",
+      "Highlights": "[\"Organic turmeric\",\"Ashwagandha\",\"Adaptogenic blend\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "sukku-malli-herbal-kaafi",
+      "Product Name": "Sukku Malli Herbal Kaafi",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/sukku-malli-herbal-kaafi.jpg",
+      "Description": "A traditional South Indian herbal coffee with dried ginger (sukku) and coriander seeds — warming, digestive, and caffeine-free.",
+      "Highlights": "[\"Caffeine-free\",\"Dried ginger blend\",\"Digestive herbal infusion\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "multi-millet-pongal-mix",
+      "Product Name": "Multi Millet Pongal Mix",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/multi-millet-pongal-mix.jpg",
+      "Description": "A wholesome blend of multi-millets for the classic South Indian pongal — nutritious, gluten-friendly, and quick to prepare.",
+      "Highlights": "[\"Multi-millet blend\",\"Gluten-friendly\",\"Wholesome & nutritious\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "root-power-regular",
+      "Product Name": "Root Power",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/root-power.jpg",
+      "Description": "A potent blend of traditional root herbs — turmeric, ginger, galangal, and more — to support immunity and vitality.",
+      "Highlights": "[\"Root herb blend\",\"Immunity support\",\"Traditional wisdom\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "root-power-premium",
+      "Product Name": "Root Power Premium",
+      "Category": "Health Mixes & Malts",
+      "Tier": "premium",
+      "Price": 320,
+      "MRP": 320,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/root-power-premium.jpg",
+      "Description": "Premium Root Power with a richer concentration of rare roots and certified organic herbs for maximum therapeutic benefit.",
+      "Highlights": "[\"Rare roots\",\"Certified organic\",\"Maximum potency\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "abc-malt-regular",
+      "Product Name": "A.B.C. Malt",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 97,
+      "Image": "/assets/abc-malt.jpg",
+      "Description": "Apple, Beetroot & Carrot malt — a natural energy booster packed with plant-based nutrients for daily wellness.",
+      "Highlights": "[\"Apple · Beetroot · Carrot\",\"Natural energy\",\"Plant nutrients\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "abc-malt-premium",
+      "Product Name": "A.B.C. Malt Premium",
+      "Category": "Health Mixes & Malts",
+      "Tier": "premium",
+      "Price": 320,
+      "MRP": 320,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/abc-malt-premium.jpg",
+      "Description": "Premium A.B.C. Malt with cold-pressed fruit extracts and added amla for a deeper nutritional profile and better bioavailability.",
+      "Highlights": "[\"Cold-pressed extracts\",\"Amla-enriched\",\"Superior bioavailability\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "slim-sakthi",
+      "Product Name": "Slim Sakthi",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/slim-sakthi.jpg",
+      "Description": "A traditional herbal slimming blend curated from metabolism-supporting herbs and seeds — supporting a healthy lifestyle naturally.",
+      "Highlights": "[\"Herbal slimming blend\",\"Metabolism support\",\"No stimulants\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kavunirich",
+      "Product Name": "Kavunirich",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/kavunirich.jpg",
+      "Description": "A rich kavuni (black sticky rice) malt blend — deeply nutritious, antioxidant-laden, and traditionally prized in coastal Tamil Nadu.",
+      "Highlights": "[\"Black sticky rice\",\"Antioxidant-rich\",\"Coastal tradition\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "health-mix-multigrains",
+      "Product Name": "Health Mix Multigrains",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/health-mix-multigrains.jpg",
+      "Description": "A wholesome multigrain health mix with roasted cereals, millets, and legumes — a complete nutritional meal for all ages.",
+      "Highlights": "[\"Multi-cereal blend\",\"Suitable for all ages\",\"Complete nutrition\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "nannari-sukku-powder",
+      "Product Name": "Nannari Sukku Powder",
+      "Category": "Health Mixes & Malts",
+      "Tier": "regular",
+      "Price": 180,
+      "MRP": 180,
+      "GST": 0,
+      "Stock": 100,
+      "Image": "/assets/nannari-sukku-powder.jpg",
+      "Description": "A cooling and digestive herbal powder combining nannari (sarsaparilla) and dried ginger — a traditional South Indian remedy for summer wellness.",
+      "Highlights": "[\"Cooling properties\",\"Digestive aid\",\"Sarsaparilla & ginger\"]",
+      "Active": true
+    },
+    {
+      "Product ID": "kindiya-kaayam",
+      "Product Name": "Kindiya Kaayam",
+      "Category": "PeruKalam Legiyam",
+      "Tier": "regular",
+      "Price": 250,
+      "MRP": 250,
+      "GST": 0,
+      "Stock": 99,
+      "Image": "/assets/kindiya-kaayam.jpg",
+      "Description": "A traditional PeruKalam legiyam (herbal paste) crafted from time-tested Siddha herbs for digestive strength and holistic wellness.",
+      "Highlights": "[\"Siddha herb recipe\",\"Digestive strength\",\"Holistic wellness\"]",
+      "Active": true
+    }
+  ],
+  "coupons": [
+    {
+      "code": "WELCOME10",
+      "discountType": "percentage",
+      "discountValue": 100,
+      "maximumDiscount": 100,
+      "minimumOrder": 1,
+      "active": true
+    },
+    {
+      "code": "HI",
+      "discountType": "percentage",
+      "discountValue": 99,
+      "maximumDiscount": 779,
+      "minimumOrder": 1,
+      "active": true
+    }
+  ]
+}

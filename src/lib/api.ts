@@ -259,6 +259,7 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
         mode: "cors",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(25000),
       });
 
       if (!res.ok) {
@@ -267,20 +268,20 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
           await new Promise((r) => setTimeout(r, 1500));
           continue;
         }
-        throw new Error(`Order system HTTP ${res.status}: ${res.statusText || "Service Unavailable"}`);
+        throw new Error(`Order database responded with HTTP ${res.status}: ${res.statusText || "Service Unavailable"}`);
       }
 
       const rawText = await res.text();
       let json: OrderResponse;
       try {
         json = JSON.parse(rawText);
-      } catch (parseErr) {
-        console.warn(`[CREATE_ORDER_PARSE_ATTEMPT_${attempt}]: Non-JSON response`);
+      } catch {
+        console.warn(`[CREATE_ORDER_PARSE_ATTEMPT_${attempt}]: Non-JSON response (length: ${rawText.length})`);
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1500));
           continue;
         }
-        throw parseErr;
+        throw new Error(`Invalid non-JSON response from order database: ${rawText.slice(0, 150)}`);
       }
 
       if (process.env.NODE_ENV !== "production") {
@@ -295,9 +296,15 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
       }
 
       if (!json.success) {
-        const errMsg = json.error || json.message || "Something went wrong while placing your order. Please try again.";
+        const errMsg = json.error || json.message || "Failed to process order transaction in database.";
         console.error("[CREATE_ORDER_BUSINESS_ERROR]:", { error: errMsg, code: json.code });
-        return { ...json, success: false, code: json.code || "API_ERROR", message: errMsg, error: errMsg };
+        return {
+          ...json,
+          success: false,
+          code: json.code || "ORDER_DATABASE_ERROR",
+          message: errMsg,
+          error: errMsg,
+        };
       }
 
       return json;
@@ -312,23 +319,23 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
   const errorDetails = lastError instanceof Error ? lastError.message : String(lastError);
   console.error("[CREATE_ORDER_EXCEPTION]:", { error: errorDetails, paymentMethod: order.paymentMethod });
   return {
-      success: false,
-      code: "ORDER_SERVICE_UNAVAILABLE",
-      orderId: "",
-      customerId: "",
-      subtotal: 0,
-      shipping: 0,
-      discount: 0,
-      gst: 0,
-      grandTotal: 0,
-      paymentStatus: "Failed",
-      paymentMethod: order.paymentMethod,
-      orderStatus: "Pending",
-      items: [],
-      error: errorDetails,
-      message: "Unable to connect to our order system. Please check your connection or contact support on WhatsApp.",
-    };
-  }
+    success: false,
+    code: "ORDER_SERVICE_UNAVAILABLE",
+    orderId: "",
+    customerId: "",
+    subtotal: 0,
+    shipping: 0,
+    discount: 0,
+    gst: 0,
+    grandTotal: 0,
+    paymentStatus: "Failed",
+    paymentMethod: order.paymentMethod,
+    orderStatus: "Pending",
+    items: [],
+    error: errorDetails,
+    message: errorDetails || "Unable to connect to our order system. Please check your connection or contact support on WhatsApp.",
+  };
+}
 
 // ── UPDATE ORDER ──────────────────────────────────────────────────────────────
 

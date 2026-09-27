@@ -349,14 +349,16 @@ export async function POST(req: NextRequest) {
     });
 
     if (!orderResponse || !orderResponse.success) {
+      const errMsg = orderResponse?.error || orderResponse?.message || "Failed to record confirmed order.";
       console.error("[PAYMENT_FLOW] 7 APPS_SCRIPT_RESPONSE_FAILED", {
-        error: orderResponse?.message || orderResponse?.error,
+        error: errMsg,
         code: orderResponse?.code,
       });
       return NextResponse.json(
         {
           success: false,
-          error: orderResponse?.message || "Failed to record confirmed order.",
+          error: errMsg,
+          code: orderResponse?.code || "ORDER_RECORDING_FAILED",
           orderResponse,
         },
         { status: 502 }
