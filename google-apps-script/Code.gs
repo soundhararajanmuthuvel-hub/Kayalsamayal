@@ -758,7 +758,17 @@ function doPost(e) {
         return ("0" + byteVal.toString(16)).slice(-2);
       }).join("");
 
-      if (!serverAuthToken || !safeStringCompare(serverAuthToken, expectedHex)) {
+      var isSigValid = safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase());
+
+      Logger.log("[AUTH_DEBUG] " + JSON.stringify({
+        tokenReceived: !!serverAuthToken,
+        tokenLength: serverAuthToken.length,
+        secretConfigured: !!(scriptProps && (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET"))),
+        timestampValid: true,
+        signatureValid: isSigValid
+      }));
+
+      if (!serverAuthToken || !isSigValid) {
         return jsonResponse({
           success: false,
           error: "Unauthorized order update: Invalid or forged server authentication token.",
@@ -1216,7 +1226,17 @@ function processOrderTransaction(ss, data) {
         return ("0" + byteVal.toString(16)).slice(-2);
       }).join("");
 
-      if (!safeStringCompare(serverAuthToken, expectedToken)) {
+      var isSigValid = safeStringCompare(serverAuthToken.toLowerCase(), expectedToken.toLowerCase());
+
+      Logger.log("[AUTH_DEBUG] " + JSON.stringify({
+        tokenReceived: !!serverAuthToken,
+        tokenLength: serverAuthToken.length,
+        secretConfigured: !!(scriptProps && (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET"))),
+        timestampValid: true,
+        signatureValid: isSigValid
+      }));
+
+      if (!isSigValid) {
         return {
           success: false,
           error: "Unauthorized order creation: Invalid or forged server authentication token.",

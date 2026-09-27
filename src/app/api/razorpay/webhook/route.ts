@@ -72,10 +72,16 @@ export async function POST(req: NextRequest) {
     if (event === "payment.captured" || event === "order.paid") {
       // Reconcile and confirm order idempotently in Google Apps Script
       if (razorpayOrderId && razorpayPaymentId) {
-        const authSecret = process.env.SERVER_AUTH_SECRET || process.env.RAZORPAY_KEY_SECRET || "QCh0H33s8BN6aoBfUmJ39y5r";
+        const authSecret = (
+          process.env.SERVER_AUTH_SECRET ||
+          process.env.RAZORPAY_KEY_SECRET ||
+          "QCh0H33s8BN6aoBfUmJ39y5r"
+        ).trim();
+        const cleanOrderId = String(razorpayOrderId || "").trim();
+        const cleanPaymentId = String(razorpayPaymentId || "").trim();
         const serverAuthToken = crypto
           .createHmac("sha256", authSecret)
-          .update(`KAYAL_ORDER_AUTH:${razorpayOrderId}:${razorpayPaymentId}`)
+          .update(`KAYAL_ORDER_AUTH:${cleanOrderId}:${cleanPaymentId}`)
           .digest("hex");
 
         await createOrder({

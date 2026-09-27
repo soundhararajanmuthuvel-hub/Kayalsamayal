@@ -297,11 +297,28 @@ export async function POST(req: NextRequest) {
     });
 
     // 5. Create & confirm Kayal Samayal order in Google Apps Script database idempotently
-    const authSecret = process.env.SERVER_AUTH_SECRET || process.env.RAZORPAY_KEY_SECRET || "QCh0H33s8BN6aoBfUmJ39y5r";
+    const authSecret = (
+      process.env.SERVER_AUTH_SECRET ||
+      process.env.RAZORPAY_KEY_SECRET ||
+      "QCh0H33s8BN6aoBfUmJ39y5r"
+    ).trim();
+    const cleanOrderId = String(serverStoredRazorpayOrderId || "").trim();
+    const cleanPaymentId = String(razorpay_payment_id || "").trim();
     const serverAuthToken = crypto
       .createHmac("sha256", authSecret)
-      .update(`KAYAL_ORDER_AUTH:${serverStoredRazorpayOrderId}:${razorpay_payment_id}`)
+      .update(`KAYAL_ORDER_AUTH:${cleanOrderId}:${cleanPaymentId}`)
       .digest("hex");
+
+    console.log("[SERVER_AUTH_DEBUG]", {
+      secretConfigured: !!(process.env.SERVER_AUTH_SECRET || process.env.RAZORPAY_KEY_SECRET),
+      tokenGenerated: !!serverAuthToken,
+      tokenLength: serverAuthToken.length,
+      timestamp: Date.now(),
+      appsScriptUrlConfigured: !!(
+        process.env.NEXT_PUBLIC_KAYAL_API_URL ||
+        process.env.NEXT_PUBLIC_KAYAL_SAMAYAL_API_URL
+      ),
+    });
 
     console.log("[PAYMENT_FLOW] 6 APPS_SCRIPT_UPDATE", {
       razorpayOrderId: serverStoredRazorpayOrderId,

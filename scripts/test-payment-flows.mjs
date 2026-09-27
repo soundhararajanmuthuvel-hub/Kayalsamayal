@@ -13,7 +13,7 @@ async function runTests() {
   const testMobile1 = "98" + uniqueSuffix + "01";
 
   // ── TEST 1: ₹1 COUPON ORDER (TEST1RS) CALCULATION & APPS SCRIPT CREATION ──
-  console.log(`\n[TEST 1] Testing ₹1 coupon order with Kayal Kalari Masala (Qty: 9, Coupon: TEST1RS, Mobile: ${testMobile1})...`);
+  console.log(`\n[TEST 1] Testing ₹1 coupon order with Kayal Curry Masala (Qty: 9, Coupon: TEST1RS, Mobile: ${testMobile1})...`);
   const test1OrderId = "order_test1_" + Date.now();
   const test1PaymentId = "pay_test1_" + Date.now();
   const test1Signature = crypto
@@ -40,7 +40,7 @@ async function runTests() {
         state: "Tamil Nadu",
         pincode: "628204",
       },
-      items: [{ productId: "kayal-kalari-masala-regular", quantity: 9 }],
+      items: [{ productId: "kayal-curry-masala", quantity: 9 }],
       paymentMethod: "Razorpay Online",
       razorpayOrderId: test1OrderId,
       razorpayPaymentId: test1PaymentId,
@@ -87,7 +87,7 @@ async function runTests() {
         state: "Tamil Nadu",
         pincode: "628204",
       },
-      items: [{ productId: "kayal-kalari-masala-regular", quantity: 9 }],
+      items: [{ productId: "kayal-curry-masala", quantity: 9 }],
       paymentMethod: "Razorpay Online",
       razorpayOrderId: test1OrderId,
       razorpayPaymentId: test1PaymentId,
@@ -142,7 +142,7 @@ async function runTests() {
         state: "Tamil Nadu",
         pincode: "625001",
       },
-      items: [{ productId: "kayal-kalari-masala-regular", quantity: 3 }],
+      items: [{ productId: "kayal-curry-masala", quantity: 3 }],
       paymentMethod: "Razorpay Online",
       razorpayOrderId: test2OrderId,
       razorpayPaymentId: test2PaymentId,
@@ -186,7 +186,7 @@ async function runTests() {
         state: "Tamil Nadu",
         pincode: "627001",
       },
-      items: [{ productId: "kayal-kalari-masala-regular", quantity: 1 }],
+      items: [{ productId: "kayal-curry-masala", quantity: 1 }],
       paymentMethod: "Cash on Delivery",
     }),
   });
@@ -223,7 +223,7 @@ async function runTests() {
         state: "Tamil Nadu",
         pincode: "628001",
       },
-      items: [{ productId: "kayal-kalari-masala-regular", quantity: 1 }],
+      items: [{ productId: "kayal-curry-masala", quantity: 1 }],
       paymentMethod: "Free Order",
       couponCode: "KAYAL100",
       discount: 60,
