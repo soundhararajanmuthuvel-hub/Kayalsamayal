@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Product } from "@/data/products";
+import { Product, products as catalog } from "@/data/products";
 import { OrderResponse } from "@/lib/api";
 
 export interface CartItem {
@@ -74,6 +74,7 @@ interface CartContextType {
   setCouponError: (error: string | null) => void;
   couponLoading: boolean;
   setCouponLoading: (loading: boolean) => void;
+  isHydrated: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -116,14 +117,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart]                       = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen]           = useState(false);
   const [checkoutStep, setCheckoutStep]       = useState<CheckoutStep>("cart");
-  const [lastOrderResponse, setLastOrderResponseState] = useState<OrderResponse | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = sessionStorage.getItem("kayal_last_order");
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return null;
-  });
+  const [lastOrderResponse, setLastOrderResponseState] = useState<OrderResponse | null>(null);
+  const [rawAppliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(null);
+  const [isHydrated, setIsHydrated]           = useState(false);
 
   const setLastOrderResponse = (resp: OrderResponse | null) => {
     setLastOrderResponseState(resp);
@@ -138,24 +134,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const [rawAppliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(() => {
-    // Restore persisted coupon from localStorage synchronously on first render.
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem(COUPON_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as AppliedCoupon;
-        if (parsed && parsed.code) {
-          return {
-            ...parsed,
-            code: parsed.code.trim().toUpperCase(),
-          };
-        }
-      }
-    } catch { /* ignore */ }
-    return null;
-  });
-
   const [customerDetails, setCustomerDetails] = useState<CustomerDetails>({
     name: "", mobile: "", email: "",
     address: "", city: "", state: "", pincode: "", notes: "",
@@ -163,54 +141,77 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const [cartNotice, setCartNotice] = useState<string>("");
 
-  // Restore cart from localStorage on mount with strict product validation & migration
+  // Safely restore persisted client state (cart, coupon, last order) from storage after mount
   useEffect(() => {
+    // 1. Restore coupon from localStorage
+    try {
+      const savedCoupon = localStorage.getItem(COUPON_STORAGE_KEY);
+      if (savedCoupon) {
+        const parsed = JSON.parse(savedCoupon) as AppliedCoupon;
+        if (parsed && parsed.code) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setAppliedCouponState({
+            ...parsed,
+            code: parsed.code.trim().toUpperCase(),
+          });
+        }
+      }
+    } catch { /* ignore */ }
+
+    // 2. Restore last order response from sessionStorage
+    try {
+      const savedOrder = sessionStorage.getItem("kayal_last_order");
+      if (savedOrder) {
+        setLastOrderResponseState(JSON.parse(savedOrder));
+      }
+    } catch { /* ignore */ }
+
+    // 3. Restore cart from localStorage with strict product validation
     const savedCart = localStorage.getItem("kayal_samayal_cart");
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart);
         if (Array.isArray(parsed)) {
-          // Dynamic import / check against authoritative product catalog
-          import("@/data/products").then(({ products: catalog }) => {
-            const validCart: CartItem[] = [];
-            let removedCount = 0;
+          const validCart: CartItem[] = [];
+          let removedCount = 0;
 
-            for (const item of parsed) {
-              if (!item || !item.product) continue;
-              const rawId = String(item.product.id || "").trim();
-              const rawName = String(item.product.name || "").trim().toLowerCase();
+          for (const item of parsed) {
+            if (!item || !item.product) continue;
+            const rawId = String(item.product.id || "").trim();
+            const rawName = String(item.product.name || "").trim().toLowerCase();
 
-              // Explicitly filter out stale development items (such as "sample" ID "12")
-              if (rawId === "12" || rawName === "sample") {
-                removedCount++;
-                continue;
-              }
-
-              // Verify against catalog
-              const match = catalog.find((p) => p.id === rawId);
-              if (match && match.active !== false) {
-                validCart.push({
-                  product: match,
-                  quantity: Math.max(1, Math.min(Number(item.quantity) || 1, match.stock ?? 999)),
-                });
-              } else {
-                removedCount++;
-              }
+            // Explicitly filter out stale development items (such as "sample" ID "12")
+            if (rawId === "12" || rawName === "sample") {
+              removedCount++;
+              continue;
             }
 
-            if (removedCount > 0) {
-              console.warn(`[Cart] Purged ${removedCount} stale/inactive item(s) from previous session.`);
-              setCartNotice("One or more items in your previous cart are no longer available and were removed.");
-              localStorage.setItem("kayal_samayal_cart", JSON.stringify(validCart));
+            // Verify against catalog
+            const match = catalog.find((p) => p.id === rawId);
+            if (match && match.active !== false) {
+              validCart.push({
+                product: match,
+                quantity: Math.max(1, Math.min(Number(item.quantity) || 1, match.stock ?? 999)),
+              });
+            } else {
+              removedCount++;
             }
-            setCart(validCart);
-          });
+          }
+
+          if (removedCount > 0) {
+            console.warn(`[Cart] Purged ${removedCount} stale/inactive item(s) from previous session.`);
+            setCartNotice("One or more items in your previous cart are no longer available and were removed.");
+            localStorage.setItem("kayal_samayal_cart", JSON.stringify(validCart));
+          }
+          setCart(validCart);
         }
       } catch (e) {
         console.error("Failed to parse cart data", e);
         localStorage.removeItem("kayal_samayal_cart");
       }
     }
+
+    setIsHydrated(true);
   }, []);
 
   const saveCart = (newCart: CartItem[]) => {
@@ -369,6 +370,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setCouponError,
         couponLoading,
         setCouponLoading,
+        isHydrated,
       }}
     >
       {children}

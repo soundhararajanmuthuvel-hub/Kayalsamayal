@@ -62,46 +62,24 @@ declare global {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon, setLastOrderResponse } = useCart();
+  const { cart, cartSubtotal, customerDetails, setCustomerDetails, clearCart, appliedCoupon, setLastOrderResponse, isHydrated } = useCart();
 
   const [step, setStep] = useState<"shipping" | "payment" | "confirm">("shipping");
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    mobile: "",
-    email: "",
-    address: "",
-    city: "",
-    state: "Tamil Nadu",
-    pincode: "",
-    notes: "",
+  const [formData, setFormData] = useState(() => {
+    const nameParts = (customerDetails?.name || "").trim().split(/\s+/);
+    return {
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      mobile: customerDetails?.mobile || "",
+      email: customerDetails?.email || "",
+      address: customerDetails?.address || "",
+      city: customerDetails?.city || "",
+      state: customerDetails?.state || "Tamil Nadu",
+      pincode: customerDetails?.pincode || "",
+      notes: customerDetails?.notes || "",
+    };
   });
-
-  useEffect(() => {
-    if (customerDetails) {
-      const nameParts = (customerDetails.name || "").trim().split(/\s+/);
-      const fName = nameParts[0] || "";
-      const lName = nameParts.slice(1).join(" ") || "";
-      setFormData((prev) => ({
-        ...prev,
-        firstName: prev.firstName || fName,
-        lastName: prev.lastName || lName,
-        mobile: prev.mobile || customerDetails.mobile || "",
-        email: prev.email || customerDetails.email || "",
-        address: prev.address || customerDetails.address || "",
-        city: prev.city || customerDetails.city || "",
-        state: prev.state || customerDetails.state || "Tamil Nadu",
-        pincode: prev.pincode || customerDetails.pincode || "",
-        notes: prev.notes || customerDetails.notes || "",
-      }));
-    }
-  }, [customerDetails]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -110,12 +88,12 @@ export default function CheckoutPage() {
   const [orderResponse, setOrderResponse] = useState<OrderResponse | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
 
-  // Redirect if cart is empty and not on confirm step
+  // Redirect if cart is empty and not on confirm step (only after storage hydration)
   useEffect(() => {
-    if (mounted && cart.length === 0 && step !== "confirm") {
+    if (isHydrated && cart.length === 0 && step !== "confirm") {
       router.push("/cart");
     }
-  }, [cart, step, router, mounted]);
+  }, [cart, step, router, isHydrated]);
 
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;

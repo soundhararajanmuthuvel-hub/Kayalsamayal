@@ -15,10 +15,8 @@ function ThankYouContent() {
   const { lastOrderResponse, customerDetails } = useCart();
   const searchParams = useSearchParams();
 
-  const urlOrderId = searchParams.get("orderId");
-  const [orderId] = useState(() => {
-    return urlOrderId || lastOrderResponse?.orderId || `KS-${Math.floor(100000 + Math.random() * 900000)}`;
-  });
+  const urlOrderId = searchParams.get("orderId") || "";
+  const orderId = urlOrderId || lastOrderResponse?.orderId || "";
 
   const [orderDate] = useState(() => {
     return new Date().toLocaleDateString("en-IN", {
