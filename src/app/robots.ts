@@ -8,6 +8,8 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: [
           "/checkout",
+          "/confirmation",
+          "/order-confirmation",
           "/thank-you",
           "/cart",
           "/api/",

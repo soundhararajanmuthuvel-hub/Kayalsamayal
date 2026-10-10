@@ -66,21 +66,21 @@ export default function ProductsClient() {
     });
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-[#F8F4E9]">
       <Header />
       <main className="flex-1 pb-16 sm:pb-24">
         
         {/* Banner Section */}
-        <section className="bg-spice-gradient py-12 sm:py-16 text-primary-foreground border-b border-white/10">
+        <section className="bg-[#0D2F22] py-12 sm:py-16 text-[#F8F4E9] border-b border-[#B88A3B]/30">
           <div className="container-page text-center space-y-3">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
-              OUR COMPLETE CATALOGUE
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#B88A3B]">
+              AUTHENTIC SOUTH INDIAN SPICE CATALOGUE
             </span>
-            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
               Shop Kayal Samayal Products
             </h1>
-            <p className="text-white/80 max-w-xl mx-auto text-xs sm:text-sm sm:text-base">
-              Explore 35+ pure South Indian traditional masalas, homemade podis, specialty noodles, and health mixes crafted with zero preservatives.
+            <p className="text-[#F8F4E9]/85 max-w-xl mx-auto text-xs sm:text-sm sm:text-base leading-relaxed">
+              Explore 35+ pure traditional masalas, homemade podis, specialty noodles, and health mixes crafted with heritage recipes and zero chemical preservatives.
             </p>
           </div>
         </section>
@@ -98,7 +98,7 @@ export default function ProductsClient() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search masalas, podis, noodles, malts..."
-                className="w-full rounded-2xl border border-border bg-card pl-10 pr-10 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50 shadow-xs"
+                className="w-full rounded-2xl border border-border bg-white pl-10 pr-10 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#174D35] shadow-xs"
               />
               {search && (
                 <button
@@ -118,13 +118,13 @@ export default function ProductsClient() {
               <Button
                 variant="outline"
                 size="sm"
-                className="lg:hidden gap-1.5 font-bold text-xs"
+                className="lg:hidden gap-1.5 font-bold text-xs rounded-xl"
                 onClick={() => setMobileFiltersOpen(true)}
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 <span>Filters</span>
                 {(selectedCategory !== "All" || selectedTier !== "All") && (
-                  <span className="h-2 w-2 rounded-full bg-secondary" />
+                  <span className="h-2 w-2 rounded-full bg-[#174D35]" />
                 )}
               </Button>
 
@@ -134,7 +134,7 @@ export default function ProductsClient() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "featured" | "price-asc" | "price-desc" | "name")}
-                  className="rounded-xl border border-border bg-card px-3 py-2 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50 cursor-pointer shadow-xs"
+                  className="rounded-xl border border-border bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[#174D35] cursor-pointer shadow-xs"
                 >
                   <option value="featured">Featured / Default</option>
                   <option value="price-asc">Price: Low to High</option>
@@ -151,9 +151,9 @@ export default function ProductsClient() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8 items-start">
             
             {/* Desktop Filter Sidebar */}
-            <aside className="hidden lg:block lg:col-span-3 rounded-3xl border border-border/80 bg-card p-6 shadow-xs space-y-6 sticky top-28">
+            <aside className="hidden lg:block lg:col-span-3 rounded-3xl border border-border bg-white p-6 shadow-xs space-y-6 sticky top-28">
               <div className="flex items-center justify-between pb-3 border-b border-border">
-                <h3 className="font-display font-bold text-sm tracking-wider uppercase text-primary">
+                <h3 className="font-display font-bold text-sm tracking-wider uppercase text-[#332820]">
                   Categories
                 </h3>
                 {(selectedCategory !== "All" || selectedTier !== "All") && (
@@ -163,22 +163,22 @@ export default function ProductsClient() {
                       setSelectedCategory("All");
                       setSelectedTier("All");
                     }}
-                    className="text-xs text-secondary font-semibold hover:underline"
+                    className="text-xs text-[#174D35] font-semibold hover:underline"
                   >
                     Reset
                   </button>
                 )}
               </div>
 
-              {/* Category Radio / Pills */}
+              {/* Category Pills */}
               <div className="space-y-1.5">
                 <button
                   type="button"
                   onClick={() => setSelectedCategory("All")}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                     selectedCategory === "All"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-foreground hover:bg-accent"
+                      ? "bg-[#174D35] text-white shadow-xs"
+                      : "text-[#332820] hover:bg-[#F8F4E9]"
                   }`}
                 >
                   All Categories ({products.filter((p) => p.active !== false).length})
@@ -191,14 +191,14 @@ export default function ProductsClient() {
                       key={cat}
                       type="button"
                       onClick={() => setSelectedCategory(cat)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                         active
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "text-foreground hover:bg-accent"
+                          ? "bg-[#174D35] text-white shadow-xs"
+                          : "text-[#332820] hover:bg-[#F8F4E9]"
                       }`}
                     >
                       <span className="truncate">{cat}</span>
-                      <span className="text-xs opacity-75">({count})</span>
+                      <span className="text-xs opacity-80">({count})</span>
                     </button>
                   );
                 })}
@@ -206,10 +206,10 @@ export default function ProductsClient() {
 
               {/* Tier Filter */}
               <div className="pt-4 border-t border-border space-y-2">
-                <h3 className="font-display font-bold text-xs tracking-wider uppercase text-primary">
+                <h3 className="font-display font-bold text-xs tracking-wider uppercase text-[#332820]">
                   Blend Tier
                 </h3>
-                <div className="flex gap-1.5 p-1 rounded-xl bg-surface border border-border">
+                <div className="flex gap-1.5 p-1 rounded-xl bg-[#F8F4E9] border border-border">
                   {["All", "regular", "premium"].map((tier) => (
                     <button
                       key={tier}
@@ -217,7 +217,7 @@ export default function ProductsClient() {
                       onClick={() => setSelectedTier(tier)}
                       className={`flex-1 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
                         selectedTier === tier
-                          ? "bg-card text-foreground shadow-xs"
+                          ? "bg-[#174D35] text-white shadow-xs"
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -234,35 +234,35 @@ export default function ProductsClient() {
               
               {/* Active Filter Chips */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted-foreground font-semibold">
+                <span className="text-xs text-[#6B5E54] font-semibold">
                   Showing {filteredProducts.length} product{filteredProducts.length === 1 ? "" : "s"}
                 </span>
 
                 {selectedCategory !== "All" && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-bold text-primary border border-border">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#174D35] border border-border shadow-2xs">
                     <span>Category: {selectedCategory}</span>
                     <X
-                      className="h-3 w-3 cursor-pointer hover:text-secondary"
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
                       onClick={() => setSelectedCategory("All")}
                     />
                   </span>
                 )}
 
                 {selectedTier !== "All" && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-bold text-primary border border-border">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#174D35] border border-border shadow-2xs">
                     <span>Tier: {selectedTier}</span>
                     <X
-                      className="h-3 w-3 cursor-pointer hover:text-secondary"
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
                       onClick={() => setSelectedTier("All")}
                     />
                   </span>
                 )}
 
                 {search && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-bold text-primary border border-border">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-bold text-[#174D35] border border-border shadow-2xs">
                     <span>Query: &ldquo;{search}&rdquo;</span>
                     <X
-                      className="h-3 w-3 cursor-pointer hover:text-secondary"
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
                       onClick={() => setSearch("")}
                     />
                   </span>
@@ -289,13 +289,13 @@ export default function ProductsClient() {
       {mobileFiltersOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div
-            className="fixed inset-0 bg-primary/60 backdrop-blur-xs"
+            className="fixed inset-0 bg-[#0D2F22]/70 backdrop-blur-xs"
             onClick={() => setMobileFiltersOpen(false)}
           />
-          <div className="relative ml-auto h-full w-full max-w-xs bg-card p-6 shadow-2xl flex flex-col justify-between overflow-y-auto">
+          <div className="relative ml-auto h-full w-full max-w-xs bg-white p-6 shadow-2xl flex flex-col justify-between overflow-y-auto">
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-3 border-b border-border">
-                <h3 className="font-display font-bold text-base text-primary">Filters</h3>
+                <h3 className="font-display font-bold text-base text-[#332820]">Filters</h3>
                 <button
                   type="button"
                   onClick={() => setMobileFiltersOpen(false)}
@@ -307,7 +307,7 @@ export default function ProductsClient() {
 
               {/* Categories */}
               <div className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Categories</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#6B5E54]">Categories</span>
                 <div className="space-y-1">
                   <button
                     type="button"
@@ -316,7 +316,7 @@ export default function ProductsClient() {
                       setMobileFiltersOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold ${
-                      selectedCategory === "All" ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                      selectedCategory === "All" ? "bg-[#174D35] text-white" : "hover:bg-[#F8F4E9]"
                     }`}
                   >
                     All Categories ({products.filter((p) => p.active !== false).length})
@@ -333,7 +333,7 @@ export default function ProductsClient() {
                           setMobileFiltersOpen(false);
                         }}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold ${
-                          active ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                          active ? "bg-[#174D35] text-white" : "hover:bg-[#F8F4E9]"
                         }`}
                       >
                         <span className="truncate">{cat}</span>
@@ -346,7 +346,7 @@ export default function ProductsClient() {
 
               {/* Tiers */}
               <div className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tier</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#6B5E54]">Tier</span>
                 <div className="flex gap-2">
                   {["All", "regular", "premium"].map((tier) => (
                     <button
@@ -358,8 +358,8 @@ export default function ProductsClient() {
                       }}
                       className={`flex-1 py-2 text-xs font-bold rounded-xl capitalize ${
                         selectedTier === tier
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-surface border border-border"
+                          ? "bg-[#174D35] text-white"
+                          : "bg-[#F8F4E9] border border-border text-[#332820]"
                       }`}
                     >
                       {tier}
@@ -370,9 +370,9 @@ export default function ProductsClient() {
             </div>
 
             <Button
-              variant="plum"
+              variant="forest"
               size="touch"
-              className="w-full mt-6"
+              className="w-full mt-6 rounded-xl font-bold"
               onClick={() => setMobileFiltersOpen(false)}
             >
               Apply Filters

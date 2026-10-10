@@ -33,11 +33,8 @@ interface PageProps {
 export default function ProductDetailClient({ params, initialProduct }: PageProps) {
   const resolvedParams = React.use(params);
   const router = useRouter();
-  // Initialise with server-provided data so the component renders immediately.
-  // useEffect below fetches fresh API data (updated prices / stock).
   const [product, setProduct] = useState<Product | null>(initialProduct ?? null);
   const [related, setRelated] = useState<Product[]>([]);
-  // Skip loading spinner when initialProduct already provides content.
   const [loading, setLoading] = useState(!initialProduct);
   const [quantity, setQuantity] = useState(1);
   const { addToCart } = useCart();
@@ -64,13 +61,12 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
     loadData();
   }, [resolvedParams.id]);
 
-  // Only show spinner when we have no product at all (initialProduct was null AND API still loading)
   if (loading && !product) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-[#F8F4E9]">
         <Header />
         <main className="flex-1 flex items-center justify-center py-24">
-          <div className="h-10 w-10 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
+          <div className="h-10 w-10 border-4 border-[#174D35] border-t-transparent rounded-full animate-spin" />
         </main>
         <Footer />
       </div>
@@ -79,16 +75,16 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
 
   if (!product) {
     return (
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-[#F8F4E9]">
         <Header />
         <main className="flex-1 flex flex-col items-center justify-center text-center px-4 py-24 space-y-4">
           <span className="text-5xl">🏺</span>
-          <h1 className="font-display font-bold text-2xl text-primary">Product Not Found</h1>
-          <p className="text-sm text-muted-foreground max-w-sm">
+          <h1 className="font-display font-bold text-2xl text-[#332820]">Product Not Found</h1>
+          <p className="text-sm text-[#6B5E54] max-w-sm">
             We couldn&apos;t find this product in our catalogue. It may have been renamed or moved.
           </p>
           <Link href="/products">
-            <Button variant="plum" size="touch">
+            <Button variant="forest" size="touch" className="rounded-xl">
               Browse All Products
             </Button>
           </Link>
@@ -118,39 +114,39 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-[#F8F4E9]">
       <Header />
       <main className="flex-1 pb-16 sm:pb-24">
         
         {/* Breadcrumb Navigation */}
         <div className="container-page pt-6 pb-4">
-          <nav className="flex items-center gap-2 text-xs font-semibold text-muted-foreground flex-wrap" aria-label="Breadcrumb">
-            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+          <nav className="flex items-center gap-2 text-xs font-semibold text-[#6B5E54] flex-wrap" aria-label="Breadcrumb">
+            <Link href="/" className="hover:text-[#174D35] transition-colors">Home</Link>
             <span>/</span>
-            <Link href="/products" className="hover:text-primary transition-colors">Products</Link>
+            <Link href="/products" className="hover:text-[#174D35] transition-colors">Products</Link>
             {product.category && (
               <>
                 <span>/</span>
                 <Link
                   href={`/category/${slugifyCategory(product.category)}`}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-[#174D35] transition-colors"
                 >
                   {product.category}
                 </Link>
               </>
             )}
             <span>/</span>
-            <span className="text-secondary truncate max-w-[200px] sm:max-w-none">{product.name}</span>
+            <span className="text-[#174D35] truncate max-w-[200px] sm:max-w-none">{product.name}</span>
           </nav>
         </div>
 
         {/* Product Details Section */}
         <section className="container-page">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 bg-card rounded-3xl border border-border/80 p-6 sm:p-10 shadow-[var(--shadow-card)]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 bg-white rounded-3xl border border-border p-6 sm:p-10 shadow-sm">
             
             {/* Left: Product Image Box */}
             <div className="lg:col-span-6 flex flex-col items-center">
-              <div className="relative aspect-square w-full max-w-[460px] overflow-hidden rounded-2xl bg-surface border border-border/60 flex items-center justify-center p-8 shadow-xs">
+              <div className="relative aspect-square w-full max-w-[460px] overflow-hidden rounded-2xl bg-[#F4F1E9] border border-border flex items-center justify-center p-8 shadow-xs">
                 {product.image ? (
                   <picture>
                     <source
@@ -159,7 +155,7 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
                     />
                     <img
                       src={product.image}
-                      alt={product.name}
+                      alt={`${product.name} - Kayal Samayal`}
                       width={460}
                       height={460}
                       fetchPriority="high"
@@ -176,17 +172,17 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
                 {/* Badges */}
                 <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
                   {isOutOfStock ? (
-                    <span className="inline-flex items-center rounded-full bg-destructive px-3 py-1 text-xs font-bold uppercase tracking-wider text-destructive-foreground shadow-sm">
+                    <span className="inline-flex items-center rounded-full bg-destructive px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-xs">
                       Out of stock
                     </span>
                   ) : isLowStock ? (
-                    <span className="inline-flex items-center rounded-full bg-amber-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider shadow-sm animate-pulse">
-                      Low Stock: Only {product.stock} pcs left
+                    <span className="inline-flex items-center rounded-full bg-amber-700 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider shadow-xs animate-pulse">
+                      Low Stock: {product.stock} pcs left
                     </span>
                   ) : isPremium ? (
                     <span className="badge-premium">✦ PREMIUM BLEND</span>
                   ) : null}
-                  <span className="inline-flex items-center gap-1 rounded-full bg-leaf/90 text-white px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#174D35] text-white px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
                     100% Pure
                   </span>
                 </div>
@@ -194,17 +190,17 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
 
               {/* Trust Badges below image */}
               <div className="mt-6 grid grid-cols-3 gap-3 w-full max-w-[460px] text-center">
-                <div className="rounded-xl bg-surface p-3 border border-border/60">
-                  <ShieldCheck className="mx-auto h-5 w-5 text-leaf mb-1" />
-                  <p className="text-[0.65rem] font-bold text-foreground">FSSAI Certified</p>
+                <div className="rounded-xl bg-[#F8F4E9] p-3 border border-border">
+                  <ShieldCheck className="mx-auto h-5 w-5 text-[#174D35] mb-1" />
+                  <p className="text-[0.68rem] font-bold text-[#332820]">FSSAI Registered</p>
                 </div>
-                <div className="rounded-xl bg-surface p-3 border border-border/60">
-                  <Truck className="mx-auto h-5 w-5 text-secondary mb-1" />
-                  <p className="text-[0.65rem] font-bold text-foreground">Fresh Batch</p>
+                <div className="rounded-xl bg-[#F8F4E9] p-3 border border-border">
+                  <Truck className="mx-auto h-5 w-5 text-[#B88A3B] mb-1" />
+                  <p className="text-[0.68rem] font-bold text-[#332820]">Fresh Grinding</p>
                 </div>
-                <div className="rounded-xl bg-surface p-3 border border-border/60">
-                  <Sparkles className="mx-auto h-5 w-5 text-gold mb-1" />
-                  <p className="text-[0.65rem] font-bold text-foreground">No Chemicals</p>
+                <div className="rounded-xl bg-[#F8F4E9] p-3 border border-border">
+                  <Sparkles className="mx-auto h-5 w-5 text-[#174D35] mb-1" />
+                  <p className="text-[0.68rem] font-bold text-[#332820]">Zero Chemicals</p>
                 </div>
               </div>
             </div>
@@ -215,39 +211,39 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
               <div className="space-y-4">
                 {/* Category badge */}
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary">
+                  <span className="rounded-full bg-[#F8F4E9] px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-[#B88A3B] border border-border">
                     {product.category}
                   </span>
                 </div>
 
                 {/* Product Name */}
-                <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold text-primary leading-tight">
+                <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#332820] leading-tight">
                   {product.name}
                 </h1>
 
                 {/* Pricing Display */}
-                <div className="py-2 border-y border-border/60">
+                <div className="py-2.5 border-y border-border">
                   <PriceDisplay price={price} mrp={product.mrp} size="lg" />
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-[#6B5E54] mt-1.5">
                     Inclusive of all taxes. Free shipping on orders above ₹{brand.freeShippingOver}.
                   </p>
                 </div>
 
                 {/* Description */}
-                <div className="text-muted-foreground text-sm sm:text-base leading-relaxed space-y-2">
+                <div className="text-[#6B5E54] text-sm sm:text-base leading-relaxed space-y-2">
                   <p>{product.description}</p>
                 </div>
 
-                {/* Highlights */}
+                {/* Verified Highlights */}
                 {product.highlights && product.highlights.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                      Highlights & Purity
+                  <div className="space-y-2.5 pt-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#332820]">
+                      Key Highlights &amp; Purity
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {product.highlights.map((hl, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm text-foreground/90">
-                          <CheckCircle2 className="h-4 w-4 text-leaf shrink-0" />
+                        <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm text-[#332820]">
+                          <CheckCircle2 className="h-4 w-4 text-[#174D35] shrink-0" />
                           <span>{hl}</span>
                         </div>
                       ))}
@@ -257,10 +253,10 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
               </div>
 
               {/* Purchase Actions Block */}
-              <div className="space-y-4 pt-6 border-t border-border/60">
+              <div className="space-y-4 pt-6 border-t border-border">
                 {/* Quantity Control */}
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#6B5E54]">
                     Quantity:
                   </span>
                   <QuantitySelector
@@ -276,9 +272,9 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
                 {/* Action Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <Button
-                    variant="plum"
+                    variant="forest"
                     size="touch"
-                    className="w-full gap-2 font-bold shadow-md"
+                    className="w-full gap-2 font-bold shadow-md rounded-xl"
                     onClick={handleAddToCart}
                     disabled={isOutOfStock}
                   >
@@ -287,9 +283,9 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
                   </Button>
 
                   <Button
-                    variant="secondary"
+                    variant="gold"
                     size="touch"
-                    className="w-full gap-2 font-bold shadow-md"
+                    className="w-full gap-2 font-bold shadow-md rounded-xl"
                     onClick={handleBuyNow}
                     disabled={isOutOfStock}
                   >
@@ -308,7 +304,7 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
                   <Button
                     variant="whatsapp"
                     size="touch"
-                    className="w-full gap-2 font-bold shadow-xs"
+                    className="w-full gap-2 font-bold shadow-xs rounded-xl"
                   >
                     <MessageCircle className="h-4 w-4" />
                     <span>Order directly via WhatsApp</span>
@@ -326,7 +322,7 @@ export default function ProductDetailClient({ params, initialProduct }: PageProp
           <section className="container-page pt-16 sm:pt-20">
             <div className="mb-8 space-y-1">
               <span className="section-eyebrow">Pair With</span>
-              <h2 className="font-display text-2xl font-bold text-primary">
+              <h2 className="font-display text-2xl font-bold text-[#332820]">
                 You May Also Like
               </h2>
             </div>

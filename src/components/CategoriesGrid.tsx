@@ -27,17 +27,17 @@ export default function CategoriesGrid() {
   const categoryCards = getCategoryCardList(products);
 
   return (
-    <section id="categories" className="py-16 sm:py-20 bg-surface border-b border-border/60">
+    <section id="categories" className="py-16 sm:py-24 bg-[#F8F4E9] border-b border-border/80">
       <div className="container-page">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14 space-y-2.5">
           <p className="section-eyebrow">Explore Our Kitchen</p>
           <h2 className="section-title">
-            Shop by <span className="text-secondary font-display italic">Category</span>
+            Shop by <span className="text-[#174D35] font-display italic">Category</span>
           </h2>
           <div className="divider-spice" />
-          <p className="text-muted-foreground text-sm sm:text-base leading-relaxed pt-1">
-            Carefully curated, unadulterated South Indian staples made the traditional way without industrial preservatives.
+          <p className="text-[#6B5E54] text-sm sm:text-base leading-relaxed pt-1">
+            Carefully prepared, unadulterated South Indian staples made the traditional way without industrial preservatives.
           </p>
         </div>
 
@@ -46,10 +46,10 @@ export default function CategoriesGrid() {
           {categoryCards.map((cat, idx) => (
             <motion.div
               key={cat.slug}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: idx * 0.08 }}
+              transition={{ duration: 0.35, delay: idx * 0.06 }}
             >
               <CategoryCard
                 name={cat.name}
@@ -66,4 +66,3 @@ export default function CategoriesGrid() {
     </section>
   );
 }
-

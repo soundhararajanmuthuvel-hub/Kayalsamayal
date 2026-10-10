@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { products as localProducts } from "@/data/products";
 import { slugifyCategory } from "@/lib/categories";
 import { getProducts } from "@/lib/api";
+import { getProductPrice } from "@/lib/pricing";
 import ProductDetailClient from "./ProductDetailClient";
 
 // ── Incremental Static Regeneration ──────────────────────────────────────────
@@ -107,7 +108,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   // Only emit price in schema when we have a real, non-zero price.
   // Never fabricate a fallback price in structured data.
-  const hasRealPrice = (product?.price ?? 0) > 0;
+  const price        = product ? getProductPrice(product) : 0;
   const isInStock    =
     product?.stock === undefined || (product?.stock ?? 0) > 0;
 
@@ -124,6 +125,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
               : "https://www.kayalsamayal.in/icon-512x512.png",
             "description": product.description,
             "sku": product.id,
+            "category": product.category,
             "brand": {
               "@type": "Brand",
               "name": "Kayal Samayal",
@@ -131,13 +133,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
             "offers": {
               "@type": "Offer",
               "url": `https://www.kayalsamayal.in/products/${product.id}`,
-              // Conditionally include price — only when genuinely available from real product data
-              ...(hasRealPrice
-                ? {
-                    "priceCurrency": "INR",
-                    "price": product.price,
-                  }
-                : {}),
+              "priceCurrency": "INR",
+              "price": price,
               "availability": isInStock
                 ? "https://schema.org/InStock"
                 : "https://schema.org/OutOfStock",
@@ -210,13 +207,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
        */}
       {product && (
         <div className="sr-only">
-          <h1>{product.name} — Kayal Samayal</h1>
-          {hasRealPrice && (
-            <p>
-              Price: ₹{product.price} INR.{" "}
-              {isInStock ? "In Stock." : "Currently out of stock."}
-            </p>
-          )}
+          <h1>{product.name}</h1>
+          <p>
+            Price: ₹{price} INR.{" "}
+            {isInStock ? "In Stock." : "Currently out of stock."}
+          </p>
           <p>{product.description}</p>
           {product.highlights?.length > 0 && (
             <ul>

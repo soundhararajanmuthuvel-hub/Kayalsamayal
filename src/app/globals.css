@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
 /*
- * Kayal Samayal Artisanal Design System (Stitch Aligned)
- * Deep Plum Night (#2E152C) + Burnt Orange Turmeric (#D35400) + Warm Linen Surface (#F4EFE6) + Curry Leaf Green (#23471F)
+ * Kayal Samayal Artisanal Design System
+ * Master Palette:
+ * Forest Green: #174D35
+ * Deep Green:   #0D2F22
+ * Warm Cream:   #F8F4E9
+ * Spice Gold:   #B88A3B
+ * Walnut Brown: #332820
+ * Pure White:   #FFFFFF
+ * Soft Neutral: #F4F1E9
  */
 
 @theme inline {
@@ -14,15 +21,15 @@
   --radius-3xl: 2rem;
 
   --font-display: var(--font-playfair), "Playfair Display", Georgia, serif;
-  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-inter), var(--font-jakarta), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-surface-container: var(--surface-container);
   --color-surface-container-low: var(--surface-container-low);
-  --color-warm-linen: #F4EFE6;
-  --color-warm-linen-border: #E6DDCF;
+  --color-warm-linen: #F8F4E9;
+  --color-warm-linen-border: #E5DEC9;
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -36,7 +43,7 @@
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-burnt-orange: #D35400;
+  --color-burnt-orange: #B88A3B;
 
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
@@ -50,6 +57,12 @@
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
 
+  --color-forest: #174D35;
+  --color-deep-green: #0D2F22;
+  --color-warm-cream: #F8F4E9;
+  --color-spice-gold: #B88A3B;
+  --color-walnut: #332820;
+
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
@@ -58,67 +71,67 @@
   --color-ring: var(--ring);
 
   /* Legacy aliases for backward compatibility */
-  --color-brand-purple: #2E152C;
-  --color-brand-orange: #D35400;
-  --color-brand-cream: #FCF9F4;
-  --color-brand-gold: #d49b28;
-  --color-espresso-800: #4d444a;
-  --color-espresso-900: #1c1c19;
+  --color-brand-purple: #174D35;
+  --color-brand-orange: #B88A3B;
+  --color-brand-cream: #F8F4E9;
+  --color-brand-gold: #B88A3B;
+  --color-espresso-800: #4A3E36;
+  --color-espresso-900: #332820;
 
-  --shadow-card: 0 1px 3px 0 rgba(46, 21, 44, 0.05), 0 4px 12px -2px rgba(46, 21, 44, 0.08);
-  --shadow-lift: 0 4px 14px -2px rgba(46, 21, 44, 0.10), 0 18px 38px -8px rgba(46, 21, 44, 0.18);
+  --shadow-card: 0 1px 3px 0 rgba(51, 40, 32, 0.04), 0 4px 12px -2px rgba(51, 40, 32, 0.06);
+  --shadow-lift: 0 6px 16px -2px rgba(23, 77, 53, 0.08), 0 18px 32px -6px rgba(13, 47, 34, 0.12);
 }
 
 :root {
   --radius: 0.75rem;
 
-  /* Warm Linen & Background */
-  --background: #fcf9f4;
-  --foreground: #1c1c19;
-  --surface: #fcf9f4;
-  --surface-container: #f0ede9;
-  --surface-container-low: #f6f3ee;
-  --cream: #fcf9f4;
+  /* Warm Cream & Background */
+  --background: #F8F4E9;
+  --foreground: #332820;
+  --surface: #F4F1E9;
+  --surface-container: #EFE8D6;
+  --surface-container-low: #FAF6EE;
+  --cream: #F8F4E9;
 
   /* Card and Popovers */
-  --card: #ffffff;
-  --card-foreground: #1c1c19;
-  --popover: #ffffff;
-  --popover-foreground: #1c1c19;
+  --card: #FFFFFF;
+  --card-foreground: #332820;
+  --popover: #FFFFFF;
+  --popover-foreground: #332820;
 
-  /* Primary Deep Plum Night */
-  --primary: #2E152C;
-  --primary-foreground: #ffffff;
-  --primary-container: #3b1e38;
+  /* Primary Forest Green (#174D35) & Deep Green Container (#0D2F22) */
+  --primary: #174D35;
+  --primary-foreground: #FFFFFF;
+  --primary-container: #0D2F22;
 
-  /* Secondary Burnt Orange Turmeric */
-  --secondary: #D35400;
-  --secondary-foreground: #ffffff;
+  /* Secondary Spice Gold (#B88A3B) */
+  --secondary: #B88A3B;
+  --secondary-foreground: #FFFFFF;
 
-  /* Muted & Neutral Grays with warm undertone */
-  --muted: #ebe8e3;
-  --muted-foreground: #5c5258;
+  /* Muted & Neutral Warm Tones */
+  --muted: #EBE4D2;
+  --muted-foreground: #6B5E54;
 
   /* Soft Warm Accent */
-  --accent: #f4efe6;
-  --accent-foreground: #2E152C;
+  --accent: #F4EFE6;
+  --accent-foreground: #174D35;
 
-  /* Curry Leaf Green Badge */
-  --leaf: #23471F;
-  --leaf-foreground: #ffffff;
+  /* Veg / Leaf Badge (#174D35) */
+  --leaf: #174D35;
+  --leaf-foreground: #FFFFFF;
 
-  /* Warm Gold */
-  --gold: #d49b28;
-  --gold-foreground: #1c1c19;
+  /* Spice Gold */
+  --gold: #B88A3B;
+  --gold-foreground: #FFFFFF;
 
   /* Destructive */
-  --destructive: #ba1a1a;
-  --destructive-foreground: #ffffff;
+  --destructive: #BA1A1A;
+  --destructive-foreground: #FFFFFF;
 
   /* Borders & Inputs */
-  --border: #E6DDCF;
-  --input: #E6DDCF;
-  --ring: #D35400;
+  --border: #E5DEC9;
+  --input: #E5DEC9;
+  --ring: #174D35;
 }
 
 @layer base {
@@ -145,6 +158,7 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     letter-spacing: -0.015em;
+    color: #332820;
   }
 
   :focus-visible {
@@ -195,23 +209,27 @@
 }
 
 /* Gradients and visual effects */
+.bg-hero-forest {
+  background: linear-gradient(135deg, #0D2F22 0%, #174D35 55%, #1a563b 100%);
+}
+
 .bg-spice-gradient {
-  background: linear-gradient(135deg, #240922 0%, #2E152C 50%, #3b1e38 100%);
+  background: linear-gradient(135deg, #0D2F22 0%, #174D35 100%);
 }
 
 .bg-gold-gradient {
-  background: linear-gradient(90deg, #d49b28 0%, #f3c25b 50%, #d49b28 100%);
+  background: linear-gradient(90deg, #B88A3B 0%, #cf9f46 50%, #B88A3B 100%);
 }
 
 .gold-shimmer {
-  background: linear-gradient(90deg, #D35400 0%, #ff7b2b 40%, #d49b28 75%, #D35400 100%);
+  background: linear-gradient(90deg, #B88A3B 0%, #e0b45c 40%, #B88A3B 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .texture-dark {
-  background-color: #240922;
-  background-image: radial-gradient(rgba(212, 155, 40, 0.08) 1px, transparent 1px);
+  background-color: #0D2F22;
+  background-image: radial-gradient(rgba(184, 138, 59, 0.12) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -219,7 +237,7 @@
   width: 48px;
   height: 3px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, var(--secondary) 0%, var(--gold) 100%);
+  background: linear-gradient(90deg, var(--secondary) 0%, #cf9f46 100%);
   margin-inline: auto;
 }
 
@@ -228,15 +246,15 @@
   align-items: center;
   gap: 0.25rem;
   border-radius: 9999px;
-  background: linear-gradient(135deg, #2E152C 0%, #3b1e38 100%);
-  border: 1px solid rgba(212, 155, 40, 0.4);
+  background: #0D2F22;
+  border: 1px solid rgba(184, 138, 59, 0.6);
   padding: 0.2rem 0.65rem;
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #ffdbcc;
-  box-shadow: 0 2px 6px rgba(46, 21, 44, 0.2);
+  color: #F8F4E9;
+  box-shadow: 0 2px 6px rgba(13, 47, 34, 0.2);
 }
 
 .section-eyebrow {
@@ -244,14 +262,14 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--secondary);
+  color: #B88A3B;
 }
 
 .section-title {
   font-size: clamp(1.85rem, 3.8vw, 2.85rem);
   font-weight: 700;
   line-height: 1.15;
-  color: var(--primary);
+  color: #332820;
 }
 
 /* Ensure composited animations for Lighthouse / PageSpeed */

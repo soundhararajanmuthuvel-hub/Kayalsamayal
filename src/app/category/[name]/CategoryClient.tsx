@@ -53,22 +53,22 @@ export default function CategoryClient({ params }: PageProps) {
   }, [canonicalSlug]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col bg-[#F8F4E9]">
       <Header />
       <main className="flex-1 pb-16 sm:pb-24">
         
         {/* Banner Section */}
-        <section className="bg-spice-gradient py-12 sm:py-16 text-primary-foreground border-b border-white/10">
+        <section className="bg-[#0D2F22] py-12 sm:py-16 text-[#F8F4E9] border-b border-[#B88A3B]/30">
           <div className="container-page text-center space-y-3">
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#B88A3B]">
               KAYAL SAMAYAL CATEGORY ARCHIVE
             </span>
-            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold capitalize">
+            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold capitalize text-white">
               Kayal Samayal {categoryName || "Traditional Range"}
             </h1>
             <div className="divider-spice" />
-            <p className="text-white/80 text-xs sm:text-sm max-w-xl mx-auto">
-              Authentic South Indian varieties crafted with pure spices, traditional stone grinding, and zero preservatives.
+            <p className="text-[#F8F4E9]/85 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
+              Authentic South Indian varieties crafted with pure spices, traditional stone grinding, and zero chemical preservatives.
             </p>
           </div>
         </section>
@@ -78,12 +78,12 @@ export default function CategoryClient({ params }: PageProps) {
           <div className="flex items-center justify-between pb-6">
             <Link
               href="/products"
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-secondary hover:text-primary transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#174D35] hover:text-[#0D2F22] transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
               <span>Back to All Products</span>
             </Link>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[#6B5E54]">
               {products.length} {products.length === 1 ? "Product" : "Products"}
             </span>
           </div>
@@ -96,7 +96,7 @@ export default function CategoryClient({ params }: PageProps) {
             emptyMessage="We are currently crafting fresh batches for this category. Please check out our other offerings!"
             action={
               <Link href="/products">
-                <Button variant="plum" size="sm">
+                <Button variant="forest" size="sm" className="rounded-xl">
                   View Full Catalogue
                 </Button>
               </Link>

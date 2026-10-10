@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { MessageCircle, Phone, Mail, MapPin, ArrowRight } from "lucide-react";
+import { MessageCircle, Phone, Mail, MapPin, ArrowRight, ShieldCheck, Truck, CreditCard } from "lucide-react";
 import { brand, whatsappLink } from "@/lib/brand";
 import { products as localProducts } from "@/data/products";
 import { getUniqueCategories, slugifyCategory } from "@/lib/categories";
@@ -11,7 +11,6 @@ import { getProducts } from "@/lib/api";
 const navLinks = [
   { label: "Home", href: "/" },
   { label: "All Products", href: "/products" },
-  { label: "Health Mixes & Malts", href: "/health-mixes" },
   { label: "About Kayal Samayal", href: "/about" },
   { label: "Contact & Support", href: "/contact" },
 ];
@@ -45,7 +44,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer className="relative bg-primary text-primary-foreground border-t border-gold/20 pt-14 sm:pt-20 pb-10">
+    <footer className="relative bg-[#0D2F22] text-[#F8F4E9] border-t border-[#B88A3B]/30 pt-14 sm:pt-20 pb-10">
       <div className="container-page">
         {/* Main Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-12 border-b border-white/10">
@@ -61,21 +60,21 @@ export default function Footer() {
                   width={48}
                   height={48}
                   loading="lazy"
-                  className="w-12 h-12 rounded-full object-contain p-1 bg-white/95 ring-2 ring-gold shadow-md"
+                  className="w-12 h-12 rounded-full object-contain p-1 bg-white ring-2 ring-[#B88A3B] shadow-md"
                 />
               </picture>
               <div>
                 <span className="font-display font-bold text-xl text-white block leading-tight">
                   {brand.name}
                 </span>
-                <span className="text-[0.65rem] text-gold tracking-widest uppercase font-bold block">
+                <span className="text-[0.65rem] text-[#B88A3B] tracking-widest uppercase font-bold block">
                   {brand.subtitle}
                 </span>
               </div>
             </Link>
 
             <p className="text-white/80 text-xs sm:text-sm leading-relaxed max-w-sm">
-              Authentic South Indian spices, homemade podis, and health mixes crafted from timeless coastal heritage. 100% pure taste with zero preservatives.
+              Authentic South Indian stone-ground masalas, aromatic podis, and health mixes crafted without chemicals or artificial preservatives. Shipped fresh from Tirupattur, Tamil Nadu.
             </p>
 
             <div className="pt-2 text-xs text-white/70 space-y-1">
@@ -86,15 +85,15 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="lg:col-span-2 space-y-3">
-            <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
+            <h3 className="font-display font-bold text-sm tracking-wider uppercase text-[#B88A3B]">
               Quick Links
             </h3>
-            <ul className="space-y-0.5 text-xs sm:text-sm">
+            <ul className="space-y-1 text-xs sm:text-sm">
               {navLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-2 min-h-[44px]"
+                    className="text-white/80 hover:text-[#B88A3B] transition-colors inline-flex items-center py-1.5 min-h-[40px]"
                   >
                     {link.label}
                   </Link>
@@ -105,15 +104,15 @@ export default function Footer() {
 
           {/* Categories */}
           <div className="lg:col-span-3 space-y-3">
-            <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
+            <h3 className="font-display font-bold text-sm tracking-wider uppercase text-[#B88A3B]">
               Product Range
             </h3>
-            <ul className="space-y-0.5 text-xs sm:text-sm">
+            <ul className="space-y-1 text-xs sm:text-sm">
               {activeCategories.map((cat) => (
                 <li key={cat.href}>
                   <Link
                     href={cat.href}
-                    className="text-white/80 hover:text-gold transition-colors inline-flex items-center py-2 min-h-[44px]"
+                    className="text-white/80 hover:text-[#B88A3B] transition-colors inline-flex items-center py-1.5 min-h-[40px]"
                   >
                     {cat.label}
                   </Link>
@@ -124,24 +123,24 @@ export default function Footer() {
 
           {/* Contact & Support */}
           <div className="lg:col-span-3 space-y-4">
-            <h3 className="font-display font-bold text-sm tracking-wider uppercase text-gold">
+            <h3 className="font-display font-bold text-sm tracking-wider uppercase text-[#B88A3B]">
               Contact Us
             </h3>
             <ul className="space-y-3 text-xs sm:text-sm text-white/85">
               <li className="flex items-start gap-2.5">
-                <Phone className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                <a href={`tel:${brand.phoneIntl}`} className="hover:text-gold transition-colors">
+                <Phone className="h-4 w-4 text-[#B88A3B] shrink-0 mt-0.5" />
+                <a href={`tel:${brand.phoneIntl}`} className="hover:text-[#B88A3B] transition-colors">
                   (+91) {brand.phone}
                 </a>
               </li>
               <li className="flex items-start gap-2.5">
-                <Mail className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                <a href={`mailto:${brand.email}`} className="hover:text-gold transition-colors break-all">
+                <Mail className="h-4 w-4 text-[#B88A3B] shrink-0 mt-0.5" />
+                <a href={`mailto:${brand.email}`} className="hover:text-[#B88A3B] transition-colors break-all">
                   {brand.email}
                 </a>
               </li>
               <li className="flex items-start gap-2.5">
-                <MapPin className="h-4 w-4 text-gold shrink-0 mt-0.5" />
+                <MapPin className="h-4 w-4 text-[#B88A3B] shrink-0 mt-0.5" />
                 <span>
                   {brand.address.line1}, {brand.address.city} – {brand.address.pincode}, {brand.address.state}
                 </span>
@@ -150,7 +149,7 @@ export default function Footer() {
 
             <div className="pt-2">
               <a
-                href={whatsappLink("Hi Kayal Samayal! I'd like to place an order.")}
+                href={whatsappLink("Hi Kayal Samayal! I would like to place an order.")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl bg-[#25D366] text-white px-4 py-2.5 text-xs font-bold hover:bg-[#20ba5a] transition-all shadow-md min-h-[44px]"
@@ -164,12 +163,28 @@ export default function Footer() {
 
         </div>
 
-        {/* Bottom Bar */}
+        {/* Policies & Assurance Badges */}
+        <div className="py-6 border-b border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-white/75">
+          <div className="flex items-center gap-2">
+            <Truck className="h-4 w-4 text-[#B88A3B] shrink-0" />
+            <span>Shipping: Free above ₹{brand.freeShippingOver} (Flat ₹{brand.shippingFlat} below)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-[#B88A3B] shrink-0" />
+            <span>Payments: 100% Encrypted Razorpay &amp; Cash on Delivery</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-[#B88A3B] shrink-0" />
+            <span>Purity: 100% Food Safety &amp; FSSAI Registered</span>
+          </div>
+        </div>
+
+        {/* Bottom Bar with Required Credits */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left text-xs text-white/60">
           <p>© {year} {brand.legalName}. All rights reserved.</p>
           <p className="flex items-center gap-1 justify-center">
-            <span>Powered by</span>
-            <span className="font-bold text-gold">MSR Techlogies</span>
+            <span>Design and development by:</span>
+            <span className="font-bold text-[#B88A3B]">MSR Solutions</span>
           </p>
         </div>
       </div>

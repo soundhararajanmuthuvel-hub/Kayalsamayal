@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import { Playfair_Display, Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -10,6 +10,13 @@ const playfair = Playfair_Display({
   style: ["normal", "italic"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
@@ -18,7 +25,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#2E152C",
+  themeColor: "#174D35",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -114,7 +121,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${playfair.variable} ${plusJakarta.variable} scroll-smooth`}
+      className={`${playfair.variable} ${inter.variable} ${plusJakarta.variable} scroll-smooth`}
     >
       <body
         suppressHydrationWarning

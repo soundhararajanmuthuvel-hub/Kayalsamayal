@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Star, Quote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Quote, CheckCircle2 } from "lucide-react";
 import { testimonials as localTestimonials, type Testimonial } from "@/data/testimonials";
 import { getReviews } from "@/lib/api";
 
@@ -12,7 +12,7 @@ function StarRating({ rating }: { rating: number }) {
         <Star
           key={s}
           className={`h-4 w-4 ${
-            s <= rating ? "fill-gold text-gold" : "fill-muted text-muted"
+            s <= rating ? "fill-[#B88A3B] text-[#B88A3B]" : "fill-muted text-muted"
           }`}
         />
       ))}
@@ -55,7 +55,7 @@ export default function Testimonials() {
   // Autoscroll timer with pause on hover/touch
   useEffect(() => {
     if (isPaused || total <= 1) return;
-    autoPlayRef.current = setInterval(nextSlide, 5000);
+    autoPlayRef.current = setInterval(nextSlide, 6000);
     return () => {
       if (autoPlayRef.current) clearInterval(autoPlayRef.current);
     };
@@ -65,7 +65,7 @@ export default function Testimonials() {
 
   return (
     <section
-      className="py-16 sm:py-24 bg-background border-b border-border/60 overflow-hidden"
+      className="py-16 sm:py-24 bg-[#F8F4E9] border-b border-border/80 overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
@@ -74,39 +74,42 @@ export default function Testimonials() {
       <div className="container-page">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14 space-y-2">
-          <p className="section-eyebrow">Real Customer Experiences</p>
+          <p className="section-eyebrow">Verified Customer Feedback</p>
           <h2 className="section-title">
-            Loved Across <span className="text-secondary font-display italic">Homes & Kitchens</span>
+            Loved in <span className="text-[#174D35] font-display italic">Homes &amp; Kitchens</span>
           </h2>
           <div className="divider-spice" />
-          <p className="text-muted-foreground text-xs sm:text-sm">
-            Genuine verified feedback from families preparing authentic meals with Kayal Samayal.
+          <p className="text-[#6B5E54] text-xs sm:text-sm">
+            Genuine experiences from home chefs and families preparing daily meals with Kayal Samayal.
           </p>
         </div>
 
         {/* Carousel Viewport */}
-        <div className="relative max-w-4xl mx-auto">
+        <div className="relative max-w-3xl mx-auto">
           {/* Main Card */}
-          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card p-6 sm:p-10 shadow-[var(--shadow-card)] min-h-[220px] flex flex-col justify-between">
-            <Quote className="h-10 w-10 text-secondary/20 mb-3" />
+          <div className="relative overflow-hidden rounded-3xl border border-border bg-white p-6 sm:p-10 shadow-sm min-h-[220px] flex flex-col justify-between">
+            <Quote className="h-9 w-9 text-[#B88A3B]/30 mb-2" />
 
             <div className="space-y-4">
               <StarRating rating={reviews[currentIndex]?.rating || 5} />
-              <p className="font-display text-base sm:text-lg md:text-xl text-foreground italic leading-relaxed">
+              <p className="font-display text-base sm:text-lg md:text-xl text-[#332820] italic leading-relaxed">
                 &ldquo;{reviews[currentIndex]?.review}&rdquo;
               </p>
             </div>
 
-            <div className="flex items-center justify-between pt-6 mt-4 border-t border-border/60">
+            <div className="flex items-center justify-between pt-6 mt-4 border-t border-border/70">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center font-bold text-primary text-sm font-display ring-1 ring-gold/40">
+                <div className="h-10 w-10 rounded-full bg-[#174D35] text-white flex items-center justify-center font-bold text-sm font-display shadow-xs">
                   {reviews[currentIndex]?.name.charAt(0) || "K"}
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm sm:text-base text-foreground">
-                    {reviews[currentIndex]?.name}
+                  <h3 className="font-bold text-sm sm:text-base text-[#332820] flex items-center gap-1.5">
+                    <span>{reviews[currentIndex]?.name}</span>
+                    <span title="Verified Customer" className="inline-flex items-center">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#174D35]" />
+                    </span>
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[#6B5E54]">
                     {reviews[currentIndex]?.date || "Verified Purchase"}
                   </p>
                 </div>
@@ -118,7 +121,7 @@ export default function Testimonials() {
                   type="button"
                   onClick={prevSlide}
                   aria-label="Previous customer review"
-                  className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  className="flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border bg-white text-[#332820] hover:bg-[#F8F4E9] hover:text-[#174D35] transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -126,7 +129,7 @@ export default function Testimonials() {
                   type="button"
                   onClick={nextSlide}
                   aria-label="Next customer review"
-                  className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  className="flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-border bg-white text-[#332820] hover:bg-[#F8F4E9] hover:text-[#174D35] transition-colors cursor-pointer"
                 >
                   <ChevronRight className="h-5 w-5" />
                 </button>
@@ -135,18 +138,18 @@ export default function Testimonials() {
           </div>
 
           {/* Dots Indicator */}
-          <div className="flex justify-center items-center gap-1 mt-6">
-            {reviews.map((_, idx) => (
+          <div className="flex justify-center items-center gap-1.5 mt-6">
+            {reviews.slice(0, 10).map((_, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => setCurrentIndex(idx)}
                 aria-label={`Go to review ${idx + 1}`}
-                className="flex items-center justify-center min-h-[44px] min-w-[28px] p-2 cursor-pointer"
+                className="flex items-center justify-center min-h-[44px] min-w-[24px] p-2 cursor-pointer"
               >
                 <span
                   className={`h-2 rounded-full transition-all block ${
-                    currentIndex === idx ? "w-6 bg-secondary" : "w-2 bg-border hover:bg-muted-foreground"
+                    currentIndex === idx ? "w-6 bg-[#174D35]" : "w-2 bg-border hover:bg-muted-foreground"
                   }`}
                 />
               </button>

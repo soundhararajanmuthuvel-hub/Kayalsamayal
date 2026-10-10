@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
-import FeaturedProducts from "@/components/FeaturedProducts";
 import CategoriesGrid from "@/components/CategoriesGrid";
+import FeaturedProducts from "@/components/FeaturedProducts";
+import Story from "@/components/Story";
 import ProductShowcase from "@/components/ProductShowcase";
 import WhyUs from "@/components/WhyUs";
-import Story from "@/components/Story";
 import Testimonials from "@/components/Testimonials";
+import FinalCTA from "@/components/FinalCTA";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
@@ -127,17 +128,27 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="flex min-h-screen flex-col bg-background">
+      <div className="flex min-h-screen flex-col bg-[#F8F4E9]">
         <Header />
         <main className="flex-1">
+          {/* Section C: Premium Hero & Section D: Trust Highlights */}
           <Hero />
+          {/* Section E: Shop by Category */}
           <CategoriesGrid />
+          {/* Section F: Bestsellers / Featured Products */}
           <FeaturedProducts />
-          <ProductShowcase />
-          <WhyUs />
+          {/* Section G: Brand Story */}
           <Story />
+          {/* Section H: Product Discovery */}
+          <ProductShowcase />
+          {/* Authentic Kitchen Principles */}
+          <WhyUs />
+          {/* Section I: Cooking Inspiration & Verified Customer Feedback */}
           <Testimonials />
+          {/* Section J: Final CTA */}
+          <FinalCTA />
         </main>
+        {/* Section K: Premium Footer */}
         <Footer />
       </div>
     </>
