@@ -1,12 +1,43 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import { ChevronLeft, ChevronRight, Star, Quote, ExternalLink, MessageSquarePlus, X, Search, Sparkles } from "lucide-react";
 import { testimonials as localTestimonials, type Testimonial } from "@/data/testimonials";
 import { getReviews } from "@/lib/api";
 
 const GOOGLE_WRITE_REVIEW_URL = "https://www.google.com/search?q=kayalsamayal#lrd=0xa86e40eb213628e1:0xfa26eb8c224b177a,3";
 const GOOGLE_READ_REVIEWS_URL = "https://www.google.com/search?q=kayalsamayal#lrd=0xa86e40eb213628e1:0xfa26eb8c224b177a,1";
+
+function subscribeReducedMotion(callback: () => void) {
+  if (typeof window === "undefined" || !window.matchMedia) return () => {};
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mediaQuery.addEventListener("change", callback);
+  return () => mediaQuery.removeEventListener("change", callback);
+}
+
+function getReducedMotionSnapshot() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function getReducedMotionServerSnapshot() {
+  return false;
+}
+
+function subscribeVisibility(callback: () => void) {
+  if (typeof document === "undefined") return () => {};
+  document.addEventListener("visibilitychange", callback);
+  return () => document.removeEventListener("visibilitychange", callback);
+}
+
+function getVisibilitySnapshot() {
+  if (typeof document === "undefined") return false;
+  return document.visibilityState === "hidden";
+}
+
+function getVisibilityServerSnapshot() {
+  return false;
+}
 
 function GoogleLogo({ className = "h-5 w-5" }: { className?: string }) {
   return (
@@ -50,12 +81,25 @@ export default function Testimonials() {
   const [allReviews, setAllReviews] = useState<Testimonial[]>(localTestimonials);
   const [filter, setFilter] = useState<"all" | "5star" | "tamil">("all");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isTouched, setIsTouched] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isBrowseModalOpen, setIsBrowseModalOpen] = useState(false);
   const [modalFilter, setModalFilter] = useState<"all" | "5star" | "tamil">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot
+  );
+
+  const isTabHidden = useSyncExternalStore(
+    subscribeVisibility,
+    getVisibilitySnapshot,
+    getVisibilityServerSnapshot
+  );
 
   useEffect(() => {
     async function loadReviews() {
@@ -98,6 +142,8 @@ export default function Testimonials() {
   });
 
   const total = filteredReviews.length;
+  const safeIndex = total > 0 ? Math.min(currentIndex, total - 1) : 0;
+  const currentReview = filteredReviews[safeIndex];
 
   const handleFilterChange = (newFilter: "all" | "5star" | "tamil") => {
     setFilter(newFilter);
@@ -105,36 +151,77 @@ export default function Testimonials() {
   };
 
   const nextSlide = useCallback(() => {
-    if (total === 0) return;
+    if (total <= 1) return;
     setCurrentIndex((prev) => (prev + 1) % total);
   }, [total]);
 
   const prevSlide = useCallback(() => {
-    if (total === 0) return;
+    if (total <= 1) return;
     setCurrentIndex((prev) => (prev - 1 + total) % total);
   }, [total]);
 
-  // Autoscroll timer with pause on hover/touch
-  useEffect(() => {
-    if (isPaused || total <= 1) return;
-    autoPlayRef.current = setInterval(nextSlide, 6500);
-    return () => {
-      if (autoPlayRef.current) clearInterval(autoPlayRef.current);
-    };
-  }, [isPaused, total, nextSlide]);
+  const goToSlide = useCallback((idx: number) => {
+    if (total <= 1) return;
+    setCurrentIndex(idx % total);
+  }, [total]);
 
-  const safeIndex = total > 0 ? Math.min(currentIndex, total - 1) : 0;
-  const currentReview = filteredReviews[safeIndex];
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        nextSlide();
+      }
+    },
+    [prevSlide, nextSlide]
+  );
+
+  const isAutoplayPaused =
+    isHovered || isTouched || isTabHidden || isBrowseModalOpen || prefersReducedMotion;
+
+  // 5-second automatic review rotation
+  // Advances smoothly, pauses on hover/touch/tab-hidden/modal-open/reduced-motion,
+  // restarts fresh 5-second timer on manual navigation or slide change.
+  useEffect(() => {
+    if (isAutoplayPaused || total <= 1) {
+      if (autoPlayRef.current) {
+        clearInterval(autoPlayRef.current);
+        autoPlayRef.current = null;
+      }
+      return;
+    }
+
+    autoPlayRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % total);
+    }, 5000);
+
+    return () => {
+      if (autoPlayRef.current) {
+        clearInterval(autoPlayRef.current);
+        autoPlayRef.current = null;
+      }
+    };
+  }, [safeIndex, isAutoplayPaused, total]);
 
   return (
     <section
       className="py-16 sm:py-24 bg-[#F8F4E9] border-b border-border/80 overflow-hidden"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onTouchStart={() => setIsPaused(true)}
-      onTouchEnd={() => setIsPaused(false)}
       aria-label="Google Customer Reviews"
     >
+      <style>{`
+        @keyframes reviewFade {
+          0% {
+            opacity: 0.7;
+            transform: translateY(3px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
       <div className="container-page">
         {/* Header with Google Business Rating Badge */}
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
@@ -192,7 +279,19 @@ export default function Testimonials() {
         </div>
 
         {/* Carousel Viewport */}
-        <div className="relative max-w-3xl mx-auto">
+        <div
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          role="region"
+          aria-roledescription="carousel"
+          aria-label="Customer reviews carousel"
+          aria-live="polite"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={() => setIsTouched(true)}
+          onTouchEnd={() => setIsTouched(false)}
+          className="relative max-w-3xl mx-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#174D35] rounded-3xl"
+        >
           {isLoading && filteredReviews.length === 0 ? (
             <div className="rounded-3xl border border-border bg-white p-8 sm:p-12 shadow-sm animate-pulse min-h-[240px] flex flex-col justify-center items-center text-center">
               <div className="h-5 w-32 bg-muted rounded mb-4" />
@@ -215,11 +314,17 @@ export default function Testimonials() {
               <div className="flex items-center justify-between mb-4">
                 <Quote className="h-8 w-8 text-[#B88A3B]/30" />
                 <span className="text-[11px] font-medium text-[#6B5E54] bg-[#F4F1E9] px-2.5 py-1 rounded-full">
-                  Review {currentIndex + 1} of {total}
+                  Review {safeIndex + 1} of {total}
                 </span>
               </div>
 
-              <div className="space-y-4">
+              <div
+                key={currentReview?.id || safeIndex}
+                style={{
+                  animation: prefersReducedMotion ? "none" : "reviewFade 0.4s ease-out forwards",
+                }}
+                className="space-y-4"
+              >
                 <StarRating rating={currentReview?.rating || 5} />
                 <p className="font-display text-base sm:text-lg md:text-xl text-[#332820] italic leading-relaxed">
                   &ldquo;{currentReview?.review}&rdquo;
@@ -269,18 +374,24 @@ export default function Testimonials() {
 
           {/* Dots Indicator */}
           {filteredReviews.length > 1 && (
-            <div className="flex justify-center items-center gap-1.5 mt-6">
-              {filteredReviews.slice(0, Math.min(12, filteredReviews.length)).map((_, idx) => (
+            <div
+              className="flex justify-center items-center gap-1.5 mt-6 max-w-full overflow-x-auto py-1.5 px-2"
+              role="tablist"
+              aria-label="Review pagination dots"
+            >
+              {filteredReviews.map((_, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setCurrentIndex(idx)}
-                  aria-label={`Go to review ${idx + 1}`}
-                  className="flex items-center justify-center min-h-[44px] min-w-[20px] p-1.5 cursor-pointer"
+                  onClick={() => goToSlide(idx)}
+                  role="tab"
+                  aria-selected={safeIndex === idx}
+                  aria-label={`Go to review ${idx + 1} of ${total}`}
+                  className="flex items-center justify-center min-h-[44px] min-w-[20px] p-1.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#174D35] rounded-full"
                 >
                   <span
-                    className={`h-2 rounded-full transition-all block ${
-                      currentIndex === idx ? "w-6 bg-[#174D35]" : "w-2 bg-border hover:bg-muted-foreground"
+                    className={`h-2 rounded-full transition-all duration-300 block ${
+                      safeIndex === idx ? "w-6 bg-[#174D35]" : "w-2 bg-border hover:bg-muted-foreground"
                     }`}
                   />
                 </button>
