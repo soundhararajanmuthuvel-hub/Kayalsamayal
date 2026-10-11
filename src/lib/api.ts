@@ -1,5 +1,5 @@
 import { Product, Category, Tier } from "@/data/products";
-import { Testimonial } from "@/data/testimonials";
+import { Testimonial, testimonials as localTestimonials } from "@/data/testimonials";
 
 const FALLBACK_API_URL = "https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec";
 
@@ -135,12 +135,17 @@ function mapProduct(raw: any): Product {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapReview(raw: any): Testimonial & { avatar?: string; active?: boolean } {
-  const id     = String(raw["Review ID"] || raw["id"] || raw["reviewId"] || Math.random().toString());
-  const name   = String(raw["Customer Name"] || raw["name"] || "Anonymous");
-  const rating = Number(raw["Rating"] || raw["rating"] || 5);
-  const date   = String(raw["Date"]   || raw["date"]   || "recently");
-  const review = String(raw["Review"] || raw["review"] || "");
-  const avatar = raw["Avatar"] || raw["avatar"] || undefined;
+  const id             = String(raw["Review ID"] || raw["id"] || raw["reviewId"] || Math.random().toString());
+  const name           = String(raw["Customer Name"] || raw["name"] || "Google Reviewer");
+  const rating         = Number(raw["Rating"] || raw["rating"] || 5);
+  const date           = String(raw["Date"]   || raw["date"]   || "recently");
+  const review         = String(raw["Review"] || raw["review"] || "");
+  const avatar         = raw["Avatar"] || raw["avatar"] || undefined;
+  const isTamil        = /[அ-ஔ]/i.test(review);
+  const language       = (raw["Language"] || raw["language"] || (isTamil ? "ta" : "en")) as "ta" | "en";
+  const source         = "Google Review" as const;
+  const googleUrl      = String(raw["Google Review URL"] || raw["googleUrl"] || "https://www.google.com/search?q=kayalsamayal#lrd=0xa86e40eb213628e1:0xfa26eb8c224b177a,1");
+  const googleReviewId = raw["Google Review ID"] ? String(raw["Google Review ID"]) : raw["googleReviewId"];
 
   const activeVal = raw["Active"] ?? raw["active"];
   const active = activeVal === undefined
@@ -149,7 +154,7 @@ function mapReview(raw: any): Testimonial & { avatar?: string; active?: boolean 
     || activeVal === 1
     || String(activeVal).toLowerCase() === "yes";
 
-  return { id, name, rating, date, review, avatar, active };
+  return { id, name, rating, date, review, language, avatar, source, googleUrl, googleReviewId, active };
 }
 
 // ── GET PRODUCTS ──────────────────────────────────────────────────────────────
@@ -186,13 +191,14 @@ export async function getReviews(): Promise<Testimonial[]> {
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
-    if (json && json.success && Array.isArray(json.data)) {
-      return json.data.map(mapReview).filter((r: Testimonial & { active?: boolean }) => r.active !== false);
+    if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+      const mapped = json.data.map(mapReview).filter((r: Testimonial & { active?: boolean }) => r.active !== false);
+      if (mapped.length > 0) return mapped;
     }
-    return [];
+    return localTestimonials;
   } catch (err) {
-    console.warn("Failed to fetch reviews from API, falling back to local data.", err);
-    return [];
+    console.warn("Failed to fetch reviews from API, falling back to verified local data.", err);
+    return localTestimonials;
   }
 }
 
