@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import HeroProductShowcase from "@/components/HeroProductShowcase";
 
 const trustPillars = [
   "35+ Traditional Varieties",
@@ -97,59 +98,9 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Right Column: Authentic Product Photography Showcase */}
+            {/* Right Column: Authentic Product Packaging Showcase */}
             <div className="lg:col-span-5 relative mt-4 lg:mt-0">
-              <div className="relative bg-[#174D35]/60 p-4 sm:p-5 rounded-3xl border border-[#B88A3B]/30 shadow-2xl backdrop-blur-xs group">
-                <div className="relative w-full h-[360px] sm:h-[440px] rounded-2xl overflow-hidden bg-[#0D2F22] flex items-center justify-center">
-                  <picture>
-                    <source srcSet="/assets/hero-spices.webp" type="image/webp" />
-                    <img
-                      src="/assets/hero-spices.webp"
-                      alt="Authentic traditional spices prepared by Kayal Samayal"
-                      width={720}
-                      height={800}
-                      fetchPriority="high"
-                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out filter brightness-95"
-                    />
-                  </picture>
-
-                  {/* Gradient Scrim */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D2F22] via-[#0D2F22]/30 to-transparent" />
-
-                  {/* Floating Authenticated Product Card */}
-                  <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl flex items-center justify-between border border-border">
-                    <div className="min-w-0 pr-3">
-                      <span className="text-[0.65rem] font-bold text-[#B88A3B] uppercase tracking-wider block">
-                        Signature Heritage Blend
-                      </span>
-                      <h3 className="font-display font-bold text-base sm:text-lg text-[#332820] truncate">
-                        Kayal Curry Masala
-                      </h3>
-                      <p className="text-[0.7rem] text-[#6B5E54] truncate">
-                        Hand-picked coastal whole spices
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-display font-extrabold text-lg text-[#174D35] block">
-                        ₹60 - ₹120
-                      </span>
-                      <span className="text-[0.65rem] font-bold text-[#174D35]">
-                        IN STOCK
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pure Veg Badge */}
-                <div className="absolute top-7 left-7 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 border border-border">
-                  <span className="w-3.5 h-3.5 rounded-xs bg-white flex items-center justify-center p-0.5 border border-[#174D35]">
-                    <span className="w-2 h-2 rounded-full bg-[#174D35]" />
-                  </span>
-                  <span className="text-[0.68rem] font-bold text-[#174D35] uppercase tracking-wider">
-                    100% PURE FOOD PRODUCTS
-                  </span>
-                </div>
-              </div>
+              <HeroProductShowcase />
             </div>
 
           </div>
