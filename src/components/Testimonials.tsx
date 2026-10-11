@@ -79,7 +79,6 @@ function StarRating({ rating }: { rating: number }) {
 
 export default function Testimonials() {
   const [allReviews, setAllReviews] = useState<Testimonial[]>(localTestimonials);
-  const [filter, setFilter] = useState<"all" | "5star" | "tamil">("all");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [isTouched, setIsTouched] = useState(false);
@@ -135,20 +134,9 @@ export default function Testimonials() {
     };
   }, [isBrowseModalOpen]);
 
-  const filteredReviews = allReviews.filter((r) => {
-    if (filter === "5star") return r.rating === 5;
-    if (filter === "tamil") return r.language === "ta" || /[அ-ஔ]/i.test(r.review);
-    return true;
-  });
-
-  const total = filteredReviews.length;
+  const total = allReviews.length;
   const safeIndex = total > 0 ? Math.min(currentIndex, total - 1) : 0;
-  const currentReview = filteredReviews[safeIndex];
-
-  const handleFilterChange = (newFilter: "all" | "5star" | "tamil") => {
-    setFilter(newFilter);
-    setCurrentIndex(0);
-  };
+  const currentReview = allReviews[safeIndex];
 
   const nextSlide = useCallback(() => {
     if (total <= 1) return;
@@ -224,7 +212,7 @@ export default function Testimonials() {
       `}</style>
       <div className="container-page">
         {/* Header with Google Business Rating Badge */}
-        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 space-y-3">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-10 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#B88A3B]/30 shadow-2xs">
             <GoogleLogo className="h-4 w-4 shrink-0" />
             <span className="text-xs font-semibold text-[#332820]">
@@ -239,43 +227,6 @@ export default function Testimonials() {
           <p className="text-[#6B5E54] text-xs sm:text-sm max-w-xl mx-auto">
             Genuine experiences shared by customers and home chefs on our official Google Business Profile.
           </p>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => handleFilterChange("all")}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === "all"
-                  ? "bg-[#174D35] text-white"
-                  : "bg-white text-[#332820] border border-border hover:bg-[#F4F1E9]"
-              }`}
-            >
-              All Reviews ({allReviews.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterChange("5star")}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === "5star"
-                  ? "bg-[#174D35] text-white"
-                  : "bg-white text-[#332820] border border-border hover:bg-[#F4F1E9]"
-              }`}
-            >
-              5-Star Only
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFilterChange("tamil")}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === "tamil"
-                  ? "bg-[#174D35] text-white"
-                  : "bg-white text-[#332820] border border-border hover:bg-[#F4F1E9]"
-              }`}
-            >
-              தமிழ் Reviews
-            </button>
-          </div>
         </div>
 
         {/* Carousel Viewport */}
@@ -292,22 +243,15 @@ export default function Testimonials() {
           onTouchEnd={() => setIsTouched(false)}
           className="relative max-w-3xl mx-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#174D35] rounded-3xl"
         >
-          {isLoading && filteredReviews.length === 0 ? (
+          {isLoading && allReviews.length === 0 ? (
             <div className="rounded-3xl border border-border bg-white p-8 sm:p-12 shadow-sm animate-pulse min-h-[240px] flex flex-col justify-center items-center text-center">
               <div className="h-5 w-32 bg-muted rounded mb-4" />
               <div className="h-4 w-3/4 bg-muted rounded mb-2" />
               <div className="h-4 w-1/2 bg-muted rounded" />
             </div>
-          ) : filteredReviews.length === 0 ? (
+          ) : allReviews.length === 0 ? (
             <div className="rounded-3xl border border-border bg-white p-8 sm:p-12 shadow-sm min-h-[220px] flex flex-col justify-center items-center text-center">
-              <p className="text-sm text-[#6B5E54] mb-4">No reviews found matching this filter.</p>
-              <button
-                type="button"
-                onClick={() => handleFilterChange("all")}
-                className="btn-primary text-xs"
-              >
-                Show All Reviews
-              </button>
+              <p className="text-sm text-[#6B5E54]">No reviews currently available.</p>
             </div>
           ) : (
             <div className="relative overflow-hidden rounded-3xl border border-border bg-white p-6 sm:p-10 shadow-sm min-h-[240px] flex flex-col justify-between transition-all">
@@ -373,13 +317,13 @@ export default function Testimonials() {
           )}
 
           {/* Dots Indicator */}
-          {filteredReviews.length > 1 && (
+          {allReviews.length > 1 && (
             <div
               className="flex justify-center items-center gap-1.5 mt-6 max-w-full overflow-x-auto py-1.5 px-2"
               role="tablist"
               aria-label="Review pagination dots"
             >
-              {filteredReviews.map((_, idx) => (
+              {allReviews.map((_, idx) => (
                 <button
                   key={idx}
                   type="button"
