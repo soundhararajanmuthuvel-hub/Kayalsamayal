@@ -39,6 +39,40 @@ function safeStringCompare(a, b) {
 }
 
 /**
+ * Retrieve SERVER_AUTH_SECRET strictly from Script Properties.
+ * Zero hardcoded fallback secrets. Returns null if not configured.
+ */
+function getServerAuthSecret() {
+  try {
+    var scriptProps = PropertiesService.getScriptProperties();
+    if (!scriptProps) return null;
+    var sec = scriptProps.getProperty("SERVER_AUTH_SECRET");
+    if (!sec || typeof sec !== "string") return null;
+    var cleaned = sec.trim().replace(/^["']|["']$/g, "").trim();
+    return cleaned.length > 0 ? cleaned : null;
+  } catch (e) {
+    Logger.log("getServerAuthSecret error: " + e.toString());
+    return null;
+  }
+}
+
+/**
+ * Verify HMAC-SHA256 server authentication token strictly with configured SERVER_AUTH_SECRET.
+ * Constant-time comparison prevents timing analysis.
+ */
+function verifyServerAuthToken(message, token) {
+  if (!token || typeof token !== "string" || !message || typeof message !== "string") return false;
+  var secret = getServerAuthSecret();
+  if (!secret) return false;
+  var expectedBytes = Utilities.computeHmacSha256Signature(message, secret);
+  var expectedHex = expectedBytes.map(function(b) {
+    var byteVal = (b < 0 ? b + 256 : b);
+    return ("0" + byteVal.toString(16)).slice(-2);
+  }).join("");
+  return safeStringCompare(token.trim().toLowerCase(), expectedHex.toLowerCase());
+}
+
+/**
  * Safe Sheet Lookup — tries primary name then alternatives.
  */
 function getSheetSafely(ss, preferredName, alternativeNames) {
@@ -618,19 +652,35 @@ function doGet(e) {
     }
 
     if (action === "order") {
-      var orderId = e.parameter.id;
+      var orderId = String(e.parameter.id || "").trim();
       if (!orderId) return jsonResponse({ success: false, error: "Order ID parameter is required", step: "Parameter Validation" });
       var ordersSheet   = getSheetSafely(ss, TABS.ORDERS, ["Order", "Orders Sheet"]);
       var itemsSheet    = getSheetSafely(ss, TABS.ORDER_ITEMS, ["OrderItems", "Order_Items"]);
       var custSheet2    = getSheetSafely(ss, TABS.CUSTOMERS, ["Customer", "Customers Sheet"]);
-      if (!ordersSheet || !itemsSheet) return jsonResponse({ success: false, error: "Orders or Order Items sheet not found", step: "Orders Lookup" });
+      if (!ordersSheet) return jsonResponse({ success: false, error: "Orders sheet not found", step: "Orders Lookup" });
       var orders    = getSheetRowsAsJSON(ordersSheet);
-      var order     = orders.filter(function(o) { return o["Order ID"] === orderId; })[0];
+      var order     = orders.filter(function(o) {
+        var ordId = String(o["Order ID"] || o["OrderID"] || o["Order Id"] || "").trim().toLowerCase();
+        var rzpId = String(o["Razorpay Order ID"] || o["Razorpay Order Id"] || o["Razorpay ID"] || "").trim().toLowerCase();
+        var queryId = orderId.toLowerCase();
+        return (ordId === queryId) || (rzpId === queryId);
+      })[0];
       if (!order) return jsonResponse({ success: false, error: "Order not found", step: "Order Search" });
-      var orderItems = getSheetRowsAsJSON(itemsSheet).filter(function(item) { return item["Order ID"] === orderId; });
+      var canonicalOrderId = String(order["Order ID"] || order["OrderID"] || order["Order Id"] || orderId).trim();
+      var orderItems = [];
+      if (itemsSheet) {
+        orderItems = getSheetRowsAsJSON(itemsSheet).filter(function(item) {
+          var itemOrdId = String(item["Order ID"] || item["OrderID"] || item["Order Id"] || "").trim();
+          return itemOrdId.toLowerCase() === canonicalOrderId.toLowerCase();
+        });
+      }
       var customer   = null;
-      if (custSheet2 && order["Customer ID"]) {
-        customer = getSheetRowsAsJSON(custSheet2).filter(function(c) { return c["Customer ID"] === order["Customer ID"]; })[0] || null;
+      var custId = String(order["Customer ID"] || order["CustomerID"] || order["Customer Id"] || "").trim();
+      if (custSheet2 && custId) {
+        customer = getSheetRowsAsJSON(custSheet2).filter(function(c) {
+          var cId = String(c["Customer ID"] || c["CustomerID"] || c["Customer Id"] || "").trim();
+          return cId.toLowerCase() === custId.toLowerCase();
+        })[0] || null;
       }
       return jsonResponse({ success: true, data: { order: order, customer: customer, items: orderItems } });
     }
@@ -729,17 +779,14 @@ function doPost(e) {
     }
 
     if (action === "updateOrder") {
-      // Security Gate: Protect updateOrder with SERVER_AUTH_SECRET HMAC verification
-      var scriptProps = PropertiesService.getScriptProperties();
-      var candidateSecrets = [];
-      if (scriptProps) {
-        var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
-        var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
-        if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
-        if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
+      var serverAuthSecret = getServerAuthSecret();
+      if (!serverAuthSecret) {
+        return jsonResponse({
+          success: false,
+          error: "Server configuration error: SERVER_AUTH_SECRET is not configured in Google Apps Script Script Properties.",
+          step: "Server Authentication Configuration"
+        });
       }
-      candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
-      candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
       var serverAuthToken = String(postData.serverAuthToken || "").trim();
       var orderIdToUpdate = String(postData.orderId || "").trim();
@@ -747,32 +794,7 @@ function doPost(e) {
         return jsonResponse({ success: false, error: "Order ID is required", step: "Order ID Validation" });
       }
 
-      var isSigValid = false;
-      for (var cs = 0; cs < candidateSecrets.length; cs++) {
-        var secretToTest = candidateSecrets[cs];
-        var expectedBytes = Utilities.computeHmacSha256Signature(
-          "KAYAL_ORDER_UPDATE:" + orderIdToUpdate,
-          secretToTest
-        );
-        var expectedHex = expectedBytes.map(function(b) {
-          var byteVal = (b < 0 ? b + 256 : b);
-          return ("0" + byteVal.toString(16)).slice(-2);
-        }).join("");
-
-        if (safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase())) {
-          isSigValid = true;
-          break;
-        }
-      }
-
-      Logger.log("[AUTH_DEBUG] " + JSON.stringify({
-        tokenReceived: !!serverAuthToken,
-        tokenLength: serverAuthToken.length,
-        candidateSecretsCount: candidateSecrets.length,
-        signatureValid: isSigValid
-      }));
-
-      if (!serverAuthToken || !isSigValid) {
+      if (!serverAuthToken || !verifyServerAuthToken("KAYAL_ORDER_UPDATE:" + orderIdToUpdate, serverAuthToken)) {
         return jsonResponse({
           success: false,
           error: "Unauthorized order update: Invalid or forged server authentication token.",
@@ -790,29 +812,20 @@ function doPost(e) {
     }
 
     if (action === "cleanupTestData") {
-      // Security Gate: Protect cleanupTestData with SERVER_AUTH_SECRET HMAC verification
-      var scriptProps = PropertiesService.getScriptProperties();
-      var configuredSecret = scriptProps ? (scriptProps.getProperty("SERVER_AUTH_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET")) : null;
-      if (!configuredSecret || configuredSecret.trim().length === 0) {
-        configuredSecret = "QCh0H33s8BN6aoBfUmJ39y5r";
+      var serverAuthSecret = getServerAuthSecret();
+      if (!serverAuthSecret) {
+        return jsonResponse({
+          success: false,
+          error: "Server configuration error: SERVER_AUTH_SECRET is not configured in Google Apps Script Script Properties.",
+          step: "Server Authentication Configuration"
+        });
       }
 
       var serverAuthToken = String(postData.serverAuthToken || "").trim();
       var targetOrderIds = Array.isArray(postData.orderIdsToDelete) ? postData.orderIdsToDelete : [];
       var targetCustomerIds = Array.isArray(postData.customerIdsToDelete) ? postData.customerIdsToDelete : [];
 
-      var expectedBytes = Utilities.computeHmacSha256Signature(
-        "KAYAL_CLEANUP_AUTH:" + targetOrderIds.length + ":" + targetCustomerIds.length,
-        configuredSecret.trim()
-      );
-      var expectedHex = expectedBytes.map(function(b) {
-        var byteVal = (b < 0 ? b + 256 : b);
-        return ("0" + byteVal.toString(16)).slice(-2);
-      }).join("");
-
-      var isSigValid = safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase());
-
-      if (!serverAuthToken || !isSigValid) {
+      if (!serverAuthToken || !verifyServerAuthToken("KAYAL_CLEANUP_AUTH:" + targetOrderIds.length + ":" + targetCustomerIds.length, serverAuthToken)) {
         return jsonResponse({
           success: false,
           error: "Unauthorized cleanup request: Invalid or forged server authentication token.",
@@ -1427,6 +1440,9 @@ function createPendingOrder(ss, data) {
     if (couponCodeInput && discount > 0) {
       combinedNotes = combinedNotes ? (combinedNotes + " | Coupon: " + couponCodeInput) : ("Coupon: " + couponCodeInput);
     }
+    if (Array.isArray(itemsInput) && itemsInput.length > 0) {
+      combinedNotes = (combinedNotes ? (combinedNotes + "\n") : "") + "[CART_ITEMS:" + JSON.stringify(itemsInput) + "]";
+    }
 
     // Build order row dynamically using existing headers
     var orderHeaders = ordersSheet.getRange(1, 1, 1, Math.max(1, ordersSheet.getLastColumn())).getValues()[0];
@@ -1436,11 +1452,11 @@ function createPendingOrder(ss, data) {
       if (hl === "order id" || hl === "orderid") newRow[i] = orderId;
       else if (hl === "customer id" || hl === "customerid") newRow[i] = customerId;
       else if (hl === "created at" || hl === "order date" || hl === "created date") newRow[i] = new Date();
-      else if (hl === "customer name" || hl === "name") newRow[i] = customerInput.name;
+      else if (hl === "full name" || hl === "customer name" || hl === "name") newRow[i] = customerInput.name;
       else if (hl === "mobile" || hl === "phone") newRow[i] = customerInput.mobile;
       else if (hl === "email" || hl === "email address") newRow[i] = customerInput.email || "";
-      else if (hl === "address") newRow[i] = customerInput.address || "";
-      else if (hl === "city") newRow[i] = customerInput.city || "";
+      else if (hl === "shipping address" || hl === "address") newRow[i] = customerInput.address || "";
+      else if (hl === "city/town" || hl === "city" || hl === "town") newRow[i] = customerInput.city || "";
       else if (hl === "state") newRow[i] = customerInput.state || "";
       else if (hl === "pincode" || hl === "pin code") newRow[i] = customerInput.pincode || "";
       else if (hl === "order notes" || hl === "notes") newRow[i] = combinedNotes;
@@ -1542,38 +1558,22 @@ function confirmRazorpayOrder(ss, data) {
       return { success: false, error: "Missing required Razorpay payment credentials.", step: "Payment Credentials Validation" };
     }
 
-    // Verify server authentication token against candidate secrets
-    var scriptProps = PropertiesService.getScriptProperties();
-    var candidateSecrets = [];
-    if (scriptProps) {
-      var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
-      var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
-      if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
-      if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
-    }
-    candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
-    candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
-
-    var isSigValid = false;
-    for (var cs = 0; cs < candidateSecrets.length; cs++) {
-      var secretToTest = candidateSecrets[cs];
-      var expectedBytes = Utilities.computeHmacSha256Signature(
-        "KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId,
-        secretToTest
-      );
-      var expectedToken = expectedBytes.map(function(b) {
-        var byteVal = (b < 0 ? b + 256 : b);
-        return ("0" + byteVal.toString(16)).slice(-2);
-      }).join("");
-
-      if (safeStringCompare(serverAuthToken.toLowerCase(), expectedToken.toLowerCase())) {
-        isSigValid = true;
-        break;
-      }
+    // Verify server authentication token strictly with SERVER_AUTH_SECRET
+    var serverAuthSecret = getServerAuthSecret();
+    if (!serverAuthSecret) {
+      return {
+        success: false,
+        error: "Server configuration error: SERVER_AUTH_SECRET is not configured in Google Apps Script Script Properties.",
+        step: "Server Authentication Configuration"
+      };
     }
 
-    if (!isSigValid) {
-      return { success: false, error: "Unauthorized order confirmation: Invalid authentication token.", step: "Server Authentication Validation" };
+    if (!verifyServerAuthToken("KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId, serverAuthToken)) {
+      return {
+        success: false,
+        error: "Unauthorized order confirmation: Invalid authentication token.",
+        step: "Server Authentication Validation"
+      };
     }
 
     // Search for existing order row
@@ -1582,15 +1582,19 @@ function confirmRazorpayOrder(ss, data) {
     var matchedRowObj = null;
     var matchedRowIndex = -1; // 1-based sheet row number
 
+    var queryPayId = razorpayPaymentId.toLowerCase();
+    var queryOrdId = razorpayOrderId.toLowerCase();
+    var queryInputId = (inputOrderId || String(data.backendOrderId || "")).trim().toLowerCase();
+
     for (var r = 0; r < orderRows.length; r++) {
       var row = orderRows[r];
-      var rPayId = String(row["Razorpay Payment ID"] || "").trim();
-      var rOrdId = String(row["Razorpay Order ID"] || "").trim();
-      var rId    = String(row["Order ID"] || "").trim();
+      var rPayId = String(row["Razorpay Payment ID"] || row["Razorpay Payment Id"] || "").trim().toLowerCase();
+      var rOrdId = String(row["Razorpay Order ID"] || row["Razorpay Order Id"] || row["Razorpay ID"] || "").trim().toLowerCase();
+      var rId    = String(row["Order ID"] || row["OrderID"] || row["Order Id"] || "").trim().toLowerCase();
 
-      if ((razorpayPaymentId && rPayId === razorpayPaymentId) ||
-          (razorpayOrderId && rOrdId === razorpayOrderId) ||
-          (inputOrderId && rId === inputOrderId)) {
+      if ((queryPayId && rPayId === queryPayId) ||
+          (queryOrdId && rOrdId === queryOrdId) ||
+          (queryInputId && rId === queryInputId)) {
         matchedRowObj = row;
         matchedRowIndex = r + 2; // +1 header, +1 1-based
         break;
@@ -1632,6 +1636,19 @@ function confirmRazorpayOrder(ss, data) {
     var itemsInput = data.items || [];
     var couponCodeInput = String(data.couponCode || (matchedRowObj ? matchedRowObj["Coupon Code"] : "") || "").trim().toUpperCase();
 
+    // Fallback: If itemsInput is empty, attempt to recover items from Order Notes
+    if ((!Array.isArray(itemsInput) || itemsInput.length === 0) && matchedRowObj["Order Notes"]) {
+      var notesContent = String(matchedRowObj["Order Notes"] || "");
+      var cartMatch = notesContent.match(/\[CART_ITEMS:(.+?)\]/);
+      if (cartMatch && cartMatch[1]) {
+        try {
+          itemsInput = JSON.parse(cartMatch[1]);
+        } catch (e) {
+          Logger.log("Failed to parse items from Order Notes: " + e.toString());
+        }
+      }
+    }
+
     // Update existing row to Paid & Confirmed
     function updateCol(colName, value) {
       var idx = orderHeaderVals.indexOf(colName) + 1;
@@ -1649,11 +1666,19 @@ function confirmRazorpayOrder(ss, data) {
     var colOrdStatusIdx = orderHeaderVals.indexOf("Order Status") + 1;
     if (colOrdStatusIdx <= 0) ordersSheet.getRange(matchedRowIndex, 18).setValue("Confirmed");
 
-    // Validate and append Order Items & deduct stock
+    // Stock & Items Deduplication Safety:
+    // Check if Order Items sheet ALREADY contains rows for this order ID
+    var existingOrderItems = itemsSheet ? getSheetRowsAsJSON(itemsSheet).filter(function(item) {
+      var itmOrdId = String(item["Order ID"] || item["OrderID"] || item["Order Id"] || "").trim().toLowerCase();
+      return itmOrdId === orderId.toLowerCase();
+    }) : [];
+    var alreadyHasItems = existingOrderItems.length > 0;
+
+    // Validate and append Order Items & deduct stock ONLY if items not previously recorded
     var products = getSheetRowsAsJSON(productsSheet);
     var validatedItems = [];
 
-    if (Array.isArray(itemsInput) && itemsInput.length > 0) {
+    if (!alreadyHasItems && Array.isArray(itemsInput) && itemsInput.length > 0) {
       for (var i = 0; i < itemsInput.length; i++) {
         var item = itemsInput[i];
         var product = products.filter(function(p) {
@@ -1678,55 +1703,57 @@ function confirmRazorpayOrder(ss, data) {
       }
     }
 
-    // Append to Order Items sheet
-    var itemsHeaders = itemsSheet.getRange(1, 1, 1, Math.max(1, itemsSheet.getLastColumn())).getValues()[0];
-    validatedItems.forEach(function(item, index) {
-      var orderItemId = orderId + "-ITEM-" + String(index + 1).padStart(3, "0");
-      var itemRow = new Array(itemsHeaders.length).fill("");
-      itemsHeaders.forEach(function(h, idx) {
-        var hl = String(h).trim().toLowerCase();
-        if (hl === "order item id" || hl === "item id" || hl === "id") itemRow[idx] = orderItemId;
-        else if (hl === "order id" || hl === "orderid") itemRow[idx] = orderId;
-        else if (hl === "product id" || hl === "productid") itemRow[idx] = item.productId;
-        else if (hl === "product name" || hl === "product") itemRow[idx] = item.productName;
-        else if (hl === "tier" || hl === "variant") itemRow[idx] = item.tier;
-        else if (hl === "quantity" || hl === "qty") itemRow[idx] = item.quantity;
-        else if (hl === "unit price" || hl === "price") itemRow[idx] = item.unitPrice;
-        else if (hl === "gst rate" || hl === "tax rate") itemRow[idx] = item.gstRate;
-        else if (hl === "gst amount" || hl === "tax amount") itemRow[idx] = item.lineTotal * item.gstRate;
-        else if (hl === "line total" || hl === "total" || hl === "total price") itemRow[idx] = item.lineTotal;
-        else if (hl === "created at" || hl === "date") itemRow[idx] = new Date();
+    // Append to Order Items sheet and deduct stock exactly once
+    if (!alreadyHasItems && validatedItems.length > 0) {
+      var itemsHeaders = itemsSheet.getRange(1, 1, 1, Math.max(1, itemsSheet.getLastColumn())).getValues()[0];
+      validatedItems.forEach(function(item, index) {
+        var orderItemId = orderId + "-ITEM-" + String(index + 1).padStart(3, "0");
+        var itemRow = new Array(itemsHeaders.length).fill("");
+        itemsHeaders.forEach(function(h, idx) {
+          var hl = String(h).trim().toLowerCase();
+          if (hl === "order item id" || hl === "item id" || hl === "id") itemRow[idx] = orderItemId;
+          else if (hl === "order id" || hl === "orderid") itemRow[idx] = orderId;
+          else if (hl === "product id" || hl === "productid") itemRow[idx] = item.productId;
+          else if (hl === "product name" || hl === "product") itemRow[idx] = item.productName;
+          else if (hl === "tier" || hl === "variant") itemRow[idx] = item.tier;
+          else if (hl === "quantity" || hl === "qty") itemRow[idx] = item.quantity;
+          else if (hl === "unit price" || hl === "price") itemRow[idx] = item.unitPrice;
+          else if (hl === "gst rate" || hl === "tax rate") itemRow[idx] = item.gstRate;
+          else if (hl === "gst amount" || hl === "tax amount") itemRow[idx] = item.lineTotal * item.gstRate;
+          else if (hl === "line total" || hl === "total" || hl === "total price") itemRow[idx] = item.lineTotal;
+          else if (hl === "created at" || hl === "date") itemRow[idx] = new Date();
+        });
+
+        if (itemRow.filter(function(v) { return v !== ""; }).length === 0) {
+          itemsSheet.appendRow([
+            orderItemId,
+            orderId,
+            item.productId,
+            item.productName,
+            item.tier,
+            item.quantity,
+            item.unitPrice,
+            item.gstRate,
+            item.lineTotal * item.gstRate,
+            item.lineTotal,
+            new Date()
+          ]);
+        } else {
+          itemsSheet.appendRow(itemRow);
+        }
+
+        // Deduct stock safely
+        var pIndex = products.indexOf(item.product) + 2;
+        var currentStock = Number((item.product["Stock"] !== undefined) ? item.product["Stock"] : ((item.product["stock"] !== undefined) ? item.product["stock"] : 0));
+        var newStock = Math.max(0, currentStock - item.quantity);
+        var prodHeaders = productsSheet.getRange(1, 1, 1, productsSheet.getLastColumn()).getValues()[0];
+        var stockColIdx = -1;
+        prodHeaders.forEach(function(h, idx) { if (String(h).trim().toLowerCase() === "stock") stockColIdx = idx + 1; });
+        if (stockColIdx > 0) {
+          productsSheet.getRange(pIndex, stockColIdx).setValue(newStock);
+        }
       });
-
-      if (itemRow.filter(function(v) { return v !== ""; }).length === 0) {
-        itemsSheet.appendRow([
-          orderItemId,
-          orderId,
-          item.productId,
-          item.productName,
-          item.tier,
-          item.quantity,
-          item.unitPrice,
-          item.gstRate,
-          item.lineTotal * item.gstRate,
-          item.lineTotal,
-          new Date()
-        ]);
-      } else {
-        itemsSheet.appendRow(itemRow);
-      }
-
-      // Deduct stock
-      var pIndex = products.indexOf(item.product) + 2;
-      var currentStock = Number((item.product["Stock"] !== undefined) ? item.product["Stock"] : ((item.product["stock"] !== undefined) ? item.product["stock"] : 0));
-      var newStock = Math.max(0, currentStock - item.quantity);
-      var prodHeaders = productsSheet.getRange(1, 1, 1, productsSheet.getLastColumn()).getValues()[0];
-      var stockColIdx = -1;
-      prodHeaders.forEach(function(h, idx) { if (String(h).trim().toLowerCase() === "stock") stockColIdx = idx + 1; });
-      if (stockColIdx > 0) {
-        productsSheet.getRange(pIndex, stockColIdx).setValue(newStock);
-      }
-    });
+    }
 
     // Increment coupon used count if applicable
     if (couponCodeInput) {
@@ -1928,52 +1955,17 @@ function processOrderTransaction(ss, data) {
         };
       }
 
-      // Cryptographically verify server-to-server authorization token against candidate secrets
-      var scriptProps = PropertiesService.getScriptProperties();
-      var candidateSecrets = [];
-      if (scriptProps) {
-        var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
-        var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
-        if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
-        if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
-      }
-      candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
-      candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
-
-      if (!serverAuthToken) {
+      // Cryptographically verify server-to-server authorization token strictly with SERVER_AUTH_SECRET
+      var serverAuthSecret = getServerAuthSecret();
+      if (!serverAuthSecret) {
         return {
           success: false,
-          error: "Unauthorized order creation: Missing server authentication token.",
-          step: "Server Authentication Validation"
+          error: "Server configuration error: SERVER_AUTH_SECRET is not configured in Google Apps Script Script Properties.",
+          step: "Server Authentication Configuration"
         };
       }
 
-      var isSigValid = false;
-      for (var cs = 0; cs < candidateSecrets.length; cs++) {
-        var secretToTest = candidateSecrets[cs];
-        var expectedBytes = Utilities.computeHmacSha256Signature(
-          "KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId,
-          secretToTest
-        );
-        var expectedToken = expectedBytes.map(function(b) {
-          var byteVal = (b < 0 ? b + 256 : b);
-          return ("0" + byteVal.toString(16)).slice(-2);
-        }).join("");
-
-        if (safeStringCompare(serverAuthToken.toLowerCase(), expectedToken.toLowerCase())) {
-          isSigValid = true;
-          break;
-        }
-      }
-
-      Logger.log("[AUTH_DEBUG] " + JSON.stringify({
-        tokenReceived: !!serverAuthToken,
-        tokenLength: serverAuthToken.length,
-        candidateSecretsCount: candidateSecrets.length,
-        signatureValid: isSigValid
-      }));
-
-      if (!isSigValid) {
+      if (!serverAuthToken || !verifyServerAuthToken("KAYAL_ORDER_AUTH:" + razorpayOrderId + ":" + razorpayPaymentId, serverAuthToken)) {
         return {
           success: false,
           error: "Unauthorized order creation: Invalid or forged server authentication token.",
@@ -4156,40 +4148,20 @@ function executeReviewsSync(ss, postData) {
       return { success: false, error: "Server lock acquisition timed out.", step: "Lock Acquisition" };
     }
 
-    // 1. Authenticate with SERVER_AUTH_SECRET or script token
-    var scriptProps = PropertiesService.getScriptProperties();
-    var candidateSecrets = [];
-    if (scriptProps) {
-      var s1 = scriptProps.getProperty("SERVER_AUTH_SECRET");
-      var s2 = scriptProps.getProperty("RAZORPAY_KEY_SECRET");
-      if (s1 && s1.trim()) candidateSecrets.push(s1.trim());
-      if (s2 && s2.trim()) candidateSecrets.push(s2.trim());
+    // 1. Authenticate with SERVER_AUTH_SECRET
+    var serverAuthSecret = getServerAuthSecret();
+    if (!serverAuthSecret) {
+      return {
+        success: false,
+        error: "Server configuration error: SERVER_AUTH_SECRET is not configured in Google Apps Script Script Properties.",
+        step: "Server Authentication Configuration"
+      };
     }
-    candidateSecrets.push("QXOc458MwuY5mb7j9QAqS3HB");
-    candidateSecrets.push("QCh0H33s8BN6aoBfUmJ39y5r");
 
     var serverAuthToken = String(postData.serverAuthToken || "").trim();
     var reviewsToImport = Array.isArray(postData.reviews) ? postData.reviews : [];
 
-    var isSigValid = false;
-    for (var cs = 0; cs < candidateSecrets.length; cs++) {
-      var secretToTest = candidateSecrets[cs];
-      var expectedBytes = Utilities.computeHmacSha256Signature(
-        "KAYAL_REVIEWS_SYNC:" + reviewsToImport.length,
-        secretToTest
-      );
-      var expectedHex = expectedBytes.map(function(b) {
-        var byteVal = (b < 0 ? b + 256 : b);
-        return ("0" + byteVal.toString(16)).slice(-2);
-      }).join("");
-
-      if (safeStringCompare(serverAuthToken.toLowerCase(), expectedHex.toLowerCase())) {
-        isSigValid = true;
-        break;
-      }
-    }
-
-    if (!serverAuthToken || !isSigValid) {
+    if (!serverAuthToken || !verifyServerAuthToken("KAYAL_REVIEWS_SYNC:" + reviewsToImport.length, serverAuthToken)) {
       return {
         success: false,
         error: "Unauthorized reviews sync: Invalid or forged server authentication token.",

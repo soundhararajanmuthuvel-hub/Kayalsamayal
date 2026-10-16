@@ -19,12 +19,14 @@ export async function GET(
     const orderResult = await getOrder(orderId.trim());
 
     if (!orderResult || !orderResult.success || !orderResult.data) {
+      const errMsg = orderResult?.error || orderResult?.message || "Order not found in database.";
+      const isNotFound = /not found/i.test(errMsg);
       return NextResponse.json(
         {
           success: false,
-          error: orderResult?.message || "Order not found in database.",
+          error: errMsg,
         },
-        { status: 404 }
+        { status: isNotFound ? 404 : 502 }
       );
     }
 

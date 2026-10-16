@@ -507,17 +507,20 @@ export async function updateOrder(
 
 export async function getOrder(
   orderId: string
-): Promise<{ success: boolean; data?: unknown; message?: string }> {
+): Promise<{ success: boolean; data?: unknown; message?: string; error?: string; step?: string }> {
   try {
-    const res = await fetch(`${API_URL}?action=order&id=${encodeURIComponent(orderId)}`, {
+    const cleanId = (orderId || "").trim();
+    if (!cleanId) return { success: false, error: "Order ID is required." };
+    const res = await fetch(`${API_URL}?action=order&id=${encodeURIComponent(cleanId)}`, {
       method: "GET",
       headers: { "Accept": "application/json" },
+      cache: "no-store",
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     return await res.json();
   } catch (err) {
     console.error("Failed to fetch order:", err);
-    return { success: false, message: "Network error. Unable to fetch order details." };
+    return { success: false, error: "Network error. Unable to fetch order details." };
   }
 }
 

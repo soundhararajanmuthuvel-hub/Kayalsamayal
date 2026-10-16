@@ -116,19 +116,36 @@ export async function POST(req: NextRequest) {
       couponCode: calc.couponCode || "None",
     });
 
-    const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const rawKeyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+    const keyId = rawKeyId.trim().replace(/^["']|["']$/g, "").trim();
+
+    const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const keySecret = rawKeySecret.trim().replace(/^["']|["']$/g, "").trim();
 
     if (!keyId || !keySecret) {
-      console.warn("Razorpay credentials not fully set in environment.");
+      console.warn("[RAZORPAY_CONFIG] Missing Razorpay credentials in server environment.", {
+        hasKeyId: Boolean(keyId),
+        hasKeySecret: Boolean(keySecret),
+      });
       return NextResponse.json(
         {
           success: false,
-          error: "Online payment gateway is temporarily unavailable. Please contact us on WhatsApp to complete your order.",
+          code: "GATEWAY_CONFIG_MISSING",
+          error: "Online payment gateway is temporarily unavailable. Please choose Cash on Delivery or contact us on WhatsApp to complete your order.",
         },
         { status: 503 }
       );
     }
+
+    const isTestKey = keyId.startsWith("rzp_test_");
+    const isLiveKey = keyId.startsWith("rzp_live_");
+
+    console.log("[RAZORPAY_ORDER_INIT]", {
+      keyMode: isTestKey ? "TEST" : isLiveKey ? "LIVE" : "CUSTOM",
+      keyPrefix: keyId.slice(0, 9),
+      secretLength: keySecret.length,
+      amountPaise: calc.amountInPaise,
+    });
 
     // 2. Create Razorpay Order via REST API
     const authHeader = "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
@@ -146,23 +163,51 @@ export async function POST(req: NextRequest) {
         receipt: receiptId,
         payment_capture: 1, // Auto-capture payment upon successful authorization
         notes: {
-          customerName: customer.name,
-          customerMobile: customer.mobile,
-          customerCity: customer.city || "",
-          itemsCount: calc.items.length,
+          customerName: String(customer.name || "").slice(0, 40),
+          customerMobile: String(customer.mobile || "").slice(0, 15),
+          customerCity: String(customer.city || "").slice(0, 30),
+          itemsCount: String(calc.items.length),
+          cartItems: JSON.stringify(calc.items.map((it) => ({ id: it.productId, q: it.quantity }))).slice(0, 250),
         },
       }),
     });
 
     if (!razorpayRes.ok) {
-      const errJson = await razorpayRes.json();
-      console.error("Razorpay order creation error:", errJson);
+      const errJson = await razorpayRes.json().catch(() => ({}));
+      const upstreamErrorDesc = errJson?.error?.description || "";
+      const isAuthFailure = razorpayRes.status === 401 || upstreamErrorDesc.toLowerCase().includes("auth");
+
+      if (isAuthFailure) {
+        console.error("[RAZORPAY_AUTH_FAILURE] Upstream Razorpay rejected API credentials (HTTP 401 / Authentication failed).", {
+          upstreamStatus: razorpayRes.status,
+          upstreamError: upstreamErrorDesc,
+          keyMode: isTestKey ? "TEST" : isLiveKey ? "LIVE" : "UNKNOWN",
+          keyPrefix: keyId.slice(0, 9),
+          secretLength: keySecret.length,
+        });
+
+        return NextResponse.json(
+          {
+            success: false,
+            code: "GATEWAY_AUTH_FAILURE",
+            error: "Payment gateway authentication error. Please contact store support or select Cash on Delivery.",
+          },
+          { status: 503 }
+        );
+      }
+
+      console.error("[RAZORPAY_CREATE_ORDER_FAILED] Razorpay returned non-OK response:", {
+        status: razorpayRes.status,
+        error: errJson,
+      });
+
       return NextResponse.json(
         {
           success: false,
-          error: errJson?.error?.description || "Failed to initialize secure payment.",
+          code: "GATEWAY_ERROR",
+          error: upstreamErrorDesc || "Failed to initialize payment gateway order.",
         },
-        { status: 502 }
+        { status: razorpayRes.status >= 500 ? 502 : 400 }
       );
     }
 
