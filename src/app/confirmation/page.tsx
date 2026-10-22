@@ -31,6 +31,8 @@ interface OrderItem {
 interface OrderRecord {
   orderId?: string;
   id?: string;
+  paymentId?: string;
+  razorpayPaymentId?: string;
   grandTotal?: number;
   subtotal?: number;
   discount?: number;
@@ -53,6 +55,7 @@ function ConfirmationContent() {
   const { lastOrderResponse, customerDetails } = useCart();
 
   const urlOrderId = searchParams.get("orderId") || "";
+  const urlPaymentId = searchParams.get("paymentId") || "";
   const orderId = urlOrderId || lastOrderResponse?.orderId || "";
 
   const [order, setOrder] = useState<OrderRecord | null>(() => {
@@ -60,6 +63,8 @@ function ConfirmationContent() {
       return {
         orderId: lastOrderResponse.orderId,
         id: lastOrderResponse.orderId,
+        paymentId: lastOrderResponse.razorpayPaymentId || urlPaymentId,
+        razorpayPaymentId: lastOrderResponse.razorpayPaymentId || urlPaymentId,
         grandTotal: lastOrderResponse.grandTotal,
         subtotal: lastOrderResponse.subtotal,
         discount: lastOrderResponse.discount,
@@ -161,6 +166,7 @@ function ConfirmationContent() {
   };
 
   const displayOrderId = order?.orderId || order?.id || orderId || "KS-CONFIRMED";
+  const displayPaymentId = order?.paymentId || order?.razorpayPaymentId || urlPaymentId || lastOrderResponse?.razorpayPaymentId || "";
   const displayTotal = order?.grandTotal ?? (lastOrderResponse?.grandTotal || 0);
   const displayDiscount = order?.discount ?? (lastOrderResponse?.discount || 0);
   const displayEmail = order?.email || customerDetails.email || "";
@@ -251,7 +257,7 @@ function ConfirmationContent() {
           {/* Order Details Card */}
           <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-10 shadow-[var(--shadow-card)] space-y-6">
             
-            {/* Order Reference & Date */}
+            {/* Order Reference, Payment ID & Date */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-border">
               <div>
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
@@ -259,6 +265,14 @@ function ConfirmationContent() {
                 </span>
                 <p className="font-mono font-black text-lg sm:text-xl text-primary">{displayOrderId}</p>
               </div>
+              {displayPaymentId && (
+                <div>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Payment ID
+                  </span>
+                  <p className="font-mono font-bold text-base text-secondary">{displayPaymentId}</p>
+                </div>
+              )}
               <div>
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                   Order Date
