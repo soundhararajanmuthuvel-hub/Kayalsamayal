@@ -17,7 +17,7 @@ if (fs.existsSync(envPath)) {
 
 const SERVER_AUTH_SECRET = process.env.SERVER_AUTH_SECRET || envConfig.SERVER_AUTH_SECRET || '';
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || envConfig.RAZORPAY_WEBHOOK_SECRET || '';
-const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || envConfig.NEXT_PUBLIC_KAYAL_API_URL || 'https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec';
+const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || envConfig.NEXT_PUBLIC_KAYAL_API_URL || '';
 
 async function runVerificationTests() {
   console.log('===============================================================');

@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec';
+const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || "";
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 

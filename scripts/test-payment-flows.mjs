@@ -1,8 +1,9 @@
 import crypto from "crypto";
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec";
-const SERVER_AUTH_SECRET = "QCh0H33s8BN6aoBfUmJ39y5r";
-const RAZORPAY_KEY_SECRET = "QCh0H33s8BN6aoBfUmJ39y5r";
+// Set these via environment variables or .env.local
+const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || "";
+const SERVER_AUTH_SECRET = process.env.SERVER_AUTH_SECRET || "YOUR_SERVER_AUTH_SECRET";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "YOUR_KEY_SECRET";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

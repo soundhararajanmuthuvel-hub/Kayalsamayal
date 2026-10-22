@@ -17,7 +17,7 @@ const GBP_CONFIG = {
   placeCidDec: "18025353545700284282",
   googleReviewsUrl: "https://www.google.com/search?q=kayalsamayal#lrd=0xa86e40eb213628e1:0xfa26eb8c224b177a,1",
   googleWriteReviewUrl: "https://www.google.com/search?q=kayalsamayal#lrd=0xa86e40eb213628e1:0xfa26eb8c224b177a,3",
-  gasUrl: process.env.NEXT_PUBLIC_KAYAL_API_URL || "https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec"
+  gasUrl: process.env.NEXT_PUBLIC_KAYAL_API_URL || ""
 };
 
 // Check for environment variables

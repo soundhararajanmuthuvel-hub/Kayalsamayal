@@ -1,7 +1,11 @@
 import crypto from "crypto";
 
 const ORDER_TOKEN_SECRET =
-  process.env.RAZORPAY_KEY_SECRET || "kayal-samayal-internal-token-secret-salt-2026";
+  process.env.RAZORPAY_KEY_SECRET || "";
+
+if (!ORDER_TOKEN_SECRET && typeof window === "undefined") {
+  console.warn("[orderToken] RAZORPAY_KEY_SECRET is not set — order tokens will fail.");
+}
 
 export interface OrderTokenPayload {
   backendOrderId?: string;

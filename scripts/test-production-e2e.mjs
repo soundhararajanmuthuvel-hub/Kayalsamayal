@@ -1,12 +1,14 @@
 import crypto from "crypto";
 
 const PROD_URL = "https://www.kayalsamayal.in";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec";
+// Set NEXT_PUBLIC_KAYAL_API_URL in environment or .env.local
+const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || "";
 
-const RAZORPAY_KEY_ID = "rzp_test_Tc298uuCn6p82h";
-const RAZORPAY_KEY_SECRET = "QCh0H33s8BN6aoBfUmJ39y5r";
-const SERVER_AUTH_SECRET = "QCh0H33s8BN6aoBfUmJ39y5r";
-const WEBHOOK_SECRET = "KayalSamayal-Razorpay-Test-Webhook-2026-kayal";
+// These must be set via environment variables or .env.local
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "rzp_test_XXXXXXXXXXXXXXX";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "YOUR_KEY_SECRET";
+const SERVER_AUTH_SECRET = process.env.SERVER_AUTH_SECRET || "YOUR_SERVER_AUTH_SECRET";
+const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "YOUR_WEBHOOK_SECRET";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -2,11 +2,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 
 // Configuration
-const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || 
-  "https://script.google.com/macros/s/AKfycbxRTYXQJAw0hGQUh12jHemUi87ROEftrUV5vAlJRr6JebH58PT13x7XdnudTeulAIS4/exec";
+const GAS_URL = process.env.NEXT_PUBLIC_KAYAL_API_URL || "";
 
 // Collect candidate secrets
-const candidateSecrets = ["QXOc458MwuY5mb7j9QAqS3HB", "QCh0H33s8BN6aoBfUmJ39y5r"];
+const candidateSecrets = [];
 if (fs.existsSync('.env.local')) {
   const envContent = fs.readFileSync('.env.local', 'utf8');
   const m1 = envContent.match(/SERVER_AUTH_SECRET=["']?([^"'\r\n]+)/);
