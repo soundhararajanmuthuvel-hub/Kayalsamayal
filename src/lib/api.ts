@@ -4,10 +4,16 @@ import { Testimonial, testimonials as localTestimonials } from "@/data/testimoni
 // Set NEXT_PUBLIC_KAYAL_API_URL in .env.local to your deployed Apps Script Web App URL
 const FALLBACK_API_URL = "";
 
-export const API_URL =
+const rawApiUrl =
   process.env.NEXT_PUBLIC_KAYAL_API_URL ||
   process.env.NEXT_PUBLIC_KAYAL_SAMAYAL_API_URL ||
   FALLBACK_API_URL;
+
+export const API_URL =
+  rawApiUrl.includes("YOUR_DEPLOYMENT_ID") ||
+  rawApiUrl.includes("YOUR_APPS_SCRIPT_DEPLOYMENT_ID")
+    ? ""
+    : rawApiUrl;
 
 // ── INTERFACES ────────────────────────────────────────────────────────────────
 
