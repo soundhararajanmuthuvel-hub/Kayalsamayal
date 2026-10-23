@@ -79,49 +79,55 @@ The Google Sheet is the **authoritative single source of truth** for all coupon 
 - When an administrator adds, updates, disables, or deletes a coupon in the **"Coupons"** tab, the storefront reflects the changes immediately on the very next coupon check.
 - **No website code change and no redeployment is required.**
 - No coupons are hardcoded anywhere in the website codebase.
+- **Zero-Total Policy**: When a coupon is applied, a minimum of ₹1 is payable across all checkout paths. Coupons cannot reduce an order total to ₹0, and `/api/orders/free` rejects any coupon-discounted order.
 
-### 1. "Coupons" Sheet Tab Columns
+### 1. Real "Coupons" Sheet Tab Columns (Authoritative A–N Layout)
 
-The **"Coupons"** tab must have the following header row (case-insensitive column lookups):
+The **"Coupons"** tab uses the authoritative 14-column layout (Columns A–N) with an optional 15th column for Description:
 
-| Column Name | Type | Description & Examples |
-| :--- | :--- | :--- |
-| **Code** | String | Coupon code (e.g. `WELCOME10`, `FLAT50`, `FESTIVE100`). Case-insensitive and trimmed. |
-| **Description** | String | Short promotional description shown to customers (e.g. `10% off on your spice order`). |
-| **Type** | String | Discount calculation model: `PERCENT` (or `PERCENTAGE`) or `FLAT`. |
-| **Value** | Number | Discount value: e.g. `10` for 10% discount, or `50` for flat ₹50 off. |
-| **MinOrder** | Number | Minimum cart subtotal required to use this coupon (e.g. `200` or `0` for no minimum). |
-| **MaxDiscount** | Number | Maximum discount cap in ₹ for PERCENT coupons (e.g. `100`). Set to `0` or blank for no cap. |
-| **StartDate** | Date/String | Optional start date (`YYYY-MM-DD`). Active from 00:00:00 Asia/Kolkata. |
-| **EndDate** | Date/String | Optional expiry date (`YYYY-MM-DD`). Active through 23:59:59 Asia/Kolkata. |
-| **UsageLimit** | Number | Maximum total lifetime uses across all customers (e.g. `100`). Set `0` for unlimited. |
-| **UsedCount** | Number | Auto-incremented count of completed paid orders using this coupon. Start at `0`. |
-| **PerCustomerLimit** | Number | Maximum uses allowed per customer phone or email (e.g. `1`). Set `0` for unlimited. |
-| **Active** | Boolean | Set to `TRUE` to enable, or `FALSE` to immediately disable without deleting. |
+| Col | Header Name | Type | Description & Formatting Guidelines |
+| :---: | :--- | :--- | :--- |
+| **A** | **Coupon ID** | String | Identifier (e.g. `CPN-001`, ignored by matching engine). |
+| **B** | **Code** | String | Coupon code (e.g. `HI`, `WELCOME10`). Case-insensitive and trimmed. (Alias: `Coupon Code`). |
+| **C** | **Discount Type** | String | `percentage`, `percent`, `%` -> `PERCENT`; `fixed`, `flat`, `amount` -> `FLAT`. Any other value is rejected. (Alias: `Type`). |
+| **D** | **Discount Value** | Number / String | **Percentage**: Can be typed as `99` or `99%`. **Critical: `1` means 1% and NEVER becomes 100%**. **Flat**: Rupee amount (e.g. `50` or `₹50`). (Alias: `Value`). |
+| **E** | **Maximum Discount** | Number | Maximum discount cap in ₹ for percentage discounts (e.g. `779`). Blank = no cap. (Alias: `Max Discount`, `MaxDiscount`). |
+| **F** | **Minimum Order** | Number | Minimum subtotal required in ₹ (e.g. `1` or `299`). Blank = `0` (no minimum). (Alias: `Min Order`, `MinOrder`). |
+| **G** | **Usage Limit** | Number | Maximum total lifetime uses across all customers. Blank = no limit. (Alias: `UsageLimit`). |
+| **H** | **Used Count** | Number | Total recorded uses. Starts at `0`. Incremented atomically in this column upon verified payment. (Alias: `UsedCount`). |
+| **I** | **Per Customer Limit** | Number | Maximum uses allowed per customer phone or email (e.g. `10`). Blank = no limit. (Alias: `PerCustomerLimit`). |
+| **J** | **Start Date** | Date / String | Optional start date (`YYYY-MM-DD`). Active from 00:00:00 Asia/Kolkata. Blank = no start date limit. (Alias: `StartDate`). |
+| **K** | **Expiry Date** | Date / String | Optional expiry date (`YYYY-MM-DD`). Active through 23:59:59 Asia/Kolkata. Blank = no expiry limit. (Alias: `End Date`, `EndDate`). |
+| **L** | **Active** | Boolean | Set to `TRUE` to enable, or `FALSE` to disable. |
+| **M** | **Created At** | String | Timestamp (ignored by matching engine). |
+| **N** | **Updated At** | String | Timestamp (ignored by matching engine). |
+| **O** | **Description** | String | Optional description (e.g. `99% off up to ₹779`). |
+
+> [!IMPORTANT]
+> **Percentage Formatting & Parsing Rules**:
+> - A percentage coupon can be entered as either `99` or `99%`.
+> - Entering `1` means **1%** (saves ₹5.60 on a ₹560 subtotal) and will **never** be multiplied by 100.
+> - If any header matches multiple columns, or if `Code`, `Discount Type`, or `Discount Value` is missing, the backend fails closed with `"Coupon sheet configuration error"` and logs the exact headers found.
 
 ### 2. Auto-Seeded Sample Coupons
 
-When the Apps Script runs for the first time, if the "Coupons" sheet is missing or empty, it automatically creates the headers and seeds 3 initial rows with **Active = FALSE by default** so they never go live accidentally:
-
-1. **`WELCOME10`**: `10% off on your order` | Type: `PERCENT` | Value: `10` | MinOrder: `200` | MaxDiscount: `100` | UsageLimit: `100` | Active: `FALSE`
-2. **`FLAT50`**: `Flat ₹50 off` | Type: `FLAT` | Value: `50` | MinOrder: `300` | MaxDiscount: `50` | UsageLimit: `50` | Active: `FALSE`
-3. **`EXPIRED5`**: `Expired sample coupon` | Type: `PERCENT` | Value: `5` | MinOrder: `100` | Active: `FALSE`
-
-> [!NOTE]
-> All sample coupon rows are intentionally created with `Active = FALSE`. The store owner can easily toggle `Active` to `TRUE` in Google Sheets when ready to run promotions.
+When the Apps Script `setupDatabase()` or sheet initialization runs on a fresh sheet, it creates the canonical A–N headers and seeds sample rows with **Active = FALSE by default** so they never go live accidentally:
+1. `WELCOME10`: 10% off on your order | Type: `percentage` | Value: `10` | MaxDiscount: `100` | MinOrder: `299` | Active: `FALSE`
+2. `FLAT50`: Flat ₹50 off | Type: `fixed` | Value: `50` | MaxDiscount: `50` | MinOrder: `300` | Active: `FALSE`
 
 ### 3. Managing Coupons in Google Sheets
 
-- **Add a Coupon**: Simply insert a new row at the bottom of the "Coupons" tab, fill out the columns, set `UsedCount` to `0`, and set `Active` to `TRUE`.
-- **Edit a Coupon**: Update any cell (e.g. change `Value` from `10` to `15` or `MaxDiscount` from `100` to `150`). The Next.js API uses `cache: "no-store"` and immediately uses the new values.
-- **Deactivate a Coupon**: Change `Active` from `TRUE` to `FALSE`. The website will instantly reject attempts to apply the code with: *"This coupon is no longer active"*.
-- **Delete a Coupon**: Right-click the row in Google Sheets and select **Delete row**. Subsequent checks will report *"Invalid coupon code"*.
+- **Add a Coupon**: Insert a new row, enter the code in Column B, set Discount Type to `percentage` or `fixed`, enter Value in Column D (e.g. `99` or `99%`), set `Used Count` to `0`, and set `Active` to `TRUE`.
+- **Edit a Coupon**: Update cells in Columns B–L. The changes take effect immediately on the next coupon evaluation.
+- **Deactivate a Coupon**: Set Column L (`Active`) to `FALSE`. The website will instantly report *"This coupon is no longer active"*.
+- **Delete a Coupon**: Delete the row. Subsequent checks report *"Invalid coupon code"*.
 
-### 4. Atomic Concurrency & Pre-Payment Check
+### 4. Atomic Concurrency, Used Count & Pre-Payment Check
 
-- **Pre-Payment Lock & Validation**: Right before opening the Razorpay payment window, the storefront performs a real-time check against `/api/coupon`. If the coupon expired or reached its limit, the checkout stops, clears the discount, updates the grand total, and blocks payment.
-- **Atomic Concurrency Guarantee**: Inside Google Apps Script, `LockService.getScriptLock()` prevents race conditions. When a payment is verified, `UsedCount` is incremented atomically. Duplicate payments or tampered signatures will never increment `UsedCount`.
-- **Minimum Payable Rule**: All payable orders sent to the Razorpay gateway maintain a minimum total of ₹1 (or ₹0 for 100% discount free orders via `/api/orders/free`).
+- **Pre-Payment Validation**: Before triggering payment, the storefront validates the coupon against `/api/coupon` or `/api/coupons/validate`. If Apps Script is unavailable, it reports *"Coupons unavailable right now"* and charges full price without local coupon fallback.
+- **Atomic Concurrency Guarantee**: Inside Apps Script, `LockService.getScriptLock()` prevents race conditions. When payment is verified, `Used Count` is incremented atomically in its resolved column.
+- **Zero-Total Policy**: When a coupon is applied, a minimum of ₹1 is payable across all checkout paths. `/api/orders/free` rejects coupon orders.
+
 
 ---
 
