@@ -598,7 +598,7 @@ function doGet(e) {
       return jsonResponse({ success: true, settings: settings });
     }
 
-    // Preserve single order lookup by Order ID
+    // Preserve single order lookup by Order ID (reads directly from "Orders" sheet Items/Notes column)
     if (action === "order") {
       var orderId = String(params.id || "").trim();
       if (!orderId) {
@@ -615,7 +615,38 @@ function doGet(e) {
       })[0];
 
       if (matched) {
-        return jsonResponse({ success: true, data: { order: matched } });
+        // Parse items from "Items/Notes" column of Orders sheet
+        var rawNotes = String(matched["Items/Notes"] || matched.itemsNotes || "").trim();
+        var productPart = rawNotes.split("|")[0].trim();
+        var parsedItems = [];
+        if (productPart) {
+          var entries = productPart.indexOf(";") !== -1 ? productPart.split(";") : productPart.split(",");
+          entries.forEach(function(entry) {
+            var trimmed = entry.trim();
+            if (!trimmed) return;
+            var qtyMatch = trimmed.match(/x\s*(\d+)/i) || trimmed.match(/\(x(\d+)\)/i);
+            var priceMatch = trimmed.match(/₹\s*(\d+(?:\.\d+)?)/);
+            var cleanName = trimmed
+              .replace(/x\s*\d+/gi, "")
+              .replace(/\(x\d+\)/gi, "")
+              .replace(/\(₹[\d.]+\)/g, "")
+              .replace(/₹[\d.]+/g, "")
+              .trim();
+            parsedItems.push({
+              name: cleanName || trimmed,
+              qty: qtyMatch ? Number(qtyMatch[1]) : 1,
+              price: priceMatch ? Number(priceMatch[1]) : 0
+            });
+          });
+        }
+
+        return jsonResponse({
+          success: true,
+          data: {
+            order: matched,
+            items: parsedItems
+          }
+        });
       }
       return jsonResponse({ success: false, error: "Order not found" });
     }
@@ -695,6 +726,31 @@ function doPost(e) {
     var email       = String(payload.email || (payload.customer && payload.customer.email) || "").trim();
     var address     = String(payload.address || (payload.customer && (payload.customer.address + ", " + payload.customer.city)) || "").trim();
     var itemsNotes  = String(payload.items_notes || payload.itemsNotes || payload.notes || "").trim();
+
+    // If items_notes is empty or items array is provided, format into "Product xQty (₹Price); ..."
+    if (!itemsNotes && Array.isArray(payload.items) && payload.items.length > 0) {
+      var itemStrings = [];
+      for (var it = 0; it < payload.items.length; it++) {
+        var itemObj = payload.items[it];
+        var iName = String(itemObj.name || itemObj.productName || itemObj.title || itemObj.productId || ("Item " + (it + 1))).trim();
+        var iQty = Number(itemObj.quantity || itemObj.qty || 1);
+        var iPrice = Number(itemObj.price || itemObj.unitPrice || 0);
+        var iTotal = Number(itemObj.total || (iPrice * iQty) || 0);
+        var itemEntry = iName + " x" + iQty;
+        if (iTotal > 0 || iPrice > 0) {
+          itemEntry += " (₹" + (iTotal > 0 ? iTotal : iPrice) + ")";
+        }
+        itemStrings.push(itemEntry);
+      }
+      itemsNotes = itemStrings.join("; ");
+      if (payload.customer && payload.customer.notes) {
+        itemsNotes += " | Notes: " + payload.customer.notes;
+      }
+    }
+    if (!itemsNotes) {
+      itemsNotes = "Standard Order (" + status + ")";
+    }
+
     var signature   = String(payload.razorpay_signature || payload.signature || "").trim();
     var timestamp   = payload.timestamp ? new Date(payload.timestamp) : new Date();
 
@@ -704,11 +760,14 @@ function doPost(e) {
     var discount    = Number(payload.discount !== undefined ? payload.discount : (payload.discountAmount || 0));
     var finalAmount = Number(payload.final_amount !== undefined ? payload.final_amount : (payload.grandTotal !== undefined ? payload.grandTotal : amount));
 
+    var isCod = (status.indexOf("COD") !== -1 || paymentId === "COD_PENDING" || signature === "COD");
+    var isFree = (paymentId === "FREE_ORDER" || signature === "FREE_ORDER" || amount === 0);
+
     // ── FIELD VALIDATION ──────────────────────────────────────────────────
-    if (!orderId || typeof orderId !== "string" || orderId.indexOf("order_") !== 0) {
+    if (!orderId) {
       return jsonResponse({
         success: false,
-        message: "Invalid order_id: must be a valid Razorpay order ID starting with 'order_'."
+        message: "Missing required field: order_id is required to record order."
       });
     }
     if (!paymentId) {
@@ -730,83 +789,113 @@ function doPost(e) {
       });
     }
 
-    // ── MANDATORY RAZORPAY ORDER AMOUNT VALIDATION ─────────────────────────
-    // Mandatory for every order_ ID: queries Razorpay REST API and rejects if lookup fails or amounts mismatch
-    var scriptProps = PropertiesService.getScriptProperties();
-    var keyId = scriptProps.getProperty("KEY_ID") || scriptProps.getProperty("RAZORPAY_KEY_ID");
-    var keySecret = scriptProps.getProperty("KEY_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET");
-    if (!keyId || !keySecret) {
-      Logger.log("Razorpay credentials missing in Script Properties for order verification: " + orderId);
-      return jsonResponse({
-        success: false,
-        message: "Server configuration error: Razorpay KEY_ID and KEY_SECRET must be configured in Script Properties for mandatory order amount verification."
-      });
-    }
+    var signatureVerified = "No";
 
-    try {
-      var authHeader = "Basic " + Utilities.base64Encode(keyId.trim() + ":" + keySecret.trim());
-      var rzpOrderRes = UrlFetchApp.fetch("https://api.razorpay.com/v1/orders/" + encodeURIComponent(orderId), {
-        method: "GET",
-        headers: { "Authorization": authHeader },
-        muteHttpExceptions: true
-      });
-      var rzpCode = rzpOrderRes.getResponseCode();
-      if (rzpCode !== 200) {
-        Logger.log("Razorpay order lookup failed for " + orderId + " (HTTP " + rzpCode + ")");
+    if (isCod) {
+      signatureVerified = "COD (Pending)";
+    } else if (isFree) {
+      signatureVerified = "Free Order (Verified)";
+    } else {
+      // Online Razorpay Payment: strictly enforce order_ prefix, mandatory amount check, and HMAC signature verification
+      if (typeof orderId !== "string" || orderId.indexOf("order_") !== 0) {
         return jsonResponse({
           success: false,
-          message: "Razorpay order lookup failed (HTTP " + rzpCode + "). Order not recorded."
+          message: "Invalid order_id: must be a valid Razorpay order ID starting with 'order_'."
         });
       }
-      var rzpOrder = JSON.parse(rzpOrderRes.getContentText());
-      var expectedPaise = Math.round(amount * 100);
-      if (rzpOrder.amount !== expectedPaise) {
-        Logger.log("Amount mismatch detected for Order " + orderId + ": reported ₹" + amount + ", gateway order is ₹" + (rzpOrder.amount / 100));
+
+      // Mandatory Razorpay order amount check
+      var scriptProps = PropertiesService.getScriptProperties();
+      var keyId = scriptProps.getProperty("KEY_ID") || scriptProps.getProperty("RAZORPAY_KEY_ID");
+      var keySecret = scriptProps.getProperty("KEY_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET");
+      if (!keyId || !keySecret) {
+        Logger.log("Razorpay credentials missing in Script Properties for order verification: " + orderId);
         return jsonResponse({
           success: false,
-          message: "Amount mismatch: client reported ₹" + amount + " but Razorpay order amount is ₹" + (rzpOrder.amount / 100)
+          message: "Server configuration error: Razorpay KEY_ID and KEY_SECRET must be configured in Script Properties for mandatory order amount verification."
         });
       }
-    } catch (orderCheckErr) {
-      Logger.log("Razorpay order lookup exception for " + orderId + ": " + orderCheckErr.toString());
-      return jsonResponse({
-        success: false,
-        message: "Failed to verify Razorpay order amount upstream: " + orderCheckErr.toString()
-      });
+
+      try {
+        var authHeader = "Basic " + Utilities.base64Encode(keyId.trim() + ":" + keySecret.trim());
+        var rzpOrderRes = UrlFetchApp.fetch("https://api.razorpay.com/v1/orders/" + encodeURIComponent(orderId), {
+          method: "GET",
+          headers: { "Authorization": authHeader },
+          muteHttpExceptions: true
+        });
+        var rzpCode = rzpOrderRes.getResponseCode();
+        if (rzpCode !== 200) {
+          Logger.log("Razorpay order lookup failed for " + orderId + " (HTTP " + rzpCode + ")");
+          return jsonResponse({
+            success: false,
+            message: "Razorpay order lookup failed (HTTP " + rzpCode + "). Order not recorded."
+          });
+        }
+        var rzpOrder = JSON.parse(rzpOrderRes.getContentText());
+        var expectedPaise = Math.round(amount * 100);
+        if (rzpOrder.amount !== expectedPaise) {
+          Logger.log("Amount mismatch detected for Order " + orderId + ": reported ₹" + amount + ", gateway order is ₹" + (rzpOrder.amount / 100));
+          return jsonResponse({
+            success: false,
+            message: "Amount mismatch: client reported ₹" + amount + " but Razorpay order amount is ₹" + (rzpOrder.amount / 100)
+          });
+        }
+      } catch (orderCheckErr) {
+        Logger.log("Razorpay order lookup exception for " + orderId + ": " + orderCheckErr.toString());
+        return jsonResponse({
+          success: false,
+          message: "Failed to verify Razorpay order amount upstream: " + orderCheckErr.toString()
+        });
+      }
+
+      // Signature verification for online payments
+      signatureVerified = verifyRazorpaySignature(orderId, paymentId, signature);
+      if (signatureVerified !== "Yes") {
+        Logger.log("Rejected payment " + paymentId + ": " + signatureVerified);
+        return jsonResponse({
+          success: false,
+          message: "Payment signature could not be verified. Order not recorded.",
+          signatureVerified: signatureVerified
+        });
+      }
     }
 
     // ── DUPLICATE DETECTION ────────────────────────────────────────────────
-    // Check if the Payment ID is already recorded in the sheet (Column 3)
     var lastRow = ordersSheet.getLastRow();
-    if (lastRow > 1 && paymentId) {
-      var paymentIdValues = ordersSheet.getRange(2, 3, lastRow - 1, 1).getValues();
-      var cleanPaymentQuery = paymentId.toLowerCase();
-
-      for (var r = 0; r < paymentIdValues.length; r++) {
-        var existingPayId = String(paymentIdValues[r][0] || "").trim().toLowerCase();
-        if (existingPayId && existingPayId === cleanPaymentQuery) {
-          Logger.log("Duplicate Payment ID detected: " + paymentId + ". Ignoring duplicate write.");
-          return jsonResponse({
-            success: true,
-            duplicate: true,
-            message: "Payment ID " + paymentId + " is already recorded in the Orders sheet.",
-            orderId: orderId,
-            paymentId: paymentId
-          });
+    if (lastRow > 1) {
+      if (paymentId && paymentId !== "COD_PENDING" && paymentId !== "FREE_ORDER") {
+        var paymentIdValues = ordersSheet.getRange(2, 3, lastRow - 1, 1).getValues();
+        var cleanPaymentQuery = paymentId.toLowerCase();
+        for (var r = 0; r < paymentIdValues.length; r++) {
+          var existingPayId = String(paymentIdValues[r][0] || "").trim().toLowerCase();
+          if (existingPayId && existingPayId === cleanPaymentQuery) {
+            Logger.log("Duplicate Payment ID detected: " + paymentId + ". Ignoring duplicate write.");
+            return jsonResponse({
+              success: true,
+              duplicate: true,
+              message: "Payment ID " + paymentId + " is already recorded in the Orders sheet.",
+              orderId: orderId,
+              paymentId: paymentId
+            });
+          }
+        }
+      } else if (orderId) {
+        var orderIdValues = ordersSheet.getRange(2, 2, lastRow - 1, 1).getValues();
+        var cleanOrderQuery = orderId.toLowerCase();
+        for (var ro = 0; ro < orderIdValues.length; ro++) {
+          var existingOrdId = String(orderIdValues[ro][0] || "").trim().toLowerCase();
+          if (existingOrdId && existingOrdId === cleanOrderQuery) {
+            Logger.log("Duplicate Order ID detected: " + orderId + ". Ignoring duplicate write.");
+            return jsonResponse({
+              success: true,
+              duplicate: true,
+              message: "Order ID " + orderId + " is already recorded in the Orders sheet.",
+              orderId: orderId,
+              paymentId: paymentId
+            });
+          }
         }
       }
-    }
-
-    // ── SIGNATURE VERIFICATION ─────────────────────────────────────────────
-    var signatureVerified = verifyRazorpaySignature(orderId, paymentId, signature);
-
-    if (signatureVerified !== "Yes") {
-      Logger.log("Rejected payment " + paymentId + ": " + signatureVerified);
-      return jsonResponse({
-        success: false,
-        message: "Payment signature could not be verified. Order not recorded.",
-        signatureVerified: signatureVerified
-      });
     }
 
     var couponNote = "";
@@ -1063,5 +1152,77 @@ function setupDatabase() {
   // No SpreadsheetApp.getUi() here: it also fails in a standalone script.
   Logger.log('Setup done: Orders and Coupons tabs are ready in "' + ss.getName() + '"');
 }
+
+/**
+ * Migration helper to merge historical rows from "Order Items" into the "Orders" sheet.
+ * Can be run directly from Apps Script editor via Run > mergeOrderItemsIntoOrders.
+ */
+function mergeOrderItemsIntoOrders() {
+  var ss = getSpreadsheet();
+  var orders = ss.getSheetByName('Orders');
+  var items = ss.getSheetByName('Order Items');
+  if (!orders || !items) throw new Error('Orders or Order Items tab not found');
+  if (items.getLastRow() < 2) { Logger.log('Order Items is empty.'); return; }
+
+  var oMap = getHeaderMap(orders);
+  var iMap = getHeaderMap(items);
+
+  var oIdCol = oMap['order id'];
+  var oNotesCol = oMap['items/notes'];
+  if (oIdCol === undefined || oNotesCol === undefined) {
+    throw new Error('Orders needs "Order ID" and "Items/Notes" columns (run setupDatabase first)');
+  }
+
+  // Find the matching columns in Order Items (adjust the lists if your headers differ)
+  function find(map, names) {
+    for (var i = 0; i < names.length; i++) {
+      if (map[names[i]] !== undefined) return map[names[i]];
+    }
+    return undefined;
+  }
+  var iIdCol    = find(iMap, ['order id', 'orderid']);
+  var nameCol   = find(iMap, ['product name', 'item name', 'item', 'product', 'name']);
+  var qtyCol    = find(iMap, ['quantity', 'qty']);
+  var priceCol  = find(iMap, ['price', 'unit price', 'amount', 'total']);
+  if (iIdCol === undefined || nameCol === undefined) {
+    throw new Error('Order Items needs an Order ID column and a product name column. Headers found: ' + Object.keys(iMap).join(', '));
+  }
+
+  // Group item rows by Order ID
+  var itemData = items.getRange(2, 1, items.getLastRow() - 1, items.getLastColumn()).getValues();
+  var byOrder = {};
+  itemData.forEach(function (r) {
+    var id = String(r[iIdCol] || '').trim();
+    if (!id) return;
+    var text = String(r[nameCol] || '').trim();
+    if (qtyCol !== undefined && r[qtyCol] !== '') text += ' x' + r[qtyCol];
+    if (priceCol !== undefined && r[priceCol] !== '') text += ' (₹' + r[priceCol] + ')';
+    (byOrder[id] = byOrder[id] || []).push(text);
+  });
+
+  // Write the joined text into Orders (never overwrite existing notes)
+  var oLast = orders.getLastRow();
+  if (oLast < 2) { Logger.log('Orders is empty.'); return; }
+  var ids = orders.getRange(2, oIdCol + 1, oLast - 1, 1).getValues();
+  var notes = orders.getRange(2, oNotesCol + 1, oLast - 1, 1).getValues();
+  var updated = 0, unmatched = Object.keys(byOrder).length;
+
+  for (var i = 0; i < ids.length; i++) {
+    var key = String(ids[i][0] || '').trim();
+    if (key && byOrder[key]) {
+      var joined = byOrder[key].join('; ');
+      var existing = String(notes[i][0] || '').trim();
+      if (existing.indexOf(joined) === -1) {
+        notes[i][0] = existing ? existing + ' | ' + joined : joined;
+        updated++;
+      }
+      unmatched--;
+    }
+  }
+  orders.getRange(2, oNotesCol + 1, notes.length, 1).setValues(notes);
+
+  Logger.log('Merged items into ' + updated + ' orders. Order IDs with no match in Orders: ' + unmatched);
+}
+
 
 

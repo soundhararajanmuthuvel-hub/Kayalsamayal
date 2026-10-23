@@ -44,6 +44,7 @@ export interface OrderInput {
   couponCode?: string;
   discount?: number;
   serverAuthToken?: string;
+  items_notes?: string;
 }
 
 export interface OrderResponse {
@@ -461,6 +462,7 @@ export async function confirmRazorpayOrder(data: {
   items?: OrderItemInput[];
   couponCode?: string;
   discount?: number;
+  items_notes?: string;
 }): Promise<OrderResponse> {
   try {
     const payload = { action: "confirmRazorpayOrder", ...data };

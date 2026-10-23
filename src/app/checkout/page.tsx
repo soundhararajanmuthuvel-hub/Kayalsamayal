@@ -344,6 +344,21 @@ export default function CheckoutPage() {
   };
 
   /**
+   * Helper to format cart items for the "Items/Notes" column in Orders sheet:
+   * e.g. "Kayal Curry Masala x2 (₹180); Kalari Masala x1 (₹90)"
+   */
+  const formatCartItemsSummary = (items: typeof cart): string => {
+    if (!items || items.length === 0) return "Authentic Spice Blend x1";
+    return items
+      .map((i) => {
+        const price = getProductPrice(i.product);
+        const total = price * i.quantity;
+        return `${i.product.name} x${i.quantity} (₹${total})`;
+      })
+      .join("; ");
+  };
+
+  /**
    * Razorpay Online Payment Flow
    */
   const handleOnlinePayment = async () => {
@@ -445,7 +460,7 @@ export default function CheckoutPage() {
           }),
           paymentMethod: "Free Order (100% Discount)",
           sheetStatus: "saving",
-          itemsSummary: cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", "),
+          itemsSummary: formatCartItemsSummary(cart),
           verificationStatus: "verified",
           couponCode: appliedCoupon?.code,
           discount: discountAmount,
@@ -535,7 +550,7 @@ export default function CheckoutPage() {
             minute: "2-digit",
           });
 
-          const itemsSummary = cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", ");
+          const itemsSummary = formatCartItemsSummary(cart);
 
           const baseRecord: ConfirmedPaymentDetails = {
             orderId: resolvedOrderId,
@@ -812,7 +827,7 @@ export default function CheckoutPage() {
 
       const confirmedCod = data.orderResponse || data;
       const codOrderId = confirmedCod.orderId || `KS-COD-${Date.now().toString().slice(-6)}`;
-      const itemsSummary = cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", ");
+      const itemsSummary = formatCartItemsSummary(cart);
 
       const codDetails: ConfirmedPaymentDetails = {
         orderId: codOrderId,

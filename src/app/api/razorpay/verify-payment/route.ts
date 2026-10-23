@@ -346,6 +346,9 @@ export async function POST(req: NextRequest) {
       })),
       couponCode: calc.couponCode,
       discount: calc.discount,
+      items_notes:
+        calc.items.map((it) => `${it.productName} x${it.quantity} (₹${it.lineTotal})`).join("; ") +
+        (customer?.notes ? ` | Notes: ${customer.notes}` : ""),
     });
 
     if (!orderResponse || !orderResponse.success) {

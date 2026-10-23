@@ -114,20 +114,46 @@ function ConfirmationContent() {
         const json = await res.json();
         if (isMounted && json.success && json.data) {
           const rawOrder = json.data.order || json.data;
-          const rawItems = json.data.items || [];
+          let rawItems = json.data.items || [];
+
+          // If rawItems not populated, parse directly from rawOrder["Items/Notes"] column of Orders sheet
+          if ((!Array.isArray(rawItems) || rawItems.length === 0) && (rawOrder["Items/Notes"] || rawOrder["items_notes"] || rawOrder.itemsNotes)) {
+            const rawNotes = String(rawOrder["Items/Notes"] || rawOrder["items_notes"] || rawOrder.itemsNotes).split("|")[0].trim();
+            const entries = rawNotes.includes(";") ? rawNotes.split(";") : rawNotes.split(",");
+            rawItems = entries
+              .map((entry: string) => {
+                const trimmed = entry.trim();
+                if (!trimmed) return null;
+                const qtyMatch = trimmed.match(/x\s*(\d+)/i) || trimmed.match(/\(x(\d+)\)/i);
+                const priceMatch = trimmed.match(/₹\s*(\d+(?:\.\d+)?)/);
+                const cleanName = trimmed
+                  .replace(/x\s*\d+/gi, "")
+                  .replace(/\(x\d+\)/gi, "")
+                  .replace(/\(₹[\d.]+\)/g, "")
+                  .replace(/₹[\d.]+/g, "")
+                  .trim();
+                return {
+                  name: cleanName || trimmed,
+                  qty: qtyMatch ? Number(qtyMatch[1]) : 1,
+                  price: priceMatch ? Number(priceMatch[1]) : 0,
+                };
+              })
+              .filter(Boolean);
+          }
+
           setOrder((prev) => ({
             ...prev,
             orderId: rawOrder["Order ID"] || rawOrder.orderId || orderId,
             id: rawOrder["Order ID"] || rawOrder.orderId || orderId,
-            grandTotal: Number(rawOrder["Grand Total"] || rawOrder.grandTotal || prev?.grandTotal || 0),
+            grandTotal: Number(rawOrder["Final Amount"] || rawOrder["Amount"] || rawOrder["Grand Total"] || rawOrder.grandTotal || prev?.grandTotal || 0),
             discount: Number(rawOrder["Discount"] || rawOrder.discount || prev?.discount || 0),
             couponCode: rawOrder["Coupon Code"] || rawOrder.couponCode || prev?.couponCode || "",
-            paymentMethod: rawOrder["Payment Method"] || rawOrder.paymentMethod || prev?.paymentMethod || "Razorpay Online",
-            paymentStatus: rawOrder["Payment Status"] || rawOrder.paymentStatus || "Paid",
-            name: rawOrder["Full Name"] || rawOrder.name || prev?.name || customerDetails.name,
+            paymentMethod: rawOrder["Status"] || rawOrder["Payment Method"] || rawOrder.paymentMethod || prev?.paymentMethod || "Razorpay Online",
+            paymentStatus: rawOrder["Status"] || rawOrder["Payment Status"] || rawOrder.paymentStatus || "Paid",
+            name: rawOrder["Customer Name"] || rawOrder["Full Name"] || rawOrder.name || prev?.name || customerDetails.name,
             email: rawOrder["Email"] || rawOrder.email || prev?.email || customerDetails.email,
-            mobile: rawOrder["Mobile"] || rawOrder.mobile || prev?.mobile || customerDetails.mobile,
-            address: rawOrder["Shipping Address"] || rawOrder.address || prev?.address || customerDetails.address,
+            mobile: rawOrder["Phone"] || rawOrder["Mobile"] || rawOrder.mobile || prev?.mobile || customerDetails.mobile,
+            address: rawOrder["Address"] || rawOrder["Shipping Address"] || rawOrder.address || prev?.address || customerDetails.address,
             city: rawOrder["City/Town"] || rawOrder.city || prev?.city || customerDetails.city,
             state: rawOrder["State"] || rawOrder.state || prev?.state || customerDetails.state || "Tamil Nadu",
             pincode: rawOrder["Pincode"] || rawOrder.pincode || prev?.pincode || customerDetails.pincode,
