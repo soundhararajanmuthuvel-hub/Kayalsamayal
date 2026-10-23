@@ -65,29 +65,21 @@ export function AvailableCouponsModal({
     async function loadCoupons() {
       setLoading(true);
       try {
-        const res = await fetch("/api/coupons/available");
+        const res = await fetch("/api/coupon", { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to load coupons");
         const data = await res.json();
         if (!cancelled && data.coupons && Array.isArray(data.coupons)) {
-          // Strictly exclude staff/private coupons like KAYAL100
           const publicOnly = data.coupons.filter(
-            (c: ModalCoupon) => c.code !== "KAYAL100" && c.active !== false
+            (c: ModalCoupon) => c.active !== false
           );
           setCoupons(publicOnly);
+        } else {
+          setCoupons([]);
         }
       } catch (err) {
-        console.warn("Could not load dynamic coupons, falling back:", err);
+        console.warn("Could not load dynamic coupons from Google Sheets:", err);
         if (!cancelled) {
-          setCoupons([
-            {
-              code: "WELCOME10",
-              discountType: "percentage",
-              discountValue: 10,
-              maximumDiscount: 100,
-              minimumOrder: 299,
-              active: true,
-            },
-          ]);
+          setCoupons([]);
         }
       } finally {
         if (!cancelled) setLoading(false);

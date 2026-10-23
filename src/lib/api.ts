@@ -584,20 +584,36 @@ export async function validateCouponBackend(
   try {
     const payload = {
       action: "validateCoupon",
+      code: normalized,
       couponCode: normalized,
       subtotal: Math.max(0, subtotal),
+      customerPhone: customerMobile ? String(customerMobile).trim() : undefined,
       customer: customerMobile ? { mobile: customerMobile } : undefined,
     };
 
     const res = await fetch(API_URL, {
       method: "POST",
       mode: "cors",
+      cache: "no-store",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
     });
 
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
+    if (json.coupon) {
+      return {
+        success: json.success ?? true,
+        valid: json.valid ?? true,
+        code: json.coupon.code || normalized,
+        discountAmount: Number(json.coupon.discount !== undefined ? json.coupon.discount : json.coupon.discountAmount || 0),
+        discountType: json.coupon.discountType || (json.coupon.type === "FLAT" ? "fixed" : "percentage"),
+        discountValue: json.coupon.value ?? json.coupon.discountValue,
+        maximumDiscount: json.coupon.maxDiscount ?? json.coupon.maximumDiscount,
+        minimumOrder: json.coupon.minOrder ?? json.coupon.minimumOrder,
+        message: json.message || `${json.coupon.code || normalized} applied!`,
+      };
+    }
     return json;
   } catch (err: unknown) {
     const errDetails = err instanceof Error ? err.message : String(err);
@@ -607,22 +623,22 @@ export async function validateCouponBackend(
       valid: false,
       code: normalized,
       discountAmount: 0,
-      error: "Unable to connect to validation server.",
+      error: "Coupon service unavailable, continue without coupon?",
     };
   }
 }
 
 export async function fetchPublicCoupons(): Promise<PublicCoupon[]> {
   try {
-    const res = await fetch(`${API_URL}?action=coupons`, {
+    const res = await fetch(`${API_URL}?action=getCoupons`, {
       method: "GET",
+      cache: "no-store",
       headers: { Accept: "application/json" },
     });
     if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
     const json = await res.json();
     if (json.success && Array.isArray(json.data)) {
-      // Exclude private coupons (KAYAL100) and inactive ones
-      return json.data.filter((c: PublicCoupon) => c.code !== "KAYAL100" && c.active);
+      return json.data.filter((c: PublicCoupon) => c.active !== false);
     }
     return [];
   } catch (err) {

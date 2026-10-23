@@ -168,8 +168,12 @@ export function calculateOrderTotals(
     }
   }
 
+  // Ensure minimum payable ₹1 if subtotal >= 1
+  if (subtotal >= 1 && (subtotal - discount) < 1) {
+    discount = Math.max(0, subtotal - 1);
+  }
+
   // Authoritative payable grand total: subtotal + shipping + gst - discount
-  // 100% discount legitimate free orders total ₹0.
   // Any amount >= ₹1 is a valid payable total.
   const rawPayable = subtotal + shipping + gstTotal - discount;
   const grandTotal = Math.max(0, Math.round(rawPayable));

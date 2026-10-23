@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { normalizeCouponCode, DEFAULT_COUPONS, evaluateCoupon } from "@/lib/coupons";
+import { normalizeCouponCode } from "@/lib/coupons";
 import { products } from "@/data/products";
 import { getProductPrice } from "@/lib/pricing";
 import { brand } from "@/lib/brand";
 import { validateCouponBackend } from "@/lib/api";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +46,6 @@ export async function POST(req: NextRequest) {
     // 2. Call Google Apps Script backend authoritative coupon validation
     const backendResult = await validateCouponBackend(normalized, subtotal, mobileStr);
 
-    // If backend processed the action successfully
     if (backendResult.success !== false && (backendResult.valid === true || backendResult.valid === false)) {
       if (!backendResult.valid) {
         return NextResponse.json({
@@ -54,7 +56,10 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const discountAmount = Number(backendResult.discountAmount || 0);
+      let discountAmount = Number(backendResult.discountAmount || 0);
+      if (subtotal >= 1 && (subtotal - discountAmount) < 1) {
+        discountAmount = Math.max(0, subtotal - 1);
+      }
       const isFreeShipping = subtotal >= brand.freeShippingOver;
       const shipping = isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0;
       const grandTotal = Math.max(0, subtotal + shipping - discountAmount);
@@ -74,42 +79,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Graceful fallback (e.g. if GAS returned "Unknown action payload" before new script deployment)
-    const localEval = evaluateCoupon(normalized, subtotal, {
-      customerMobile: mobileStr,
-      availableCoupons: DEFAULT_COUPONS,
-    });
-
-    if (!localEval.valid) {
-      return NextResponse.json({
-        valid: false,
-        code: normalized,
-        error: localEval.error || "Invalid coupon code",
-        discountAmount: 0,
-      });
-    }
-
-    const isFreeShipping = subtotal >= brand.freeShippingOver;
-    const shipping = isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0;
-    const grandTotal = Math.max(0, subtotal + shipping - localEval.discountAmount);
-
     return NextResponse.json({
-      valid: true,
-      code: localEval.code || normalized,
-      discountAmount: localEval.discountAmount,
-      discountType: localEval.discountType || "percentage",
-      discountValue: localEval.discountValue ?? 0,
-      maximumDiscount: localEval.maximumDiscount,
-      minOrder: 0,
-      message: localEval.message || `${localEval.code || normalized} applied! You saved ₹${localEval.discountAmount}.`,
-      subtotal,
-      shipping,
-      grandTotal,
+      valid: false,
+      code: normalized,
+      error: backendResult.error || "Invalid coupon code",
+      discountAmount: 0,
     });
   } catch (err: unknown) {
     console.error("Coupon validation error:", err);
     return NextResponse.json(
-      { valid: false, error: "Unable to validate coupon at this time." },
+      { valid: false, error: "Coupon service unavailable, continue without coupon?" },
       { status: 500 }
     );
   }

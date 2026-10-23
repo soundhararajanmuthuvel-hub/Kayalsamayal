@@ -27,7 +27,7 @@
 // Fallback Spreadsheet ID if not container-bound or configured in Script Properties
 var SPREADSHEET_ID = "1VSApDnwqbwqSnZjgp1Stx1Ko54kM6mM3MpqrcaUzwjc";
 
-// Required Columns for the "Orders" sheet as specified in Goal 2
+// Required Columns for the "Orders" sheet as specified in Goal 2 & Coupon Sync
 var ORDERS_HEADERS = [
   "Timestamp",
   "Order ID",
@@ -40,7 +40,27 @@ var ORDERS_HEADERS = [
   "Email",
   "Address",
   "Items/Notes",
-  "Signature Verified"
+  "Signature Verified",
+  "Coupon Code",
+  "Subtotal",
+  "Discount",
+  "Final Amount"
+];
+
+// Required Columns for the "Coupons" sheet (Single Source of Truth)
+var COUPONS_HEADERS = [
+  "Code",
+  "Description",
+  "Type",
+  "Value",
+  "MinOrder",
+  "MaxDiscount",
+  "StartDate",
+  "EndDate",
+  "UsageLimit",
+  "UsedCount",
+  "PerCustomerLimit",
+  "Active"
 ];
 
 /**
@@ -115,6 +135,7 @@ function verifyRazorpaySignature(orderId, paymentId, signature) {
 
 /**
  * Creates or retrieves the "Orders" sheet and ensures the required header row exists.
+ * Gracefully appends new columns (Coupon Code, Subtotal, Discount, Final Amount) if upgrading.
  */
 function getOrCreateOrdersSheet(ss) {
   var sheet = ss.getSheetByName("Orders");
@@ -133,9 +154,397 @@ function getOrCreateOrdersSheet(ss) {
     for (var i = 1; i <= ORDERS_HEADERS.length; i++) {
       sheet.autoResizeColumn(i);
     }
+  } else {
+    // Check if new coupon/discount columns need to be appended to existing header
+    var lastCol = sheet.getLastColumn();
+    var existingHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) {
+      return String(h || "").trim().toLowerCase();
+    });
+    var missingHeaders = [];
+    for (var h = 0; h < ORDERS_HEADERS.length; h++) {
+      if (existingHeaders.indexOf(ORDERS_HEADERS[h].toLowerCase()) === -1) {
+        missingHeaders.push(ORDERS_HEADERS[h]);
+      }
+    }
+    if (missingHeaders.length > 0) {
+      var startCol = lastCol + 1;
+      var newHeaderRange = sheet.getRange(1, startCol, 1, missingHeaders.length);
+      newHeaderRange.setValues([missingHeaders]);
+      newHeaderRange.setFontWeight("bold");
+      newHeaderRange.setBackground("#8B2500");
+      newHeaderRange.setFontColor("#FFFFFF");
+    }
   }
 
   return sheet;
+}
+
+/**
+ * Creates or retrieves the "Coupons" sheet.
+ * If creating newly, sets up headers and seeds 3 sample rows.
+ */
+function getOrCreateCouponsSheet(ss) {
+  var sheet = ss.getSheetByName("Coupons");
+  if (!sheet) {
+    sheet = ss.insertSheet("Coupons");
+  }
+
+  if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
+    sheet.appendRow(COUPONS_HEADERS);
+    sheet.setFrozenRows(1);
+    var headerRange = sheet.getRange(1, 1, 1, COUPONS_HEADERS.length);
+    headerRange.setFontWeight("bold");
+    headerRange.setBackground("#8B2500"); // Kayal Samayal spice red
+    headerRange.setFontColor("#FFFFFF");
+
+    // Seed 3 sample rows
+    var sampleRows = [
+      [
+        "WELCOME10",
+        "10% off on your order",
+        "PERCENT",
+        10,
+        200,
+        100,
+        "2024-01-01",
+        "2030-12-31",
+        100,
+        0,
+        1,
+        true
+      ],
+      [
+        "FLAT50",
+        "Flat ₹50 off",
+        "FLAT",
+        50,
+        300,
+        50,
+        "2024-01-01",
+        "2030-12-31",
+        50,
+        0,
+        1,
+        true
+      ],
+      [
+        "EXPIRED5",
+        "Expired sample coupon",
+        "PERCENT",
+        5,
+        100,
+        50,
+        "2020-01-01",
+        "2020-12-31",
+        10,
+        10,
+        1,
+        false
+      ]
+    ];
+
+    for (var s = 0; s < sampleRows.length; s++) {
+      sheet.appendRow(sampleRows[s]);
+    }
+
+    for (var c = 1; c <= COUPONS_HEADERS.length; c++) {
+      sheet.autoResizeColumn(c);
+    }
+  }
+
+  return sheet;
+}
+
+/**
+ * Utility: Returns a mapping of lowercased header name to 0-indexed column position.
+ * Protects against column reordering in the Google Sheet.
+ */
+function getHeaderMap(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return {};
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var map = {};
+  for (var i = 0; i < headers.length; i++) {
+    var key = String(headers[i] || "").trim().toLowerCase();
+    if (key) map[key] = i;
+  }
+  return map;
+}
+
+/**
+ * Validates a coupon code against the "Coupons" sheet in Google Sheets.
+ * Evaluates active status, Asia/Kolkata date bounds, MinOrder, UsageLimit, and PerCustomerLimit.
+ */
+function validateCouponHandler(payload, ss) {
+  try {
+    var rawCode = String(payload.code || payload.couponCode || "").trim();
+    if (!rawCode) {
+      return { success: false, valid: false, error: "Please enter a coupon code." };
+    }
+    var codeUpper = rawCode.toUpperCase();
+    var subtotal = Number(payload.subtotal !== undefined ? payload.subtotal : payload.cartSubtotal || 0);
+    if (isNaN(subtotal) || subtotal < 0) {
+      subtotal = 0;
+    }
+    var customerPhone = String(payload.customerPhone || (payload.customer && payload.customer.mobile) || payload.phone || "").trim();
+    var customerEmail = String(payload.customerEmail || (payload.customer && payload.customer.email) || payload.email || "").trim();
+
+    var cSheet = getOrCreateCouponsSheet(ss);
+    var lastRow = cSheet.getLastRow();
+    if (lastRow <= 1) {
+      return { success: false, valid: false, error: "Invalid coupon code" };
+    }
+
+    var headerMap = getHeaderMap(cSheet);
+    var codeCol = headerMap["code"];
+    if (codeCol === undefined) {
+      return { success: false, valid: false, error: "Coupons sheet is missing 'Code' column" };
+    }
+
+    var data = cSheet.getRange(2, 1, lastRow - 1, cSheet.getLastColumn()).getValues();
+    var matchedRow = null;
+
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      var cCode = String(row[codeCol] || "").trim().toUpperCase();
+      if (cCode === codeUpper) {
+        matchedRow = row;
+        break;
+      }
+    }
+
+    if (!matchedRow) {
+      return { success: false, valid: false, error: "Invalid coupon code" };
+    }
+
+    // Helper to get value by header name
+    function getVal(colName) {
+      var idx = headerMap[colName.toLowerCase()];
+      return idx !== undefined ? matchedRow[idx] : undefined;
+    }
+
+    // 1. Check Active
+    var activeVal = getVal("active");
+    var isActive = (activeVal === true || String(activeVal).trim().toLowerCase() === "true" || activeVal === 1 || String(activeVal).trim().toLowerCase() === "yes");
+    if (!isActive) {
+      return { success: false, valid: false, error: "This coupon is no longer active" };
+    }
+
+    // 2. Check Date Bounds in Asia/Kolkata timezone
+    var nowKolkata = new Date();
+    // Parse StartDate
+    var rawStart = getVal("startdate");
+    if (rawStart) {
+      var startDate = rawStart instanceof Date ? rawStart : new Date(rawStart);
+      if (!isNaN(startDate.getTime())) {
+        var startMidnight = new Date(startDate);
+        startMidnight.setHours(0, 0, 0, 0);
+        if (nowKolkata < startMidnight) {
+          return { success: false, valid: false, error: "Coupon is not yet active" };
+        }
+      }
+    }
+
+    // Parse EndDate
+    var rawEnd = getVal("enddate");
+    if (rawEnd) {
+      var endDate = rawEnd instanceof Date ? rawEnd : new Date(rawEnd);
+      if (!isNaN(endDate.getTime())) {
+        var endEndOfDay = new Date(endDate);
+        endEndOfDay.setHours(23, 59, 59, 999);
+        if (nowKolkata > endEndOfDay) {
+          return { success: false, valid: false, error: "Coupon has expired" };
+        }
+      }
+    }
+
+    // 3. Check MinOrder
+    var minOrder = Number(getVal("minorder") || 0);
+    if (!isNaN(minOrder) && minOrder > 0 && subtotal < minOrder) {
+      return {
+        success: false,
+        valid: false,
+        error: "Minimum order amount of ₹" + minOrder + " required for this coupon"
+      };
+    }
+
+    // 4. Check Global UsageLimit
+    var usageLimit = Number(getVal("usagelimit") || 0);
+    var usedCount = Number(getVal("usedcount") || 0);
+    if (!isNaN(usageLimit) && usageLimit > 0 && usedCount >= usageLimit) {
+      return { success: false, valid: false, error: "Coupon usage limit reached" };
+    }
+
+    // 5. Check PerCustomerLimit against Orders sheet
+    var perCustLimit = Number(getVal("percustomerlimit") || 0);
+    if (!isNaN(perCustLimit) && perCustLimit > 0 && (customerPhone || customerEmail)) {
+      var ordersSheet = getOrCreateOrdersSheet(ss);
+      var ordersLastRow = ordersSheet.getLastRow();
+      if (ordersLastRow > 1) {
+        var ordersHeaderMap = getHeaderMap(ordersSheet);
+        var oCouponCol = ordersHeaderMap["coupon code"];
+        var oPhoneCol = ordersHeaderMap["phone"];
+        var oEmailCol = ordersHeaderMap["email"];
+
+        if (oCouponCol !== undefined) {
+          var ordersData = ordersSheet.getRange(2, 1, ordersLastRow - 1, ordersSheet.getLastColumn()).getValues();
+          var custUses = 0;
+          for (var i = 0; i < ordersData.length; i++) {
+            var oRow = ordersData[i];
+            var oCoupon = String(oRow[oCouponCol] || "").trim().toUpperCase();
+            if (oCoupon === codeUpper) {
+              var oPhone = oPhoneCol !== undefined ? String(oRow[oPhoneCol] || "").trim() : "";
+              var oEmail = oEmailCol !== undefined ? String(oRow[oEmailCol] || "").trim().toLowerCase() : "";
+              var matchPhone = customerPhone && oPhone && oPhone.slice(-10) === customerPhone.slice(-10);
+              var matchEmail = customerEmail && oEmail && oEmail === customerEmail.toLowerCase();
+              if (matchPhone || matchEmail) {
+                custUses++;
+              }
+            }
+          }
+          if (custUses >= perCustLimit) {
+            return {
+              success: false,
+              valid: false,
+              error: "You have already reached the usage limit for this coupon"
+            };
+          }
+        }
+      }
+    }
+
+    // 6. Compute Discount
+    var type = String(getVal("type") || "PERCENT").trim().toUpperCase();
+    var val = Number(getVal("value") || 0);
+    var maxDisc = Number(getVal("maxdiscount") || 0);
+    var rawDiscount = 0;
+
+    if (type === "PERCENT" || type === "PERCENTAGE") {
+      rawDiscount = Math.round((subtotal * val) / 100);
+      if (!isNaN(maxDisc) && maxDisc > 0) {
+        rawDiscount = Math.min(rawDiscount, maxDisc);
+      }
+    } else {
+      rawDiscount = Math.round(val);
+    }
+
+    // Cap discount to subtotal so total never becomes negative
+    rawDiscount = Math.max(0, Math.min(rawDiscount, subtotal));
+
+    // Enforce minimum payable amount ₹1 on Razorpay if subtotal >= 1
+    if (subtotal >= 1 && (subtotal - rawDiscount) < 1) {
+      rawDiscount = Math.max(0, subtotal - 1);
+    }
+
+    var finalAmount = Math.max(0, subtotal - rawDiscount);
+
+    return {
+      success: true,
+      valid: true,
+      coupon: {
+        code: codeUpper,
+        description: String(getVal("description") || ""),
+        type: type,
+        discountType: (type === "PERCENT" || type === "PERCENTAGE") ? "percentage" : "fixed",
+        value: val,
+        discountValue: val,
+        discount: rawDiscount,
+        discountAmount: rawDiscount,
+        finalAmount: finalAmount,
+        minOrder: minOrder,
+        minimumOrder: minOrder,
+        maxDiscount: maxDisc,
+        maximumDiscount: maxDisc
+      }
+    };
+  } catch (err) {
+    Logger.log("validateCouponHandler error: " + err.toString());
+    return { success: false, valid: false, error: "Failed to validate coupon: " + err.toString() };
+  }
+}
+
+/**
+ * Returns all active, currently valid coupons for public display.
+ */
+function getCouponsHandler(ss) {
+  try {
+    var cSheet = getOrCreateCouponsSheet(ss);
+    var lastRow = cSheet.getLastRow();
+    if (lastRow <= 1) {
+      return { success: true, data: [] };
+    }
+
+    var headerMap = getHeaderMap(cSheet);
+    var data = cSheet.getRange(2, 1, lastRow - 1, cSheet.getLastColumn()).getValues();
+    var nowKolkata = new Date();
+    var publicCoupons = [];
+
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      function getVal(colName) {
+        var idx = headerMap[colName.toLowerCase()];
+        return idx !== undefined ? row[idx] : undefined;
+      }
+
+      var code = String(getVal("code") || "").trim().toUpperCase();
+      if (!code) continue;
+
+      var activeVal = getVal("active");
+      var isActive = (activeVal === true || String(activeVal).trim().toLowerCase() === "true" || activeVal === 1 || String(activeVal).trim().toLowerCase() === "yes");
+      if (!isActive) continue;
+
+      // Start date check
+      var rawStart = getVal("startdate");
+      if (rawStart) {
+        var startDate = rawStart instanceof Date ? rawStart : new Date(rawStart);
+        if (!isNaN(startDate.getTime())) {
+          var startMidnight = new Date(startDate);
+          startMidnight.setHours(0, 0, 0, 0);
+          if (nowKolkata < startMidnight) continue;
+        }
+      }
+
+      // End date check
+      var rawEnd = getVal("enddate");
+      if (rawEnd) {
+        var endDate = rawEnd instanceof Date ? rawEnd : new Date(rawEnd);
+        if (!isNaN(endDate.getTime())) {
+          var endEndOfDay = new Date(endDate);
+          endEndOfDay.setHours(23, 59, 59, 999);
+          if (nowKolkata > endEndOfDay) continue;
+        }
+      }
+
+      // Usage limit check
+      var usageLimit = Number(getVal("usagelimit") || 0);
+      var usedCount = Number(getVal("usedcount") || 0);
+      if (!isNaN(usageLimit) && usageLimit > 0 && usedCount >= usageLimit) continue;
+
+      var type = String(getVal("type") || "PERCENT").trim().toUpperCase();
+      var val = Number(getVal("value") || 0);
+      var minOrder = Number(getVal("minorder") || 0);
+      var maxDisc = Number(getVal("maxdiscount") || 0);
+
+      publicCoupons.push({
+        code: code,
+        description: String(getVal("description") || ""),
+        type: type,
+        discountType: (type === "PERCENT" || type === "PERCENTAGE") ? "percentage" : "fixed",
+        value: val,
+        discountValue: val,
+        minOrder: minOrder,
+        minimumOrder: minOrder,
+        maxDiscount: maxDisc,
+        maximumDiscount: maxDisc,
+        active: true
+      });
+    }
+
+    return { success: true, data: publicCoupons };
+  } catch (err) {
+    Logger.log("getCouponsHandler error: " + err.toString());
+    return { success: false, data: [], error: err.toString() };
+  }
 }
 
 /**
@@ -155,6 +564,12 @@ function doGet(e) {
         hasKeySecret: Boolean(PropertiesService.getScriptProperties().getProperty("KEY_SECRET") ||
                               PropertiesService.getScriptProperties().getProperty("RAZORPAY_KEY_SECRET"))
       });
+    }
+
+    // Coupons catalog lookup (active valid coupons only)
+    if (action === "getCoupons" || action === "coupons") {
+      var ss = getSpreadsheet();
+      return jsonResponse(getCouponsHandler(ss));
     }
 
     // Preserve product catalog lookup if requested
@@ -243,6 +658,18 @@ function doPost(e) {
       return jsonResponse(handleServerOrderCreation(payload));
     }
 
+    // Coupon validation against Coupons sheet
+    if (action === "validateCoupon") {
+      var ssCoupon = getSpreadsheet();
+      return jsonResponse(validateCouponHandler(payload, ssCoupon));
+    }
+
+    // Coupon catalog retrieval
+    if (action === "getCoupons" || action === "coupons") {
+      var ssList = getSpreadsheet();
+      return jsonResponse(getCouponsHandler(ssList));
+    }
+
     // ── PRIMARY ORDER PERSISTENCE (GOAL 2) ──────────────────────────────────
     // Use LockService with a 15-second timeout to avoid duplicate/overlapping writes
     hasLock = lock.tryLock(15000);
@@ -269,6 +696,12 @@ function doPost(e) {
     var itemsNotes  = String(payload.items_notes || payload.itemsNotes || payload.notes || "").trim();
     var signature   = String(payload.razorpay_signature || payload.signature || "").trim();
     var timestamp   = payload.timestamp ? new Date(payload.timestamp) : new Date();
+
+    // Coupon and Pricing breakdown
+    var couponCode  = String(payload.coupon_code || payload.couponCode || "").trim().toUpperCase();
+    var subtotal    = Number(payload.subtotal !== undefined ? payload.subtotal : (payload.cartSubtotal !== undefined ? payload.cartSubtotal : amount));
+    var discount    = Number(payload.discount !== undefined ? payload.discount : (payload.discountAmount || 0));
+    var finalAmount = Number(payload.final_amount !== undefined ? payload.final_amount : (payload.grandTotal !== undefined ? payload.grandTotal : amount));
 
     // ── FIELD VALIDATION ──────────────────────────────────────────────────
     if (!orderId) {
@@ -349,6 +782,40 @@ function doPost(e) {
     // ── SIGNATURE VERIFICATION ─────────────────────────────────────────────
     var signatureVerified = verifyRazorpaySignature(orderId, paymentId, signature);
 
+    // ── ATOMIC COUPON USAGE INCREMENT ─────────────────────────────────────
+    if (couponCode) {
+      try {
+        var couponsSheet = getOrCreateCouponsSheet(ss);
+        var cLastRow = couponsSheet.getLastRow();
+        if (cLastRow > 1) {
+          var cHeaderMap = getHeaderMap(couponsSheet);
+          var codeCol = cHeaderMap["code"];
+          var usedCountCol = cHeaderMap["usedcount"];
+          var usageLimitCol = cHeaderMap["usagelimit"];
+
+          if (codeCol !== undefined && usedCountCol !== undefined) {
+            var cData = couponsSheet.getRange(2, 1, cLastRow - 1, couponsSheet.getLastColumn()).getValues();
+            for (var ci = 0; ci < cData.length; ci++) {
+              var rowCoupon = String(cData[ci][codeCol] || "").trim().toUpperCase();
+              if (rowCoupon === couponCode) {
+                var currentUsed = Number(cData[ci][usedCountCol] || 0);
+                var limit = usageLimitCol !== undefined ? Number(cData[ci][usageLimitCol] || 0) : 0;
+                if (limit > 0 && currentUsed >= limit) {
+                  Logger.log("Notice: Coupon " + couponCode + " has already reached limit " + limit);
+                } else {
+                  couponsSheet.getRange(ci + 2, usedCountCol + 1).setValue(currentUsed + 1);
+                  Logger.log("Incremented UsedCount for coupon " + couponCode + " to " + (currentUsed + 1));
+                }
+                break;
+              }
+            }
+          }
+        }
+      } catch (couponIncErr) {
+        Logger.log("Failed to increment coupon UsedCount: " + couponIncErr.toString());
+      }
+    }
+
     // ── APPEND TO "Orders" SHEET ───────────────────────────────────────────
     var newRow = [
       timestamp,          // 1. Timestamp
@@ -362,19 +829,24 @@ function doPost(e) {
       email,              // 9. Email
       address,            // 10. Address
       itemsNotes,         // 11. Items/Notes
-      signatureVerified   // 12. Signature Verified
+      signatureVerified,  // 12. Signature Verified
+      couponCode,         // 13. Coupon Code
+      subtotal,           // 14. Subtotal
+      discount,           // 15. Discount
+      finalAmount         // 16. Final Amount
     ];
 
     ordersSheet.appendRow(newRow);
 
-    Logger.log("Order saved successfully: Order ID " + orderId + ", Payment ID " + paymentId);
+    Logger.log("Order saved successfully: Order ID " + orderId + ", Payment ID " + paymentId + (couponCode ? ", Coupon: " + couponCode : ""));
 
     return jsonResponse({
       success: true,
       message: "Order recorded successfully in Google Sheets",
       orderId: orderId,
       paymentId: paymentId,
-      signatureVerified: signatureVerified
+      signatureVerified: signatureVerified,
+      couponCode: couponCode
     });
 
   } catch (err) {

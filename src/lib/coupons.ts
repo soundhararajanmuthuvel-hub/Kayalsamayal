@@ -1,62 +1,18 @@
 export interface CouponDefinition {
-  id: string;
+  id?: string;
   code: string;
+  description?: string;
   discountType: "percentage" | "fixed";
   discountValue: number; // e.g. 10 for 10%
   maximumDiscount?: number; // e.g. 100 for ₹100 cap
-  minimumOrderSubtotal: number; // e.g. 299
+  minimumOrderSubtotal?: number; // e.g. 299
   usageLimit?: number; // global usage limit
-  perCustomerLimit: number; // e.g. 1
+  usedCount?: number;
+  perCustomerLimit?: number; // e.g. 1
   startDate?: string; // ISO or date string
   expiryDate?: string; // ISO or date string
   active: boolean;
 }
-
-/**
- * Standard backend/database coupon catalog.
- * WELCOME10 is pre-configured and can be extended from Google Sheets.
- */
-export const DEFAULT_COUPONS: CouponDefinition[] = [
-  {
-    id: "CPN-WELCOME10",
-    code: "WELCOME10",
-    discountType: "percentage",
-    discountValue: 10,
-    maximumDiscount: 100,
-    minimumOrderSubtotal: 299,
-    perCustomerLimit: 1,
-    active: true,
-  },
-  {
-    id: "CPN-KAYAL100",
-    code: "KAYAL100",
-    discountType: "percentage",
-    discountValue: 100,
-    // maximumDiscount intentionally omitted — no cap
-    minimumOrderSubtotal: 0,
-    perCustomerLimit: 1,
-    active: true,
-  },
-  {
-    id: "CPN-HI",
-    code: "HI",
-    discountType: "percentage",
-    discountValue: 100,
-    minimumOrderSubtotal: 0,
-    perCustomerLimit: 1,
-    active: true,
-  },
-  {
-    id: "CPN-TEST1RS",
-    code: "TEST1RS",
-    discountType: "fixed",
-    discountValue: 539,
-    maximumDiscount: 999,
-    minimumOrderSubtotal: 100,
-    perCustomerLimit: 0,
-    active: true,
-  },
-];
 
 export interface CouponValidationResult {
   valid: boolean;
@@ -66,6 +22,8 @@ export interface CouponValidationResult {
   discountType?: "percentage" | "fixed";
   discountValue?: number;
   maximumDiscount?: number;
+  minOrder?: number;
+  finalAmount?: number;
   message?: string;
 }
 
@@ -77,7 +35,8 @@ export function normalizeCouponCode(code: string): string {
 }
 
 /**
- * Server-authoritative coupon evaluation.
+ * Dynamic in-memory coupon evaluation against a provided catalog (e.g. from Google Sheets).
+ * No hardcoded coupons exist. The Google Sheet is the single source of truth.
  */
 export function evaluateCoupon(
   code: string | undefined | null,
@@ -97,9 +56,10 @@ export function evaluateCoupon(
     return { valid: false, discountAmount: 0, error: "Invalid coupon code" };
   }
 
-  const catalog = options?.availableCoupons && options.availableCoupons.length > 0
-    ? options.availableCoupons
-    : DEFAULT_COUPONS;
+  const catalog = options?.availableCoupons || [];
+  if (catalog.length === 0) {
+    return { valid: false, discountAmount: 0, error: "Invalid coupon code" };
+  }
 
   const coupon = catalog.find(
     (c) => normalizeCouponCode(c.code) === normalized
@@ -129,11 +89,12 @@ export function evaluateCoupon(
     }
   }
 
-  if (subtotal < coupon.minimumOrderSubtotal) {
+  const minOrder = Number(coupon.minimumOrderSubtotal || 0);
+  if (minOrder > 0 && subtotal < minOrder) {
     return {
       valid: false,
       discountAmount: 0,
-      error: `Minimum order value is ₹${coupon.minimumOrderSubtotal} to use this coupon`,
+      error: `Minimum order amount of ₹${minOrder} required for this coupon`,
     };
   }
 
@@ -145,7 +106,7 @@ export function evaluateCoupon(
     return {
       valid: false,
       discountAmount: 0,
-      error: "You have already used this coupon",
+      error: "You have already reached the usage limit for this coupon",
     };
   }
 
@@ -163,6 +124,13 @@ export function evaluateCoupon(
   // Cap discount to subtotal so total never becomes negative
   discount = Math.max(0, Math.min(discount, subtotal));
 
+  // Ensure minimum payable amount ₹1 on Razorpay if subtotal >= 1
+  if (subtotal >= 1 && (subtotal - discount) < 1) {
+    discount = Math.max(0, subtotal - 1);
+  }
+
+  const finalAmount = Math.max(0, subtotal - discount);
+
   return {
     valid: true,
     code: coupon.code,
@@ -170,6 +138,8 @@ export function evaluateCoupon(
     discountType: coupon.discountType,
     discountValue: coupon.discountValue,
     maximumDiscount: coupon.maximumDiscount,
+    minOrder,
+    finalAmount,
     message: `${coupon.code} applied! You saved ₹${discount}.`,
   };
 }

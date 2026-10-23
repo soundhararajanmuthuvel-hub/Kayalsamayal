@@ -27,7 +27,7 @@ export interface CustomerDetails {
 export interface AppliedCoupon {
   code: string;
   discountType: "percentage" | "fixed";
-  discountValue: number;   // e.g. 100 for KAYAL100, 10 for WELCOME10
+  discountValue: number;   // e.g. 10 for 10% or 50 for ₹50
   discountAmount: number;  // server-calculated rupee amount for the current cart
   maxDiscount?: number;
   minOrder?: number;
@@ -84,9 +84,6 @@ export function computeCouponDiscount(
   subtotal: number
 ): number {
   if (!coupon || subtotal <= 0) return 0;
-  if (coupon.code && String(coupon.code).trim().toUpperCase() === "TEST1RS") {
-    return Math.max(0, subtotal - 1);
-  }
   let rawDiscount = 0;
   if (coupon.discountType === "percentage") {
     rawDiscount = Math.round((subtotal * (coupon.discountValue || 0)) / 100);
@@ -96,7 +93,11 @@ export function computeCouponDiscount(
   } else {
     rawDiscount = Math.round(coupon.discountValue || 0);
   }
-  return Math.max(0, Math.min(rawDiscount, subtotal));
+  rawDiscount = Math.max(0, Math.min(rawDiscount, subtotal));
+  if (subtotal >= 1 && (subtotal - rawDiscount) < 1) {
+    rawDiscount = Math.max(0, subtotal - 1);
+  }
+  return rawDiscount;
 }
 
 // Helper to assign default prices if not present (e.g. for fallback products)

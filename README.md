@@ -50,7 +50,7 @@ The checkout system operates in **TEST MODE ONLY** using verified Razorpay test 
    - Status transitions from *"Saving your order to database..."* to *"Order saved to database"*.
    - **Order ID** (e.g., `order_...` or `KS-...`) and **Payment ID** (e.g., `pay_...`) are clearly displayed with one-click copy buttons.
 7. Open the connected Google Sheet and navigate to the **"Orders"** tab.
-8. Verify that a new row has been appended with the following 12 columns:
+8. Verify that a new row has been appended with the following 16 columns:
    | Column # | Column Name | Sample Value |
    | :--- | :--- | :--- |
    | 1 | **Timestamp** | `2026-10-22T14:30:00.000Z` |
@@ -65,6 +65,59 @@ The checkout system operates in **TEST MODE ONLY** using verified Razorpay test 
    | 10 | **Address** | `123 Spice Garden, Tirupattur, Tamil Nadu - 635601` |
    | 11 | **Items/Notes** | `Kayal Curry Masala (x2), Kalari Masala (x1)` |
    | 12 | **Signature Verified** | `Yes` |
+   | 13 | **Coupon Code** | `WELCOME10` |
+   | 14 | **Subtotal** | `530` |
+   | 15 | **Discount** | `50` |
+   | 16 | **Final Amount** | `480` |
+
+---
+
+## Google Sheet Coupons (Single Source of Truth)
+
+The Google Sheet is the **authoritative single source of truth** for all coupon codes, discount amounts, minimum order rules, and usage limits.
+- When an administrator adds, updates, disables, or deletes a coupon in the **"Coupons"** tab, the storefront reflects the changes immediately on the very next coupon check.
+- **No website code change and no redeployment is required.**
+- No coupons are hardcoded anywhere in the website codebase.
+
+### 1. "Coupons" Sheet Tab Columns
+
+The **"Coupons"** tab must have the following header row (case-insensitive column lookups):
+
+| Column Name | Type | Description & Examples |
+| :--- | :--- | :--- |
+| **Code** | String | Coupon code (e.g. `WELCOME10`, `FLAT50`, `FESTIVE100`). Case-insensitive and trimmed. |
+| **Description** | String | Short promotional description shown to customers (e.g. `10% off on your spice order`). |
+| **Type** | String | Discount calculation model: `PERCENT` (or `PERCENTAGE`) or `FLAT`. |
+| **Value** | Number | Discount value: e.g. `10` for 10% discount, or `50` for flat ₹50 off. |
+| **MinOrder** | Number | Minimum cart subtotal required to use this coupon (e.g. `200` or `0` for no minimum). |
+| **MaxDiscount** | Number | Maximum discount cap in ₹ for PERCENT coupons (e.g. `100`). Set to `0` or blank for no cap. |
+| **StartDate** | Date/String | Optional start date (`YYYY-MM-DD`). Active from 00:00:00 Asia/Kolkata. |
+| **EndDate** | Date/String | Optional expiry date (`YYYY-MM-DD`). Active through 23:59:59 Asia/Kolkata. |
+| **UsageLimit** | Number | Maximum total lifetime uses across all customers (e.g. `100`). Set `0` for unlimited. |
+| **UsedCount** | Number | Auto-incremented count of completed paid orders using this coupon. Start at `0`. |
+| **PerCustomerLimit** | Number | Maximum uses allowed per customer phone or email (e.g. `1`). Set `0` for unlimited. |
+| **Active** | Boolean | Set to `TRUE` to enable, or `FALSE` to immediately disable without deleting. |
+
+### 2. Auto-Seeded Sample Coupons
+
+When the Apps Script runs for the first time, if the "Coupons" sheet is missing or empty, it automatically creates the headers and seeds 3 initial rows:
+
+1. **`WELCOME10`**: `10% off on your order` | Type: `PERCENT` | Value: `10` | MinOrder: `200` | MaxDiscount: `100` | UsageLimit: `100` | Active: `TRUE`
+2. **`FLAT50`**: `Flat ₹50 off` | Type: `FLAT` | Value: `50` | MinOrder: `300` | MaxDiscount: `50` | UsageLimit: `50` | Active: `TRUE`
+3. **`EXPIRED5`**: `Expired sample coupon` | Type: `PERCENT` | Value: `5` | MinOrder: `100` | Active: `FALSE`
+
+### 3. Managing Coupons in Google Sheets
+
+- **Add a Coupon**: Simply insert a new row at the bottom of the "Coupons" tab, fill out the columns, set `UsedCount` to `0`, and set `Active` to `TRUE`.
+- **Edit a Coupon**: Update any cell (e.g. change `Value` from `10` to `15` or `MaxDiscount` from `100` to `150`). The Next.js API uses `cache: "no-store"` and immediately uses the new values.
+- **Deactivate a Coupon**: Change `Active` from `TRUE` to `FALSE`. The website will instantly reject attempts to apply the code with: *"This coupon is no longer active"*.
+- **Delete a Coupon**: Right-click the row in Google Sheets and select **Delete row**. Subsequent checks will report *"Invalid coupon code"*.
+
+### 4. Atomic Concurrency & Pre-Payment Check
+
+- **Pre-Payment Lock & Validation**: Right before opening the Razorpay payment window, the storefront performs a real-time check against `/api/coupon`. If the coupon expired or reached its limit, the checkout stops, clears the discount, updates the grand total, and blocks payment.
+- **Atomic Concurrency Guarantee**: Inside Google Apps Script, `LockService.getScriptLock()` prevents race conditions. When a payment is verified, `UsedCount` is incremented atomically. Duplicate payments or tampered signatures will never increment `UsedCount`.
+- **Minimum Payable Rule**: All payable orders sent to the Razorpay gateway maintain a minimum total of ₹1 (or ₹0 for 100% discount free orders via `/api/orders/free`).
 
 ---
 

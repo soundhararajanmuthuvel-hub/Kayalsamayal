@@ -96,6 +96,9 @@ interface ConfirmedPaymentDetails {
   verificationMessage?: string;
   signature?: string;
   orderToken?: string;
+  couponCode?: string;
+  discount?: number;
+  subtotal?: number;
 }
 
 export default function CheckoutPage() {
@@ -107,6 +110,7 @@ export default function CheckoutPage() {
     setCustomerDetails,
     clearCart,
     appliedCoupon,
+    clearAppliedCoupon,
     isHydrated,
   } = useCart();
 
@@ -131,10 +135,26 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [loadingStatusText, setLoadingStatusText] = useState("");
   const [orderErr, setOrderErr] = useState("");
+  const [couponWarning, setCouponWarning] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"razorpay" | "cod">("razorpay");
   const [codEnabled, setCodEnabled] = useState<boolean>(false);
   const [confirmedPayment, setConfirmedPayment] = useState<ConfirmedPaymentDetails | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Auto re-validate applied coupon when cart subtotal or items change
+  useEffect(() => {
+    if (!isHydrated || !appliedCoupon) return;
+
+    if (appliedCoupon.minOrder && appliedCoupon.minOrder > 0 && cartSubtotal < appliedCoupon.minOrder) {
+      const code = appliedCoupon.code;
+      const minReq = appliedCoupon.minOrder;
+      const timer = setTimeout(() => {
+        clearAppliedCoupon();
+        setCouponWarning(`Coupon ${code} removed: minimum order ₹${minReq} required.`);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [cartSubtotal, appliedCoupon, isHydrated, clearAppliedCoupon]);
 
   // Fetch dynamic payment settings (COD availability) from backend
   useEffect(() => {
@@ -328,10 +348,42 @@ export default function CheckoutPage() {
    */
   const handleOnlinePayment = async () => {
     setOrderErr("");
+    setCouponWarning(null);
     setLoading(true);
     setLoadingStatusText("Preparing secure payment...");
 
     try {
+      // 0. Pre-payment Authoritative Coupon Validation
+      if (appliedCoupon?.code) {
+        setLoadingStatusText("Verifying coupon...");
+        try {
+          const valRes = await fetch("/api/coupons/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: appliedCoupon.code,
+              couponCode: appliedCoupon.code,
+              subtotal: cartSubtotal,
+              customerMobile: formData.mobile,
+              items: cart.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+            }),
+          });
+          const valData = await valRes.json();
+          if (!valRes.ok || !valData.valid) {
+            const failReason = valData.error || "This coupon is no longer valid.";
+            clearAppliedCoupon();
+            const updatedTotal = Math.max(0, cartSubtotal + shipping);
+            setOrderErr(`Coupon is no longer valid: ${failReason}. The total has been updated to ${formatINR(updatedTotal)}.`);
+            setLoading(false);
+            setLoadingStatusText("");
+            return; // Block stale gateway modal!
+          }
+        } catch (valErr) {
+          console.warn("Coupon pre-validation service unreachable:", valErr);
+          setCouponWarning("Coupon service unavailable, continue without coupon?");
+        }
+      }
+
       // 1. Ensure Razorpay checkout script is loaded
       const isLoaded = await ensureRazorpayLoaded();
       if (!isLoaded || typeof window.Razorpay === "undefined") {
@@ -395,6 +447,9 @@ export default function CheckoutPage() {
           sheetStatus: "saving",
           itemsSummary: cart.map((i) => `${i.product.name} (x${i.quantity})`).join(", "),
           verificationStatus: "verified",
+          couponCode: appliedCoupon?.code,
+          discount: discountAmount,
+          subtotal: cartSubtotal,
         };
 
         setConfirmedPayment(freePaymentDetails);
@@ -415,6 +470,10 @@ export default function CheckoutPage() {
           address: deliveryAddress,
           items_notes: freePaymentDetails.itemsSummary + (formData.notes ? ` | Notes: ${formData.notes}` : ""),
           razorpay_signature: "FREE_ORDER",
+          coupon_code: appliedCoupon?.code || "",
+          subtotal: cartSubtotal,
+          discount: discountAmount,
+          final_amount: 0,
         });
 
         setLoading(false);
@@ -493,6 +552,9 @@ export default function CheckoutPage() {
             verificationStatus: "pending",
             signature: resolvedSignature,
             orderToken: orderData.orderToken,
+            couponCode: appliedCoupon?.code,
+            discount: discountAmount,
+            subtotal: cartSubtotal,
           };
 
           try {
@@ -542,6 +604,10 @@ export default function CheckoutPage() {
                 address: deliveryAddress,
                 items_notes: itemsSummary + (formData.notes ? ` | Notes: ${formData.notes}` : ""),
                 razorpay_signature: resolvedSignature,
+                coupon_code: appliedCoupon?.code || "",
+                subtotal: cartSubtotal,
+                discount: discountAmount,
+                final_amount: grandTotal,
               });
             } else {
               // Verification failed / signature invalid
@@ -687,6 +753,36 @@ export default function CheckoutPage() {
     const deliveryAddress = `${formData.address}, ${formData.city}, ${formData.state} - ${formData.pincode}`;
 
     try {
+      // Pre-order Authoritative Coupon Validation
+      if (appliedCoupon?.code) {
+        try {
+          const valRes = await fetch("/api/coupons/validate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: appliedCoupon.code,
+              couponCode: appliedCoupon.code,
+              subtotal: cartSubtotal,
+              customerMobile: formData.mobile,
+              items: cart.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+            }),
+          });
+          const valData = await valRes.json();
+          if (!valRes.ok || !valData.valid) {
+            const failReason = valData.error || "This coupon is no longer valid.";
+            clearAppliedCoupon();
+            const updatedTotal = Math.max(0, cartSubtotal + shipping);
+            setOrderErr(`Coupon is no longer valid: ${failReason}. The total has been updated to ${formatINR(updatedTotal)}.`);
+            setLoading(false);
+            setLoadingStatusText("");
+            return;
+          }
+        } catch (valErr) {
+          console.warn("Coupon pre-validation service unreachable:", valErr);
+          setCouponWarning("Coupon service unavailable, continue without coupon?");
+        }
+      }
+
       const res = await fetch("/api/orders/cod", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -737,6 +833,9 @@ export default function CheckoutPage() {
         sheetStatus: "saving",
         itemsSummary,
         verificationStatus: "verified",
+        couponCode: appliedCoupon?.code,
+        discount: discountAmount,
+        subtotal: cartSubtotal,
       };
 
       setConfirmedPayment(codDetails);
@@ -758,6 +857,10 @@ export default function CheckoutPage() {
         address: deliveryAddress,
         items_notes: itemsSummary + (formData.notes ? ` | Notes: ${formData.notes}` : ""),
         razorpay_signature: "COD",
+        coupon_code: appliedCoupon?.code || "",
+        subtotal: cartSubtotal,
+        discount: discountAmount,
+        final_amount: grandTotal,
       });
     } catch (err: unknown) {
       console.error("COD placement error:", err);
@@ -948,6 +1051,26 @@ export default function CheckoutPage() {
                     {formatINR(confirmedPayment?.amount ?? grandTotal)}
                   </span>
                 </div>
+
+                {/* Coupon Applied */}
+                {confirmedPayment?.couponCode && (
+                  <div className="flex items-center justify-between py-1 border-b border-border/50">
+                    <span className="text-muted-foreground font-medium">Coupon Applied:</span>
+                    <span className="font-mono font-bold text-leaf">
+                      {confirmedPayment.couponCode}
+                    </span>
+                  </div>
+                )}
+
+                {/* Coupon Discount */}
+                {confirmedPayment?.discount && confirmedPayment.discount > 0 ? (
+                  <div className="flex items-center justify-between py-1 border-b border-border/50">
+                    <span className="text-muted-foreground font-medium">Coupon Discount:</span>
+                    <span className="font-bold text-leaf">
+                      -{formatINR(confirmedPayment.discount)}
+                    </span>
+                  </div>
+                ) : null}
 
                 {/* Customer Name */}
                 <div className="flex items-center justify-between py-1 border-b border-border/50">
@@ -1385,6 +1508,27 @@ export default function CheckoutPage() {
                               WhatsApp Help
                             </Button>
                           </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Non-blocking Coupon Warning Banner */}
+                    {couponWarning && (
+                      <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs sm:text-sm space-y-1.5 animate-in fade-in">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                            <div>
+                              <p className="font-semibold text-xs sm:text-sm">{couponWarning}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCouponWarning(null)}
+                            className="text-amber-700 dark:text-amber-300 hover:underline font-bold text-xs shrink-0"
+                          >
+                            Dismiss
+                          </button>
                         </div>
                       </div>
                     )}

@@ -82,7 +82,7 @@ export function CouponInput({
               autoCorrect="off"
               autoCapitalize="characters"
               spellCheck={false}
-              placeholder="e.g. WELCOME10, HI"
+              placeholder="e.g. SAVE10"
               aria-label="Enter coupon code"
               aria-invalid={!!displayError}
               aria-describedby={displayError ? "coupon-error-desc" : undefined}
