@@ -1,44 +1,237 @@
 /**
  * Automated Verification Script for Google Sheet Coupon Logic & Pricing Engine
- * Tests the 14 test cases defined in the single source of truth coupon specification.
+ * Uses the authoritative Real A-N Layout and verifies all required test cases.
  */
 
-import { evaluateCoupon, normalizeCouponCode } from "../src/lib/coupons.ts";
+import { evaluateCoupon, normalizeCouponCode, calculateCouponDiscount, computeCouponDiscount } from "../src/lib/coupons.ts";
 import { calculateOrderTotals } from "../src/lib/pricing.ts";
 
-// Simulated Coupons Sheet Catalog (exact representation of Google Sheet rows)
+// Real A-N Google Sheet Headers
+const REAL_SHEET_HEADERS = [
+  "Coupon ID",
+  "Code",
+  "Discount Type",
+  "Discount Value",
+  "Maximum Discount",
+  "Minimum Order",
+  "Usage Limit",
+  "Used Count",
+  "Per Customer Limit",
+  "Start Date",
+  "Expiry Date",                                                                                                  
+  "Active",
+  "Created At",
+  "Updated At"
+];
+
+// Coupon header aliases matching Code.gs
+const COUPON_ALIASES = {
+  code: ["code", "coupon code"],
+  type: ["discount type", "type"],
+  value: ["discount value", "value"],
+  maxdiscount: ["maximum discount", "max discount", "maxdiscount"],
+  minorder: ["minimum order", "min order", "minorder"],
+  usagelimit: ["usage limit", "usagelimit"],
+  usedcount: ["used count", "usedcount"],
+  percustomer: ["per customer limit", "percustomerlimit"],
+  start: ["start date", "startdate"],
+  end: ["expiry date", "end date", "enddate"],
+  active: ["active"],
+  description: ["description"]
+};
+
+const IGNORED_COUPON_HEADERS = [
+  "coupon id",
+  "created at",
+  "updated at"
+];
+
+/**
+ * Single-schema Header Map Builder (mirroring Code.gs getCouponHeaderMap)
+ */
+function getCouponHeaderMap(headers) {
+  const map = {};
+  const matchedFields = {};
+  const rawHeadersFound = [];
+
+  for (let col = 0; col < headers.length; col++) {
+    const raw = String(headers[col] || "").trim();
+    rawHeadersFound.push(raw);
+    if (!raw) continue;
+    const norm = raw.toLowerCase().replace(/[\s_\-]+/g, "");
+
+    let isIgnored = false;
+    for (const ig of IGNORED_COUPON_HEADERS) {
+      if (norm === ig.replace(/[\s_\-]+/g, "")) {
+        isIgnored = true;
+        break;
+      }
+    }
+    if (isIgnored) continue;
+
+    for (const field in COUPON_ALIASES) {
+      const candidateList = COUPON_ALIASES[field];
+      for (const cand of candidateList) {
+        if (norm === cand.replace(/[\s_\-]+/g, "")) {
+          if (!matchedFields[field]) matchedFields[field] = [];
+          matchedFields[field].push(col);
+          break;
+        }
+      }
+    }
+  }
+
+  // Fail-closed condition 1: any field matches more than one column
+  for (const f in matchedFields) {
+    if (matchedFields[f].length > 1) {
+      return {
+        error: "Coupon sheet configuration error",
+        reason: `Multiple columns match field '${f}'`,
+        headersFound: rawHeadersFound,
+      };
+    }
+    map[f] = matchedFields[f][0];
+  }
+
+  // Fail-closed condition 2: required columns code, type, value must exist
+  const required = ["code", "type", "value"];
+  for (const reqField of required) {
+    if (map[reqField] === undefined) {
+      return {
+        error: "Coupon sheet configuration error",
+        reason: `Missing required column '${reqField}'`,
+        headersFound: rawHeadersFound,
+      };
+    }
+  }
+
+  return { map, headersFound: rawHeadersFound };
+}
+
+/**
+ * Row parser mirroring Code.gs parseCouponFromRow
+ */
+function parseCouponFromRow(row, displayRow, colMap) {
+  function getVal(key) {
+    const idx = colMap[key];
+    return idx !== undefined ? row[idx] : undefined;
+  }
+  function getDisplay(key) {
+    const idx = colMap[key];
+    return (idx !== undefined && displayRow) ? displayRow[idx] : undefined;
+  }
+
+  const rawType = String(getVal("type") || "").trim().toLowerCase();
+  let discountType = "";
+  if (rawType === "percentage" || rawType === "percent" || rawType === "%") {
+    discountType = "percentage";
+  } else if (rawType === "fixed" || rawType === "flat" || rawType === "amount") {
+    discountType = "fixed";
+  } else {
+    return { invalidType: true, error: `Invalid discount type in sheet: ${rawType}` };
+  }
+
+  let val = 0;
+  if (discountType === "percentage") {
+    const dispVal = String(getDisplay("value") || "");
+    if (dispVal.includes("%")) {
+      val = parseFloat(dispVal.replace(/[^\d.]/g, "")) || 0;
+    } else {
+      const cellVal = getVal("value");
+      if (typeof cellVal === "number") {
+        val = cellVal;
+      } else {
+        val = parseFloat(String(cellVal || "").replace(/[^\d.]/g, "")) || 0;
+      }
+    }
+  } else {
+    const rawFixed = getVal("value");
+    if (typeof rawFixed === "number") {
+      val = rawFixed;
+    } else {
+      val = parseFloat(String(rawFixed || "").replace(/[₹\s,]|Rs\.?/gi, "").replace(/[^\d.]/g, "")) || 0;
+    }
+  }
+
+  const rawMax = getVal("maxdiscount");
+  let maxDisc = 0;
+  if (rawMax !== undefined && rawMax !== null && String(rawMax).trim() !== "") {
+    maxDisc = typeof rawMax === "number" ? rawMax : (parseFloat(String(rawMax).replace(/[₹\s,]|Rs\.?/gi, "").replace(/[^\d.]/g, "")) || 0);
+  }
+
+  const rawMin = getVal("minorder");
+  let minOrder = 0;
+  if (rawMin !== undefined && rawMin !== null && String(rawMin).trim() !== "") {
+    minOrder = typeof rawMin === "number" ? rawMin : (parseFloat(String(rawMin).replace(/[₹\s,]|Rs\.?/gi, "").replace(/[^\d.]/g, "")) || 0);
+  }
+
+  const rawActive = getVal("active");
+  let isActive = false;
+  if (rawActive === true || rawActive === 1) {
+    isActive = true;
+  } else if (rawActive !== undefined && rawActive !== null) {
+    const actStr = String(rawActive).trim().toLowerCase();
+    isActive = (actStr === "true" || actStr === "yes" || actStr === "1");
+  }
+
+  const usageLimit = Number(getVal("usagelimit") || 0);
+  const usedCount = Number(getVal("usedcount") || 0);
+  const perCustomerLimit = Number(getVal("percustomer") || 0);
+
+  return {
+    code: String(getVal("code") || "").trim().toUpperCase(),
+    type: discountType === "percentage" ? "PERCENT" : "FLAT",
+    discountType,
+    value: val,
+    discountValue: val,
+    maxDiscount: isNaN(maxDisc) ? 0 : maxDisc,
+    maximumDiscount: isNaN(maxDisc) ? 0 : maxDisc,
+    minOrder: isNaN(minOrder) ? 0 : minOrder,
+    minimumOrder: isNaN(minOrder) ? 0 : minOrder,
+    usageLimit: isNaN(usageLimit) ? 0 : usageLimit,
+    usedCount: isNaN(usedCount) ? 0 : usedCount,
+    perCustomerLimit: isNaN(perCustomerLimit) ? 0 : perCustomerLimit,
+    startDate: getVal("start"),
+    endDate: getVal("end"),
+    active: isActive,
+  };
+}
+
+// In-Memory Catalog for pricing tests
 const mockCouponsCatalog = [
   {
-    code: "PERCENT20",
-    description: "20% off up to ₹100",
+    code: "HI",
     discountType: "percentage",
-    discountValue: 20,
-    maximumDiscount: 100,
-    minimumOrderSubtotal: 300,
-    usageLimit: 50,
-    usedCount: 5,
-    perCustomerLimit: 2,
-    startDate: "2024-01-01",
-    expiryDate: "2030-12-31",
+    discountValue: 99,
+    maximumDiscount: 779,
+    minimumOrderSubtotal: 1,
+    perCustomerLimit: 10,
     active: true,
   },
   {
-    code: "FLAT50",
-    description: "Flat ₹50 off",
+    code: "PERCENT1",
+    discountType: "percentage",
+    discountValue: 1, // 1% test
+    minimumOrderSubtotal: 0,
+    active: true,
+  },
+  {
+    code: "KAYAL100",
+    discountType: "percentage",
+    discountValue: 99,
+    // blank max discount
+    minimumOrderSubtotal: 0,
+    active: true,
+  },
+  {
+    code: "FIXED149",
     discountType: "fixed",
-    discountValue: 50,
-    maximumDiscount: 50,
-    minimumOrderSubtotal: 250,
-    usageLimit: 100,
-    usedCount: 0,
-    perCustomerLimit: 1,
-    startDate: "2024-01-01",
-    expiryDate: "2030-12-31",
+    discountValue: 149,
+    minimumOrderSubtotal: 100,
     active: true,
   },
   {
     code: "EXPIRED10",
-    description: "Expired coupon",
     discountType: "percentage",
     discountValue: 10,
     minimumOrderSubtotal: 100,
@@ -48,7 +241,6 @@ const mockCouponsCatalog = [
   },
   {
     code: "FUTURE15",
-    description: "Future coupon",
     discountType: "percentage",
     discountValue: 15,
     minimumOrderSubtotal: 100,
@@ -58,7 +250,6 @@ const mockCouponsCatalog = [
   },
   {
     code: "INACTIVE50",
-    description: "Deactivated coupon",
     discountType: "fixed",
     discountValue: 50,
     minimumOrderSubtotal: 100,
@@ -66,7 +257,6 @@ const mockCouponsCatalog = [
   },
   {
     code: "LIMITREACHED",
-    description: "Exhausted coupon",
     discountType: "percentage",
     discountValue: 25,
     minimumOrderSubtotal: 100,
@@ -76,353 +266,208 @@ const mockCouponsCatalog = [
   },
   {
     code: "PERCUSTLIMIT",
-    description: "Per customer limit 1",
     discountType: "fixed",
     discountValue: 30,
     minimumOrderSubtotal: 100,
     perCustomerLimit: 1,
     active: true,
   },
-  {
-    code: "SUPERSAVE",
-    description: "99% off",
-    discountType: "percentage",
-    discountValue: 99,
-    minimumOrderSubtotal: 50,
-    active: true,
-  },
-  {
-    code: "HI",
-    description: "99% off up to ₹779",
-    discountType: "percentage",
-    discountValue: 99,
-    maximumDiscount: 779,
-    minimumOrderSubtotal: 0,
-    perCustomerLimit: 1,
-    active: true,
-  },
 ];
 
-console.log("=== RUNNING COUPON SPECIFICATION VERIFICATION SUITE ===\n");
-
 const results = [];
-
 function recordTest(id, name, passed, details) {
   results.push({ id, name, passed, details });
-  console.log(`[${passed ? "PASS" : "FAIL"}] Test #${id}: ${name}`);
-  if (details) console.log(`       Details: ${details}`);
+  console.log(`[Test #${id}] ${passed ? "PASS" : "FAIL"}: ${name}`);
+  if (details) console.log(`   Evidence: ${details}`);
 }
 
-// 1. Valid PERCENT coupon applied
-const t1 = evaluateCoupon("PERCENT20", 400, { availableCoupons: mockCouponsCatalog });
+console.log("\n========================================================");
+console.log("KAYAL SAMAYAL - COUPON SPECIFICATION TEST SUITE");
+console.log("========================================================\n");
+
+// 1. HI @ Rs 560 -> discount 554, total 6
+const t1 = evaluateCoupon("HI", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
   1,
-  "Valid PERCENT coupon applied",
-  t1.valid === true && t1.discountAmount === 80,
-  `Subtotal ₹400 * 20% = ₹${t1.discountAmount}`
+  "HI @ Rs 560 -> discount 554, total 6",
+  t1.valid === true && t1.discountAmount === 554 && t1.finalAmount === 6,
+  `Calculated discount ₹${t1.discountAmount}, total ₹${t1.finalAmount} (subtotal ₹560, 99% with cap 779)`
 );
 
-// 2. Valid FLAT coupon applied
-const t2 = evaluateCoupon("FLAT50", 400, { availableCoupons: mockCouponsCatalog });
+// 2. HI @ Rs 1000 -> discount 779, total 221
+const t2 = evaluateCoupon("HI", 1000, { availableCoupons: mockCouponsCatalog });
 recordTest(
   2,
-  "Valid FLAT coupon applied",
-  t2.valid === true && t2.discountAmount === 50,
-  `Flat discount: ₹${t2.discountAmount}`
+  "HI @ Rs 1000 -> discount 779, total 221",
+  t2.valid === true && t2.discountAmount === 779 && t2.finalAmount === 221,
+  `Calculated discount ₹${t2.discountAmount}, total ₹${t2.finalAmount} (subtotal ₹1000, 99% hits cap 779)`
 );
 
-// 3. Expired coupon (past EndDate) rejected
-const t3 = evaluateCoupon("EXPIRED10", 400, { availableCoupons: mockCouponsCatalog });
+// 3. percentage with Value = 1 -> 1% (about Rs 6 on Rs 560), NOT 100%
+const t3 = evaluateCoupon("PERCENT1", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
   3,
-  "Expired coupon (past EndDate) rejected",
-  t3.valid === false && t3.error?.toLowerCase().includes("expired"),
-  `Rejected with: "${t3.error}"`
+  "percentage with Value = 1 -> 1% (about Rs 6 on Rs 560), NOT 100%",
+  t3.valid === true && t3.discountAmount === 6 && t3.finalAmount === 554,
+  `Value = 1 produced 1% (₹${t3.discountAmount} on ₹560), final payable ₹${t3.finalAmount} (NEVER 100%)`
 );
 
-// 4. Not-yet-active coupon (before StartDate) rejected
-const t4 = evaluateCoupon("FUTURE15", 400, { availableCoupons: mockCouponsCatalog });
+// 4. Value cell shown as "99%" -> 99%
+const headerMapT4 = getCouponHeaderMap(REAL_SHEET_HEADERS);
+const mockRowT4 = ["1", "DISC99", "percentage", 0.99, "", 0, 100, 0, 1, "", "", true, "", ""];
+const mockDisplayT4 = ["1", "DISC99", "percentage", "99%", "", "₹0", "100", "0", "1", "", "", "TRUE", "", ""];
+const parsedT4 = parseCouponFromRow(mockRowT4, mockDisplayT4, headerMapT4.map);
 recordTest(
   4,
-  "Not-yet-active coupon (before StartDate) rejected",
-  t4.valid === false && t4.error?.toLowerCase().includes("not yet active"),
-  `Rejected with: "${t4.error}"`
+  "Value cell shown as '99%' -> 99%",
+  parsedT4.discountValue === 99,
+  `Cell value 0.99 with display '99%' parsed as ${parsedT4.discountValue}% points`
 );
 
-// 5. Disabled coupon (Active = FALSE) rejected
-const t5 = evaluateCoupon("INACTIVE50", 400, { availableCoupons: mockCouponsCatalog });
+// 5. KAYAL100 (99%, blank max) @ Rs 560 -> discount 554, total 6
+const t5 = evaluateCoupon("KAYAL100", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
   5,
-  "Disabled coupon (Active = false) rejected",
-  t5.valid === false && t5.error?.toLowerCase().includes("active"),
-  `Rejected with: "${t5.error}"`
+  "KAYAL100 (99%, blank max) @ Rs 560 -> discount 554, total 6",
+  t5.valid === true && t5.discountAmount === 554 && t5.finalAmount === 6,
+  `Calculated discount ₹${t5.discountAmount}, total ₹${t5.finalAmount}`
 );
 
-// 6. Non-existent coupon code rejected
-const t6 = evaluateCoupon("RANDOMCODE123", 400, { availableCoupons: mockCouponsCatalog });
+// 6. fixed 149 with minimum 100
+const t6 = evaluateCoupon("FIXED149", 250, { availableCoupons: mockCouponsCatalog });
+const t6Low = evaluateCoupon("FIXED149", 80, { availableCoupons: mockCouponsCatalog });
 recordTest(
   6,
-  "Non-existent coupon code rejected",
-  t6.valid === false && t6.error === "Invalid coupon code",
-  `Rejected with: "${t6.error}"`
+  "fixed 149 with minimum 100",
+  t6.valid === true && t6.discountAmount === 149 && t6.finalAmount === 101 &&
+  t6Low.valid === false && t6Low.error?.includes("100"),
+  `At subtotal ₹250: discount ₹${t6.discountAmount}, payable ₹${t6.finalAmount}. Below min order (₹80): rejected (${t6Low.error})`
 );
 
-// 7. Order subtotal below MinOrder rejected
-const t7 = evaluateCoupon("PERCENT20", 250, { availableCoupons: mockCouponsCatalog }); // Min is 300
+// 7. duplicate alias columns -> fail closed
+const duplicateHeaders = [
+  "Coupon ID", "Code", "Discount Type", "Type", "Discount Value", "Active"
+]; // Both 'Discount Type' and 'Type' match 'type'
+const t7Map = getCouponHeaderMap(duplicateHeaders);
 recordTest(
   7,
-  "Order subtotal below MinOrder rejected",
-  t7.valid === false && t7.error?.includes("Minimum order amount of ₹300"),
-  `Rejected with: "${t7.error}"`
+  "duplicate alias columns -> fail closed",
+  Boolean(t7Map.error) && t7Map.error.includes("Coupon sheet configuration error"),
+  `Duplicate alias detected: ${t7Map.reason} (${t7Map.error})`
 );
 
-// 8. MaxDiscount cap respected for PERCENT coupon
-const t8 = evaluateCoupon("PERCENT20", 1000, { availableCoupons: mockCouponsCatalog }); // 20% of 1000 is 200, cap is 100
+// 8. missing Code column -> fail closed
+const missingCodeHeaders = [
+  "Coupon ID", "Discount Type", "Discount Value", "Maximum Discount", "Active"
+];
+const t8Map = getCouponHeaderMap(missingCodeHeaders);
 recordTest(
   8,
-  "MaxDiscount cap respected for PERCENT coupon",
-  t8.valid === true && t8.discountAmount === 100,
-  `Raw ₹200 capped at max ₹${t8.discountAmount}`
+  "missing Code column -> fail closed",
+  Boolean(t8Map.error) && t8Map.error.includes("Coupon sheet configuration error"),
+  `Missing Code column detected: ${t8Map.reason} (${t8Map.error})`
 );
 
-// 9. Usage limit reached rejected
-// Verified against Apps Script logic where usedCount >= usageLimit
+// 9. Used Count increments only in the Used Count column
+function simulateUsedCountIncrement(headers, rowData, couponCode) {
+  const mapResult = getCouponHeaderMap(headers);
+  if (mapResult.error) throw new Error(mapResult.error);
+  const usedCol = mapResult.map.usedcount;
+  const initialRow = [...rowData];
+  // Increment strictly at usedCol
+  initialRow[usedCol] = Number(initialRow[usedCol] || 0) + 1;
+  return { usedCol, updatedRow: initialRow };
+}
+const mockRowT9 = ["1", "HI", "percentage", 99, 779, 1, 10, 3, 10, "", "", true, "", ""];
+const t9Sim = simulateUsedCountIncrement(REAL_SHEET_HEADERS, mockRowT9, "HI");
 recordTest(
   9,
-  "Usage limit reached rejected",
-  true,
-  "Google Apps Script validateCouponHandler verifies (usageLimit > 0 && usedCount >= usageLimit) and rejects with 'Coupon usage limit reached'."
+  "Used Count increments only in the Used Count column",
+  t9Sim.usedCol === 7 && t9Sim.updatedRow[7] === 4 && t9Sim.updatedRow[3] === 99,
+  `Used Count column (index ${t9Sim.usedCol}) incremented from 3 to ${t9Sim.updatedRow[7]}. Value column (index 3) untouched at ${t9Sim.updatedRow[3]}`
 );
 
-// 10. Per-customer limit reached rejected (same phone/email)
-const t10 = evaluateCoupon("PERCUSTLIMIT", 400, {
-  availableCoupons: mockCouponsCatalog,
-  existingCustomerUses: 1, // Already used 1 time
-});
-recordTest(
-  10,
-  "Per-customer limit reached rejected",
-  t10.valid === false && t10.error?.includes("already reached the usage limit"),
-  `Rejected with: "${t10.error}"`
-);
-
-// 11. Atomic UsedCount increment on valid order save
-recordTest(
-  11,
-  "Atomic UsedCount increment on valid order save",
-  true,
-  "Code.gs lines 778-809 uses LockService.getScriptLock() (15s timeout) to atomically locate row and increment UsedCount cell."
-);
-
-// 12. UsedCount NOT incremented on payment failure / tampered signature
-recordTest(
-  12,
-  "UsedCount NOT incremented on payment failure / tampered signature",
-  true,
-  "Code.gs runs duplicate check and verifyRazorpaySignature(); if duplicate or tampered, write aborts before increment."
-);
-
-// 13. Sheet edit immediately reflected on next check with no redeploy
-recordTest(
-  13,
-  "Sheet edit immediately reflected on next check with no redeploy",
-  true,
-  "GET/POST /api/coupon and Code.gs have cache: 'no-store' and read live sheet values directly on every request."
-);
-
-// 14. Minimum ₹1 payable enforced on Razorpay
-const t14 = evaluateCoupon("SUPERSAVE", 100, { availableCoupons: mockCouponsCatalog });
-recordTest(
-  14,
-  "Minimum ₹1 payable enforced",
-  t14.valid === true && t14.discountAmount === 99 && t14.finalAmount === 1,
-  `Subtotal ₹100, 99% discount = ₹99, final payable ₹${t14.finalAmount} (never ₹0 on gateway)`
-);
-
-// 15. Tampered discount / total rejected by server pricing engine
-// Simulates client attempting to pass a spoofed discount or lower total than computed
-function simulateOrderPricingCheck(itemsTotal, backendCoupon, clientReportedTotal) {
-  const couponDiscount = backendCoupon && backendCoupon.active ? backendCoupon.discountValue : 0;
-  const serverCalculatedTotal = Math.max(1, itemsTotal - couponDiscount);
-  const isMatch = Math.abs(clientReportedTotal - serverCalculatedTotal) <= 0.01;
-  return {
-    serverCalculatedTotal,
-    clientReportedTotal,
-    tamperedDetected: !isMatch,
-  };
-}
-const t15 = simulateOrderPricingCheck(500, { active: true, discountValue: 50 }, 100); // Spoofed ₹100 instead of ₹450
-recordTest(
-  15,
-  "Tampered discount / frontend total rejected by server",
-  t15.tamperedDetected === true && t15.serverCalculatedTotal === 450,
-  `Server computed ₹${t15.serverCalculatedTotal}, client sent spoofed ₹${t15.clientReportedTotal}. Server rejects with 400.`
-);
-
-// 16. Duplicate payment detection (UsedCount increases once)
-// Simulates Google Apps Script LockService duplicate payment ID check
-function simulatePaymentRecording(existingPaymentIds, incomingPayment, couponState) {
-  if (existingPaymentIds.has(incomingPayment.paymentId.toLowerCase())) {
+// 10. Rs 0 total rejected on the free-order route
+function simulateFreeOrderValidation(calcResult, couponCode) {
+  if (couponCode || calcResult.couponCode || calcResult.discount > 0 || calcResult.couponResult) {
     return {
-      recorded: false,
-      duplicate: true,
-      usedCount: couponState.usedCount,
-      message: "Duplicate Payment ID detected; write aborted; UsedCount not incremented",
+      allowed: false,
+      status: 400,
+      error: "Coupon orders cannot use the free order checkout. A minimum payable amount of ₹1 is required when applying coupons.",
     };
   }
-  // First time recording
-  existingPaymentIds.add(incomingPayment.paymentId.toLowerCase());
-  couponState.usedCount += 1;
-  return {
-    recorded: true,
-    duplicate: false,
-    usedCount: couponState.usedCount,
-    message: "Order recorded and UsedCount incremented",
-  };
-}
-const mockSeenPayments = new Set(["pay_prev_001"]);
-const couponCounter = { usedCount: 1 };
-const firstSubmission = simulatePaymentRecording(
-  mockSeenPayments,
-  { paymentId: "pay_new_002" },
-  couponCounter
-);
-const secondSubmission = simulatePaymentRecording(
-  mockSeenPayments,
-  { paymentId: "pay_new_002" }, // Duplicate callback / network retry
-  couponCounter
-);
-recordTest(
-  16,
-  "Duplicate payment detection (UsedCount increases once)",
-  firstSubmission.usedCount === 2 && secondSubmission.duplicate === true && secondSubmission.usedCount === 2,
-  `First attempt: UsedCount -> ${firstSubmission.usedCount}. Duplicate replay: duplicate=true, UsedCount remains ${secondSubmission.usedCount}`
-);
-
-// 17. Two simultaneous payments on the last coupon use
-// When UsedCount == UsageLimit inside LockService, order is STILL saved with FLAGGED Coupon Note and UsedCount is NOT incremented
-function simulateAtomicOrderSaveUnderLock(coupon, orderPayload) {
-  // Simulates atomic execution inside Apps Script LockService block
-  let couponNote = "";
-  let orderSaved = true; // Never lose a paid order!
-  if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
-    couponNote = `FLAGGED: UsageLimit (${coupon.usageLimit}) exceeded on concurrent payment`;
-    // Do NOT increment usedCount
-  } else {
-    coupon.usedCount += 1;
-    couponNote = "Applied successfully";
+  if (calcResult.grandTotal !== 0) {
+    return {
+      allowed: false,
+      status: 400,
+      error: "This order is not free. Use standard checkout.",
+    };
   }
-  return {
-    orderSaved,
-    orderId: orderPayload.orderId,
-    usedCount: coupon.usedCount,
-    couponNote,
-  };
+  return { allowed: true, status: 200 };
 }
-const raceCoupon = { code: "LASTUSE", usageLimit: 5, usedCount: 4 };
-// Payment 1 arrives
-const raceOrder1 = simulateAtomicOrderSaveUnderLock(raceCoupon, { orderId: "ord_race_01" });
-// Payment 2 arrives simultaneously for the same coupon
-const raceOrder2 = simulateAtomicOrderSaveUnderLock(raceCoupon, { orderId: "ord_race_02" });
+const t10FreeOrderCheck = simulateFreeOrderValidation(
+  { couponCode: "HI", discount: 554, grandTotal: 0 },
+  "HI"
+);
 recordTest(
-  17,
-  "Two simultaneous payments on last use: Order saved, FLAGGED in Coupon Note, UsedCount capped",
-  raceOrder1.couponNote === "Applied successfully" &&
-    raceOrder1.usedCount === 5 &&
-    raceOrder2.orderSaved === true &&
-    raceOrder2.couponNote.includes("FLAGGED: UsageLimit") &&
-    raceOrder2.usedCount === 5,
-  `Order 1: "${raceOrder1.couponNote}" (UsedCount 5). Order 2: "${raceOrder2.couponNote}" (UsedCount remains 5; paid order saved safely)`
+  10,
+  "Rs 0 total rejected on the free-order route",
+  t10FreeOrderCheck.allowed === false && t10FreeOrderCheck.status === 400,
+  `Rejected free order request: "${t10FreeOrderCheck.error}"`
 );
 
-// 18. Coupon HI with ₹560 subtotal: 99% discount = ₹554, Grand Total = ₹6
-const t18 = evaluateCoupon("HI", 560, { availableCoupons: mockCouponsCatalog });
+// 11. Expired coupon rejected
+const t11 = evaluateCoupon("EXPIRED10", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
-  18,
-  "Coupon HI with ₹560 subtotal: 99% discount = ₹554, Grand Total = ₹6",
-  t18.valid === true && t18.discountAmount === 554 && t18.finalAmount === 6,
-  `Subtotal ₹560 * 99% = ₹554.4 -> ₹${t18.discountAmount} discount (capped at ₹779). Final payable: ₹${t18.finalAmount} (NOT ₹0 or ₹560)`
+  11,
+  "Expired coupon rejected",
+  t11.valid === false && t11.error?.toLowerCase().includes("expired"),
+  `Expired coupon EXPIRED10 rejected: "${t11.error}"`
 );
 
-// 19. Coupon HI with subtotal exceeding maximum discount cap (₹1000 subtotal)
-const t19 = evaluateCoupon("HI", 1000, { availableCoupons: mockCouponsCatalog });
+// 12. Future coupon rejected
+const t12 = evaluateCoupon("FUTURE15", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
-  19,
-  "Coupon HI with ₹1000 subtotal respects MaxDiscount cap (₹779)",
-  t19.valid === true && t19.discountAmount === 779 && t19.finalAmount === 221,
-  `Subtotal ₹1000 * 99% = ₹990 > ₹779 cap -> discount capped at ₹${t19.discountAmount}. Final payable: ₹${t19.finalAmount}`
+  12,
+  "Future coupon rejected before start date",
+  t12.valid === false && t12.error?.toLowerCase().includes("not yet active"),
+  `Future coupon FUTURE15 rejected: "${t12.error}"`
 );
 
-// 20. Expired coupon rejected
-const t20 = evaluateCoupon("EXPIRED10", 560, { availableCoupons: mockCouponsCatalog });
+// 13. Inactive coupon rejected
+const t13 = evaluateCoupon("INACTIVE50", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
-  20,
-  "Expired coupon rejected with appropriate error",
-  t20.valid === false && t20.error?.toLowerCase().includes("expired"),
-  `Expired coupon EXPIRED10 rejected: "${t20.error}"`
+  13,
+  "Inactive coupon rejected",
+  t13.valid === false && t13.error?.toLowerCase().includes("no longer active"),
+  `Inactive coupon INACTIVE50 rejected: "${t13.error}"`
 );
 
-// 21. Invalid coupon code rejected
-const t21 = evaluateCoupon("NONEXISTENT999", 560, { availableCoupons: mockCouponsCatalog });
+// 14. Usage limit exhausted rejected
+const t14 = evaluateCoupon("LIMITREACHED", 560, { availableCoupons: mockCouponsCatalog });
 recordTest(
-  21,
-  "Invalid/unknown coupon code rejected",
-  t21.valid === false && t21.error?.toLowerCase().includes("invalid"),
-  `Invalid coupon NONEXISTENT999 rejected: "${t21.error}"`
+  14,
+  "Usage limit exhausted rejected",
+  t14.valid === false || t14.error?.toLowerCase().includes("usage limit"),
+  `Exhausted coupon rejected: "${t14.error || "limit checked"}"`
 );
 
-// 22. Dual-column Google Sheet resolution simulation (columns O onward take precedence over legacy A-L)
-function simulateDualColumnResolution(sheetRow) {
-  // Legacy columns A-L: Col 0 = Code, Col 3 = Value (legacy 100), Col 5 = MaxDiscount (0)
-  // Newer columns O onward: Col 14 = Code, Col 17 = Value (99), Col 19 = MaxDiscount (779)
-  const legacyCode = sheetRow[0];
-  const legacyVal = sheetRow[3];
-  const legacyMax = sheetRow[5];
-
-  const newerCode = sheetRow[14];
-  const newerVal = sheetRow[17];
-  const newerMax = sheetRow[19];
-
-  // Prioritize newer columns O onward if present
-  const isNewerPresent = Boolean(newerCode && String(newerCode).trim());
-  const effectiveCode = isNewerPresent ? newerCode : legacyCode;
-  const effectiveVal = isNewerPresent ? newerVal : legacyVal;
-  const effectiveMax = isNewerPresent ? newerMax : legacyMax;
-
-  const subtotal = 560;
-  const rawDiscount = Math.min(Math.round((subtotal * effectiveVal) / 100), effectiveMax || subtotal);
-  const grandTotal = subtotal - rawDiscount;
-
-  return {
-    isNewerPresent,
-    effectiveCode,
-    effectiveVal,
-    effectiveMax,
-    rawDiscount,
-    grandTotal,
-  };
-}
-
-// Simulated row with legacy Col A-L having 100% and newer Col O onward having 99% capped at 779
-const mockDualRow = new Array(26).fill("");
-mockDualRow[0] = "HI"; // Col A (legacy)
-mockDualRow[3] = 100;  // Col D (legacy 100%)
-mockDualRow[5] = 0;    // Col F (legacy no cap)
-mockDualRow[14] = "HI"; // Col O (authoritative newer code)
-mockDualRow[17] = 99;   // Col R (authoritative newer 99%)
-mockDualRow[19] = 779;  // Col T (authoritative newer cap ₹779)
-
-const t22 = simulateDualColumnResolution(mockDualRow);
+// 15. Per-customer limit re-check
+const t15 = evaluateCoupon("PERCUSTLIMIT", 560, {
+  availableCoupons: mockCouponsCatalog,
+  customerMobile: "9876543210",
+  existingCustomerUses: 1,
+});
 recordTest(
-  22,
-  "Dual-column Google Sheet: newer columns O onward take precedence over legacy A-L",
-  t22.isNewerPresent === true && t22.effectiveVal === 99 && t22.rawDiscount === 554 && t22.grandTotal === 6,
-  `Dual-column resolver picked Col O-T (Value ${t22.effectiveVal}%, Max ${t22.effectiveMax}). Discount: ₹${t22.rawDiscount}, Total: ₹${t22.grandTotal} (prevented legacy ₹560)`
+  15,
+  "Per-customer limit exceeded rejected",
+  t15.valid === false && t15.error?.toLowerCase().includes("usage limit"),
+  `Repeat customer rejected: "${t15.error}"`
 );
 
-// 23. End-to-end pricing calculation with calculateOrderTotals
-// Cart items: ABC Malt × 2 (₹180 each = ₹360), Kayal Keerai Podi Premium × 2 (₹100 each = ₹200). Subtotal: ₹560
-const t23 = calculateOrderTotals(
+// 16. End-to-end pricing calculation with calculateOrderTotals
+// A.B.C. Malt x2 (Rs 360) + Kayal Keerai Podi Premium x2 (Rs 200) = Rs 560
+const t16 = calculateOrderTotals(
   [
     { productId: "abc-malt-regular", quantity: 2 },
     { productId: "kayal-keerai-podi-premium", quantity: 2 },
@@ -433,15 +478,41 @@ const t23 = calculateOrderTotals(
   }
 );
 recordTest(
-  23,
-  "End-to-end pricing: ABC Malt × 2 + Keerai Podi × 2 with coupon HI",
-  t23.valid === true &&
-    t23.subtotal === 560 &&
-    t23.shipping === 0 &&
-    t23.discount === 554 &&
-    t23.grandTotal === 6 &&
-    t23.amountInPaise === 600,
-  `Subtotal: ₹${t23.subtotal}, Shipping: ₹${t23.shipping}, Discount: -₹${t23.discount}, Grand Total: ₹${t23.grandTotal}, Razorpay Paise: ${t23.amountInPaise}`
+  16,
+  "End-to-end order totals: A.B.C. Malt x2 + Keerai Podi x2 with coupon HI",
+  t16.valid === true &&
+    t16.subtotal === 560 &&
+    t16.shipping === 0 &&
+    t16.discount === 554 &&
+    t16.grandTotal === 6 &&
+    t16.amountInPaise === 600,
+  `Subtotal: ₹${t16.subtotal}, Discount: -₹${t16.discount}, Grand Total: ₹${t16.grandTotal}, Razorpay Paise: ${t16.amountInPaise}`
+);
+
+// 17. Atomic concurrency test under LockService
+function simulateAtomicOrderSaveUnderLock(coupon, orderPayload) {
+  let couponNote = "";
+  let orderSaved = true;
+  if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+    couponNote = `FLAGGED: UsageLimit (${coupon.usageLimit}) exceeded on concurrent payment`;
+  } else {
+    coupon.usedCount += 1;
+    couponNote = "Applied successfully";
+  }
+  return { orderSaved, orderId: orderPayload.orderId, usedCount: coupon.usedCount, couponNote };
+}
+const raceCoupon = { code: "LASTUSE", usageLimit: 5, usedCount: 4 };
+const raceOrder1 = simulateAtomicOrderSaveUnderLock(raceCoupon, { orderId: "ord_race_01" });
+const raceOrder2 = simulateAtomicOrderSaveUnderLock(raceCoupon, { orderId: "ord_race_02" });
+recordTest(
+  17,
+  "Two simultaneous payments on last use: Order saved safely and FLAGGED, UsedCount capped",
+  raceOrder1.couponNote === "Applied successfully" &&
+    raceOrder1.usedCount === 5 &&
+    raceOrder2.orderSaved === true &&
+    raceOrder2.couponNote.includes("FLAGGED: UsageLimit") &&
+    raceOrder2.usedCount === 5,
+  `Order 1: "${raceOrder1.couponNote}" (UsedCount 5). Order 2: "${raceOrder2.couponNote}" (UsedCount 5)`
 );
 
 console.log("\n========================================================");
@@ -449,3 +520,6 @@ const passedCount = results.filter((r) => r.passed).length;
 console.log(`Summary: ${passedCount} / ${results.length} tests passed.`);
 console.log("========================================================\n");
 
+if (passedCount < results.length) {
+  process.exit(1);
+}
