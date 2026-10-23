@@ -705,10 +705,10 @@ function doPost(e) {
     var finalAmount = Number(payload.final_amount !== undefined ? payload.final_amount : (payload.grandTotal !== undefined ? payload.grandTotal : amount));
 
     // ── FIELD VALIDATION ──────────────────────────────────────────────────
-    if (!orderId) {
+    if (!orderId || typeof orderId !== "string" || orderId.indexOf("order_") !== 0) {
       return jsonResponse({
         success: false,
-        message: "Missing required field: order_id is required to record order."
+        message: "Invalid order_id: must be a valid Razorpay order ID starting with 'order_'."
       });
     }
     if (!paymentId) {
@@ -730,32 +730,49 @@ function doPost(e) {
       });
     }
 
-    // ── RAZORPAY ORDER AMOUNT VALIDATION (if credentials configured) ──────
+    // ── MANDATORY RAZORPAY ORDER AMOUNT VALIDATION ─────────────────────────
+    // Mandatory for every order_ ID: queries Razorpay REST API and rejects if lookup fails or amounts mismatch
     var scriptProps = PropertiesService.getScriptProperties();
     var keyId = scriptProps.getProperty("KEY_ID") || scriptProps.getProperty("RAZORPAY_KEY_ID");
     var keySecret = scriptProps.getProperty("KEY_SECRET") || scriptProps.getProperty("RAZORPAY_KEY_SECRET");
-    if (orderId.indexOf("order_") === 0 && keyId && keySecret) {
-      try {
-        var authHeader = "Basic " + Utilities.base64Encode(keyId.trim() + ":" + keySecret.trim());
-        var rzpOrderRes = UrlFetchApp.fetch("https://api.razorpay.com/v1/orders/" + encodeURIComponent(orderId), {
-          method: "GET",
-          headers: { "Authorization": authHeader },
-          muteHttpExceptions: true
+    if (!keyId || !keySecret) {
+      Logger.log("Razorpay credentials missing in Script Properties for order verification: " + orderId);
+      return jsonResponse({
+        success: false,
+        message: "Server configuration error: Razorpay KEY_ID and KEY_SECRET must be configured in Script Properties for mandatory order amount verification."
+      });
+    }
+
+    try {
+      var authHeader = "Basic " + Utilities.base64Encode(keyId.trim() + ":" + keySecret.trim());
+      var rzpOrderRes = UrlFetchApp.fetch("https://api.razorpay.com/v1/orders/" + encodeURIComponent(orderId), {
+        method: "GET",
+        headers: { "Authorization": authHeader },
+        muteHttpExceptions: true
+      });
+      var rzpCode = rzpOrderRes.getResponseCode();
+      if (rzpCode !== 200) {
+        Logger.log("Razorpay order lookup failed for " + orderId + " (HTTP " + rzpCode + ")");
+        return jsonResponse({
+          success: false,
+          message: "Razorpay order lookup failed (HTTP " + rzpCode + "). Order not recorded."
         });
-        if (rzpOrderRes.getResponseCode() === 200) {
-          var rzpOrder = JSON.parse(rzpOrderRes.getContentText());
-          var expectedPaise = Math.round(amount * 100);
-          if (rzpOrder.amount !== expectedPaise) {
-            Logger.log("Amount mismatch detected for Order " + orderId);
-            return jsonResponse({
-              success: false,
-              message: "Amount mismatch: client reported ₹" + amount + " but Razorpay order amount is ₹" + (rzpOrder.amount / 100)
-            });
-          }
-        }
-      } catch (orderCheckErr) {
-        Logger.log("Notice: Gateway order cross-verification skipped: " + orderCheckErr.toString());
       }
+      var rzpOrder = JSON.parse(rzpOrderRes.getContentText());
+      var expectedPaise = Math.round(amount * 100);
+      if (rzpOrder.amount !== expectedPaise) {
+        Logger.log("Amount mismatch detected for Order " + orderId + ": reported ₹" + amount + ", gateway order is ₹" + (rzpOrder.amount / 100));
+        return jsonResponse({
+          success: false,
+          message: "Amount mismatch: client reported ₹" + amount + " but Razorpay order amount is ₹" + (rzpOrder.amount / 100)
+        });
+      }
+    } catch (orderCheckErr) {
+      Logger.log("Razorpay order lookup exception for " + orderId + ": " + orderCheckErr.toString());
+      return jsonResponse({
+        success: false,
+        message: "Failed to verify Razorpay order amount upstream: " + orderCheckErr.toString()
+      });
     }
 
     // ── DUPLICATE DETECTION ────────────────────────────────────────────────
@@ -782,6 +799,15 @@ function doPost(e) {
 
     // ── SIGNATURE VERIFICATION ─────────────────────────────────────────────
     var signatureVerified = verifyRazorpaySignature(orderId, paymentId, signature);
+
+    if (signatureVerified !== "Yes") {
+      Logger.log("Rejected payment " + paymentId + ": " + signatureVerified);
+      return jsonResponse({
+        success: false,
+        message: "Payment signature could not be verified. Order not recorded.",
+        signatureVerified: signatureVerified
+      });
+    }
 
     var couponNote = "";
 
@@ -1008,48 +1034,34 @@ function getSheetRowsAsJSON(sheet) {
 /**
  * Convenience helper to initialize or verify "Orders" and "Coupons" tabs.
  * Can be run directly from Apps Script editor via Run > setupDatabase.
+ * Works for both standalone and bound scripts without getUi() dependency.
  */
 function setupDatabase() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet(); // works for standalone AND bound scripts
 
-  var ordersHeaders = [
-    'Timestamp','Order ID','Payment ID','Status','Amount','Currency',
-    'Customer Name','Phone','Email','Address','Items/Notes','Signature Verified',
-    'Coupon Code','Subtotal','Discount','Final Amount','Coupon Note'
-  ];
-  var couponsHeaders = [
-    'Code','Description','Type','Value','MinOrder','MaxDiscount',
-    'StartDate','EndDate','UsageLimit','UsedCount','PerCustomerLimit','Active'
-  ];
-
-  [['Orders', ordersHeaders], ['Coupons', couponsHeaders]].forEach(function (t) {
+  [['Orders', ORDERS_HEADERS], ['Coupons', COUPONS_HEADERS]].forEach(function (t) {
     var sh = ss.getSheetByName(t[0]) || ss.insertSheet(t[0]);
     if (sh.getLastRow() === 0) {
       sh.getRange(1, 1, 1, t[1].length).setValues([t[1]])
         .setFontWeight('bold').setBackground('#8B2500').setFontColor('#FFFFFF');
       sh.setFrozenRows(1);
     } else {
-      // Auto-upgrade existing sheet if missing any new columns (e.g. "Coupon Note")
       var lastCol = sh.getLastColumn();
-      if (lastCol > 0) {
-        var existing = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) {
-          return String(h || "").trim().toLowerCase();
-        });
-        var missing = [];
-        for (var i = 0; i < t[1].length; i++) {
-          if (existing.indexOf(t[1][i].toLowerCase()) === -1) {
-            missing.push(t[1][i]);
-          }
-        }
-        if (missing.length > 0) {
-          var startCol = lastCol + 1;
-          var newRange = sh.getRange(1, startCol, 1, missing.length);
-          newRange.setValues([missing]).setFontWeight('bold').setBackground('#8B2500').setFontColor('#FFFFFF');
-        }
+      var existing = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+        return String(h || '').trim().toLowerCase();
+      });
+      var missing = t[1].filter(function (h) {
+        return existing.indexOf(h.toLowerCase()) === -1;
+      });
+      if (missing.length > 0) {
+        sh.getRange(1, lastCol + 1, 1, missing.length).setValues([missing])
+          .setFontWeight('bold').setBackground('#8B2500').setFontColor('#FFFFFF');
       }
     }
   });
 
-  SpreadsheetApp.getUi().alert('Setup done: Orders (17 columns including Coupon Note) and Coupons tabs are ready.');
+  // No SpreadsheetApp.getUi() here: it also fails in a standalone script.
+  Logger.log('Setup done: Orders and Coupons tabs are ready in "' + ss.getName() + '"');
 }
+
 
