@@ -257,6 +257,183 @@ function getOrCreateCouponsSheet(ss) {
 }
 
 /**
+ * Resolves column indexes for a block of coupon headers within a column range.
+ * Supports canonical names and all standard aliases (with/without spaces, underscores, casing).
+ */
+function resolveCouponColumnMap(headers, startIndex, endIndex) {
+  var aliases = {
+    code: ["code", "coupon code", "coupon_code", "coupon", "code id"],
+    description: ["description", "desc", "details", "coupon description"],
+    type: ["type", "discount type", "discount_type", "model", "coupon type"],
+    value: ["value", "discount value", "discount_value", "discount", "rate", "amount", "val", "discount %"],
+    minorder: ["minorder", "min order", "min_order", "minimum order", "minimum_order", "minimumordersubtotal", "min subtotal"],
+    maxdiscount: ["maxdiscount", "max discount", "max_discount", "maximum discount", "maximum_discount", "cap", "max cap"],
+    startdate: ["startdate", "start date", "start_date", "valid from", "from date"],
+    enddate: ["enddate", "end date", "end_date", "expiry date", "expiry_date", "expiry", "expires", "valid till"],
+    usagelimit: ["usagelimit", "usage limit", "usage_limit", "total limit", "limit", "max uses"],
+    usedcount: ["usedcount", "used count", "used_count", "times used", "uses", "count"],
+    percustomerlimit: ["percustomerlimit", "per customer limit", "per_customer_limit", "customer limit", "user limit", "limit per customer"],
+    active: ["active", "status", "is active", "is_active", "enabled"]
+  };
+
+  var map = {};
+  var start = Math.max(0, startIndex || 0);
+  var end = Math.min(headers.length, endIndex !== undefined ? endIndex : headers.length);
+
+  for (var col = start; col < end; col++) {
+    var rawH = String(headers[col] || "").trim().toLowerCase();
+    if (!rawH) continue;
+    var normH = rawH.replace(/[\s_\-]+/g, "");
+
+    for (var key in aliases) {
+      if (map[key] !== undefined) continue;
+      var candidateList = aliases[key];
+      for (var c = 0; c < candidateList.length; c++) {
+        var candNorm = candidateList[c].replace(/[\s_\-]+/g, "");
+        if (normH === candNorm || rawH === candidateList[c]) {
+          map[key] = col;
+          break;
+        }
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Returns column maps for both newer columns (Column O onward, index 14+) and legacy columns (A-L, index 0-13).
+ * Newer columns in Column O onward are the authoritative single source of truth.
+ */
+function getCouponColumnMaps(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return { newer: {}, legacy: {}, primary: {} };
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var newerMap = lastCol >= 15 ? resolveCouponColumnMap(headers, 14, lastCol) : {};
+  var legacyMap = resolveCouponColumnMap(headers, 0, Math.min(lastCol, 14));
+
+  // If newer columns O onward have a Code column, newerMap is primary; otherwise fallback to legacyMap
+  var hasNewerCode = newerMap.code !== undefined;
+  return {
+    newer: newerMap,
+    legacy: legacyMap,
+    primary: hasNewerCode ? newerMap : legacyMap
+  };
+}
+
+/**
+ * Searches the Coupons sheet for a coupon code.
+ * Checks authoritative newer columns O onward first; falls back to legacy columns A-L if not found.
+ */
+function findCouponRow(data, codeUpper, columnMaps) {
+  var newerMap = columnMaps.newer;
+  var legacyMap = columnMaps.legacy;
+
+  // 1. Check newer columns O onward (authoritative source)
+  if (newerMap && newerMap.code !== undefined) {
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      var cCode = String(row[newerMap.code] || "").trim().toUpperCase();
+      if (cCode === codeUpper) {
+        return {
+          row: row,
+          rowIndex: r,
+          colMap: newerMap,
+          isNewer: true
+        };
+      }
+    }
+  }
+
+  // 2. Fall back to legacy columns A-L if not in newer columns
+  if (legacyMap && legacyMap.code !== undefined) {
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      var cCode = String(row[legacyMap.code] || "").trim().toUpperCase();
+      if (cCode === codeUpper) {
+        return {
+          row: row,
+          rowIndex: r,
+          colMap: legacyMap,
+          isNewer: false
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Parses and normalizes all coupon fields from a sheet row using the corresponding column map.
+ * Correctly handles percentage formatting (e.g. 0.99 or 99%), currency symbols (₹779), and dates.
+ */
+function parseCouponFromRow(row, colMap) {
+  function getVal(key) {
+    var idx = colMap[key];
+    return idx !== undefined ? row[idx] : undefined;
+  }
+
+  var rawType = String(getVal("type") || "PERCENT").trim().toUpperCase();
+  var isPercent = (rawType.indexOf("PERCENT") !== -1 || rawType === "%");
+  var discountType = isPercent ? "percentage" : "fixed";
+
+  var rawVal = getVal("value");
+  var val = 0;
+  if (typeof rawVal === "number") {
+    val = rawVal;
+  } else if (rawVal) {
+    val = parseFloat(String(rawVal).replace(/[^\d.]/g, "")) || 0;
+  }
+  // In Google Sheets, a cell formatted as 99% yields numeric 0.99
+  if (isPercent && val > 0 && val <= 1) {
+    val = Math.round(val * 100);
+  }
+
+  var rawMax = getVal("maxdiscount");
+  var maxDisc = 0;
+  if (typeof rawMax === "number") {
+    maxDisc = rawMax;
+  } else if (rawMax) {
+    maxDisc = parseFloat(String(rawMax).replace(/[^\d.]/g, "")) || 0;
+  }
+
+  var rawMin = getVal("minorder");
+  var minOrder = 0;
+  if (typeof rawMin === "number") {
+    minOrder = rawMin;
+  } else if (rawMin) {
+    minOrder = parseFloat(String(rawMin).replace(/[^\d.]/g, "")) || 0;
+  }
+
+  var rawActive = getVal("active");
+  var isActive = (rawActive === true || String(rawActive).trim().toLowerCase() === "true" || rawActive === 1 || String(rawActive).trim().toLowerCase() === "yes");
+
+  var usageLimit = Number(getVal("usagelimit") || 0);
+  var usedCount = Number(getVal("usedcount") || 0);
+  var perCustomerLimit = Number(getVal("percustomerlimit") || 0);
+
+  return {
+    code: String(getVal("code") || "").trim().toUpperCase(),
+    description: String(getVal("description") || ""),
+    type: isPercent ? "PERCENT" : "FLAT",
+    discountType: discountType,
+    value: val,
+    discountValue: val,
+    maxDiscount: isNaN(maxDisc) ? 0 : maxDisc,
+    maximumDiscount: isNaN(maxDisc) ? 0 : maxDisc,
+    minOrder: isNaN(minOrder) ? 0 : minOrder,
+    minimumOrder: isNaN(minOrder) ? 0 : minOrder,
+    usageLimit: isNaN(usageLimit) ? 0 : usageLimit,
+    usedCount: isNaN(usedCount) ? 0 : usedCount,
+    perCustomerLimit: isNaN(perCustomerLimit) ? 0 : perCustomerLimit,
+    startDate: getVal("startdate"),
+    endDate: getVal("enddate"),
+    active: isActive
+  };
+}
+
+/**
  * Utility: Returns a mapping of lowercased header name to 0-indexed column position.
  * Protects against column reordering in the Google Sheet.
  */
@@ -274,6 +451,7 @@ function getHeaderMap(sheet) {
 
 /**
  * Validates a coupon code against the "Coupons" sheet in Google Sheets.
+ * Prioritizes newer columns O onward over legacy columns A-L.
  * Evaluates active status, Asia/Kolkata date bounds, MinOrder, UsageLimit, and PerCustomerLimit.
  */
 function validateCouponHandler(payload, ss) {
@@ -296,47 +474,25 @@ function validateCouponHandler(payload, ss) {
       return { success: false, valid: false, error: "Invalid coupon code" };
     }
 
-    var headerMap = getHeaderMap(cSheet);
-    var codeCol = headerMap["code"];
-    if (codeCol === undefined) {
-      return { success: false, valid: false, error: "Coupons sheet is missing 'Code' column" };
-    }
-
+    var colMaps = getCouponColumnMaps(cSheet);
     var data = cSheet.getRange(2, 1, lastRow - 1, cSheet.getLastColumn()).getValues();
-    var matchedRow = null;
+    var match = findCouponRow(data, codeUpper, colMaps);
 
-    for (var r = 0; r < data.length; r++) {
-      var row = data[r];
-      var cCode = String(row[codeCol] || "").trim().toUpperCase();
-      if (cCode === codeUpper) {
-        matchedRow = row;
-        break;
-      }
-    }
-
-    if (!matchedRow) {
+    if (!match) {
       return { success: false, valid: false, error: "Invalid coupon code" };
     }
 
-    // Helper to get value by header name
-    function getVal(colName) {
-      var idx = headerMap[colName.toLowerCase()];
-      return idx !== undefined ? matchedRow[idx] : undefined;
-    }
+    var coupon = parseCouponFromRow(match.row, match.colMap);
 
     // 1. Check Active
-    var activeVal = getVal("active");
-    var isActive = (activeVal === true || String(activeVal).trim().toLowerCase() === "true" || activeVal === 1 || String(activeVal).trim().toLowerCase() === "yes");
-    if (!isActive) {
+    if (!coupon.active) {
       return { success: false, valid: false, error: "This coupon is no longer active" };
     }
 
     // 2. Check Date Bounds in Asia/Kolkata timezone
     var nowKolkata = new Date();
-    // Parse StartDate
-    var rawStart = getVal("startdate");
-    if (rawStart) {
-      var startDate = rawStart instanceof Date ? rawStart : new Date(rawStart);
+    if (coupon.startDate) {
+      var startDate = coupon.startDate instanceof Date ? coupon.startDate : new Date(coupon.startDate);
       if (!isNaN(startDate.getTime())) {
         var startMidnight = new Date(startDate);
         startMidnight.setHours(0, 0, 0, 0);
@@ -346,10 +502,8 @@ function validateCouponHandler(payload, ss) {
       }
     }
 
-    // Parse EndDate
-    var rawEnd = getVal("enddate");
-    if (rawEnd) {
-      var endDate = rawEnd instanceof Date ? rawEnd : new Date(rawEnd);
+    if (coupon.endDate) {
+      var endDate = coupon.endDate instanceof Date ? coupon.endDate : new Date(coupon.endDate);
       if (!isNaN(endDate.getTime())) {
         var endEndOfDay = new Date(endDate);
         endEndOfDay.setHours(23, 59, 59, 999);
@@ -360,25 +514,21 @@ function validateCouponHandler(payload, ss) {
     }
 
     // 3. Check MinOrder
-    var minOrder = Number(getVal("minorder") || 0);
-    if (!isNaN(minOrder) && minOrder > 0 && subtotal < minOrder) {
+    if (coupon.minOrder > 0 && subtotal < coupon.minOrder) {
       return {
         success: false,
         valid: false,
-        error: "Minimum order amount of ₹" + minOrder + " required for this coupon"
+        error: "Minimum order amount of ₹" + coupon.minOrder + " required for this coupon"
       };
     }
 
     // 4. Check Global UsageLimit
-    var usageLimit = Number(getVal("usagelimit") || 0);
-    var usedCount = Number(getVal("usedcount") || 0);
-    if (!isNaN(usageLimit) && usageLimit > 0 && usedCount >= usageLimit) {
+    if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
       return { success: false, valid: false, error: "Coupon usage limit reached" };
     }
 
     // 5. Check PerCustomerLimit against Orders sheet
-    var perCustLimit = Number(getVal("percustomerlimit") || 0);
-    if (!isNaN(perCustLimit) && perCustLimit > 0 && (customerPhone || customerEmail)) {
+    if (coupon.perCustomerLimit > 0 && (customerPhone || customerEmail)) {
       var ordersSheet = getOrCreateOrdersSheet(ss);
       var ordersLastRow = ordersSheet.getLastRow();
       if (ordersLastRow > 1) {
@@ -403,7 +553,7 @@ function validateCouponHandler(payload, ss) {
               }
             }
           }
-          if (custUses >= perCustLimit) {
+          if (custUses >= coupon.perCustomerLimit) {
             return {
               success: false,
               valid: false,
@@ -414,28 +564,19 @@ function validateCouponHandler(payload, ss) {
       }
     }
 
-    // 6. Compute Discount
-    var type = String(getVal("type") || "PERCENT").trim().toUpperCase();
-    var val = Number(getVal("value") || 0);
-    var maxDisc = Number(getVal("maxdiscount") || 0);
+    // 6. Compute Discount with strict adherence to percentage and maxDiscount cap
     var rawDiscount = 0;
-
-    if (type === "PERCENT" || type === "PERCENTAGE") {
-      rawDiscount = Math.round((subtotal * val) / 100);
-      if (!isNaN(maxDisc) && maxDisc > 0) {
-        rawDiscount = Math.min(rawDiscount, maxDisc);
+    if (coupon.discountType === "percentage") {
+      rawDiscount = Math.round((subtotal * coupon.discountValue) / 100);
+      if (coupon.maximumDiscount > 0) {
+        rawDiscount = Math.min(rawDiscount, coupon.maximumDiscount);
       }
     } else {
-      rawDiscount = Math.round(val);
+      rawDiscount = Math.round(coupon.discountValue);
     }
 
     // Cap discount to subtotal so total never becomes negative
     rawDiscount = Math.max(0, Math.min(rawDiscount, subtotal));
-
-    // Enforce minimum payable amount ₹1 on Razorpay if subtotal >= 1
-    if (subtotal >= 1 && (subtotal - rawDiscount) < 1) {
-      rawDiscount = Math.max(0, subtotal - 1);
-    }
 
     var finalAmount = Math.max(0, subtotal - rawDiscount);
 
@@ -443,19 +584,19 @@ function validateCouponHandler(payload, ss) {
       success: true,
       valid: true,
       coupon: {
-        code: codeUpper,
-        description: String(getVal("description") || ""),
-        type: type,
-        discountType: (type === "PERCENT" || type === "PERCENTAGE") ? "percentage" : "fixed",
-        value: val,
-        discountValue: val,
+        code: coupon.code,
+        description: coupon.description,
+        type: coupon.type,
+        discountType: coupon.discountType,
+        value: coupon.discountValue,
+        discountValue: coupon.discountValue,
         discount: rawDiscount,
         discountAmount: rawDiscount,
         finalAmount: finalAmount,
-        minOrder: minOrder,
-        minimumOrder: minOrder,
-        maxDiscount: maxDisc,
-        maximumDiscount: maxDisc
+        minOrder: coupon.minOrder,
+        minimumOrder: coupon.minOrder,
+        maxDiscount: coupon.maximumDiscount,
+        maximumDiscount: coupon.maximumDiscount
       }
     };
   } catch (err) {
@@ -466,6 +607,7 @@ function validateCouponHandler(payload, ss) {
 
 /**
  * Returns all active, currently valid coupons for public display.
+ * Prioritizes newer columns O onward; deduplicates codes gracefully.
  */
 function getCouponsHandler(ss) {
   try {
@@ -475,70 +617,65 @@ function getCouponsHandler(ss) {
       return { success: true, data: [] };
     }
 
-    var headerMap = getHeaderMap(cSheet);
+    var colMaps = getCouponColumnMaps(cSheet);
     var data = cSheet.getRange(2, 1, lastRow - 1, cSheet.getLastColumn()).getValues();
     var nowKolkata = new Date();
+    var seenCodes = {};
     var publicCoupons = [];
 
-    for (var r = 0; r < data.length; r++) {
-      var row = data[r];
-      function getVal(colName) {
-        var idx = headerMap[colName.toLowerCase()];
-        return idx !== undefined ? row[idx] : undefined;
-      }
+    // Process newer columns O onward first (authoritative source)
+    var mapsToProcess = [colMaps.newer, colMaps.legacy];
 
-      var code = String(getVal("code") || "").trim().toUpperCase();
-      if (!code) continue;
+    for (var m = 0; m < mapsToProcess.length; m++) {
+      var currentMap = mapsToProcess[m];
+      if (!currentMap || currentMap.code === undefined) continue;
 
-      var activeVal = getVal("active");
-      var isActive = (activeVal === true || String(activeVal).trim().toLowerCase() === "true" || activeVal === 1 || String(activeVal).trim().toLowerCase() === "yes");
-      if (!isActive) continue;
+      for (var r = 0; r < data.length; r++) {
+        var row = data[r];
+        var code = String(row[currentMap.code] || "").trim().toUpperCase();
+        if (!code || seenCodes[code]) continue;
 
-      // Start date check
-      var rawStart = getVal("startdate");
-      if (rawStart) {
-        var startDate = rawStart instanceof Date ? rawStart : new Date(rawStart);
-        if (!isNaN(startDate.getTime())) {
-          var startMidnight = new Date(startDate);
-          startMidnight.setHours(0, 0, 0, 0);
-          if (nowKolkata < startMidnight) continue;
+        var coupon = parseCouponFromRow(row, currentMap);
+        if (!coupon.active) continue;
+
+        // Start date check
+        if (coupon.startDate) {
+          var startDate = coupon.startDate instanceof Date ? coupon.startDate : new Date(coupon.startDate);
+          if (!isNaN(startDate.getTime())) {
+            var startMidnight = new Date(startDate);
+            startMidnight.setHours(0, 0, 0, 0);
+            if (nowKolkata < startMidnight) continue;
+          }
         }
-      }
 
-      // End date check
-      var rawEnd = getVal("enddate");
-      if (rawEnd) {
-        var endDate = rawEnd instanceof Date ? rawEnd : new Date(rawEnd);
-        if (!isNaN(endDate.getTime())) {
-          var endEndOfDay = new Date(endDate);
-          endEndOfDay.setHours(23, 59, 59, 999);
-          if (nowKolkata > endEndOfDay) continue;
+        // End date check
+        if (coupon.endDate) {
+          var endDate = coupon.endDate instanceof Date ? coupon.endDate : new Date(coupon.endDate);
+          if (!isNaN(endDate.getTime())) {
+            var endEndOfDay = new Date(endDate);
+            endEndOfDay.setHours(23, 59, 59, 999);
+            if (nowKolkata > endEndOfDay) continue;
+          }
         }
+
+        // Usage limit check
+        if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) continue;
+
+        seenCodes[code] = true;
+        publicCoupons.push({
+          code: coupon.code,
+          description: coupon.description,
+          type: coupon.type,
+          discountType: coupon.discountType,
+          value: coupon.discountValue,
+          discountValue: coupon.discountValue,
+          minOrder: coupon.minOrder,
+          minimumOrder: coupon.minOrder,
+          maxDiscount: coupon.maximumDiscount,
+          maximumDiscount: coupon.maximumDiscount,
+          active: true
+        });
       }
-
-      // Usage limit check
-      var usageLimit = Number(getVal("usagelimit") || 0);
-      var usedCount = Number(getVal("usedcount") || 0);
-      if (!isNaN(usageLimit) && usageLimit > 0 && usedCount >= usageLimit) continue;
-
-      var type = String(getVal("type") || "PERCENT").trim().toUpperCase();
-      var val = Number(getVal("value") || 0);
-      var minOrder = Number(getVal("minorder") || 0);
-      var maxDisc = Number(getVal("maxdiscount") || 0);
-
-      publicCoupons.push({
-        code: code,
-        description: String(getVal("description") || ""),
-        type: type,
-        discountType: (type === "PERCENT" || type === "PERCENTAGE") ? "percentage" : "fixed",
-        value: val,
-        discountValue: val,
-        minOrder: minOrder,
-        minimumOrder: minOrder,
-        maxDiscount: maxDisc,
-        maximumDiscount: maxDisc,
-        active: true
-      });
     }
 
     return { success: true, data: publicCoupons };
@@ -906,75 +1043,68 @@ function doPost(e) {
         var couponsSheet = getOrCreateCouponsSheet(ss);
         var cLastRow = couponsSheet.getLastRow();
         if (cLastRow > 1) {
-          var cHeaderMap = getHeaderMap(couponsSheet);
-          var codeCol = cHeaderMap["code"];
-          var usedCountCol = cHeaderMap["usedcount"];
-          var usageLimitCol = cHeaderMap["usagelimit"];
-          var perCustLimitCol = cHeaderMap["percustomerlimit"];
+          var colMaps = getCouponColumnMaps(couponsSheet);
+          var cData = couponsSheet.getRange(2, 1, cLastRow - 1, couponsSheet.getLastColumn()).getValues();
+          var match = findCouponRow(cData, couponCode, colMaps);
 
-          if (codeCol !== undefined && usedCountCol !== undefined) {
-            var cData = couponsSheet.getRange(2, 1, cLastRow - 1, couponsSheet.getLastColumn()).getValues();
-            for (var ci = 0; ci < cData.length; ci++) {
-              var rowCoupon = String(cData[ci][codeCol] || "").trim().toUpperCase();
-              if (rowCoupon === couponCode) {
-                var currentUsed = Number(cData[ci][usedCountCol] || 0);
-                var globalLimit = usageLimitCol !== undefined ? Number(cData[ci][usageLimitCol] || 0) : 0;
-                var perCustomerLimit = perCustLimitCol !== undefined ? Number(cData[ci][perCustLimitCol] || 0) : 0;
+          if (match && match.colMap.usedcount !== undefined) {
+            var coupon = parseCouponFromRow(match.row, match.colMap);
+            var currentUsed = coupon.usedCount;
+            var globalLimit = coupon.usageLimit;
+            var perCustomerLimit = coupon.perCustomerLimit;
+            var usedCountCol = match.colMap.usedcount;
 
-                var limitExceeded = false;
-                var limitReason = "";
+            var limitExceeded = false;
+            var limitReason = "";
 
-                // 1. Re-check global UsageLimit
-                if (globalLimit > 0 && currentUsed >= globalLimit) {
-                  limitExceeded = true;
-                  limitReason = "UsageLimit (" + globalLimit + ") exceeded on concurrent payment";
-                }
+            // 1. Re-check global UsageLimit
+            if (globalLimit > 0 && currentUsed >= globalLimit) {
+              limitExceeded = true;
+              limitReason = "UsageLimit (" + globalLimit + ") exceeded on concurrent payment";
+            }
 
-                // 2. Re-check PerCustomerLimit against existing orders
-                if (!limitExceeded && perCustomerLimit > 0 && (phone || email)) {
-                  var oLastRow = ordersSheet.getLastRow();
-                  if (oLastRow > 1) {
-                    var oHeaderMap = getHeaderMap(ordersSheet);
-                    var oCouponCol = oHeaderMap["coupon code"];
-                    var oPhoneCol = oHeaderMap["phone"];
-                    var oEmailCol = oHeaderMap["email"];
+            // 2. Re-check PerCustomerLimit against existing orders
+            if (!limitExceeded && perCustomerLimit > 0 && (phone || email)) {
+              var oLastRow = ordersSheet.getLastRow();
+              if (oLastRow > 1) {
+                var oHeaderMap = getHeaderMap(ordersSheet);
+                var oCouponCol = oHeaderMap["coupon code"];
+                var oPhoneCol = oHeaderMap["phone"];
+                var oEmailCol = oHeaderMap["email"];
 
-                    if (oCouponCol !== undefined) {
-                      var oData = ordersSheet.getRange(2, 1, oLastRow - 1, ordersSheet.getLastColumn()).getValues();
-                      var custUses = 0;
-                      for (var oi = 0; oi < oData.length; oi++) {
-                        var oRow = oData[oi];
-                        var existingCoupon = String(oRow[oCouponCol] || "").trim().toUpperCase();
-                        if (existingCoupon === couponCode) {
-                          var ordPhone = oPhoneCol !== undefined ? String(oRow[oPhoneCol] || "").trim() : "";
-                          var ordEmail = oEmailCol !== undefined ? String(oRow[oEmailCol] || "").trim().toLowerCase() : "";
-                          var matchP = phone && ordPhone && ordPhone.slice(-10) === phone.slice(-10);
-                          var matchE = email && ordEmail && ordEmail === email.toLowerCase();
-                          if (matchP || matchE) {
-                            custUses++;
-                          }
-                        }
-                      }
-                      if (custUses >= perCustomerLimit) {
-                        limitExceeded = true;
-                        limitReason = "PerCustomerLimit (" + perCustomerLimit + ") exceeded on concurrent payment";
+                if (oCouponCol !== undefined) {
+                  var oData = ordersSheet.getRange(2, 1, oLastRow - 1, ordersSheet.getLastColumn()).getValues();
+                  var custUses = 0;
+                  for (var oi = 0; oi < oData.length; oi++) {
+                    var oRow = oData[oi];
+                    var existingCoupon = String(oRow[oCouponCol] || "").trim().toUpperCase();
+                    if (existingCoupon === couponCode) {
+                      var ordPhone = oPhoneCol !== undefined ? String(oRow[oPhoneCol] || "").trim() : "";
+                      var ordEmail = oEmailCol !== undefined ? String(oRow[oEmailCol] || "").trim().toLowerCase() : "";
+                      var matchP = phone && ordPhone && ordPhone.slice(-10) === phone.slice(-10);
+                      var matchE = email && ordEmail && ordEmail === email.toLowerCase();
+                      if (matchP || matchE) {
+                        custUses++;
                       }
                     }
                   }
+                  if (custUses >= perCustomerLimit) {
+                    limitExceeded = true;
+                    limitReason = "PerCustomerLimit (" + perCustomerLimit + ") exceeded on concurrent payment";
+                  }
                 }
-
-                if (limitExceeded) {
-                  couponNote = "FLAGGED: " + limitReason;
-                  Logger.log("Notice: " + couponNote + " for order " + orderId + ". Order still recorded safely.");
-                  // DO NOT increment UsedCount when limit is already reached
-                } else {
-                  // Valid use: atomically increment UsedCount in sheet
-                  couponsSheet.getRange(ci + 2, usedCountCol + 1).setValue(currentUsed + 1);
-                  couponNote = "Applied successfully";
-                  Logger.log("Incremented UsedCount for coupon " + couponCode + " to " + (currentUsed + 1));
-                }
-                break;
               }
+            }
+
+            if (limitExceeded) {
+              couponNote = "FLAGGED: " + limitReason;
+              Logger.log("Notice: " + couponNote + " for order " + orderId + ". Order still recorded safely.");
+              // DO NOT increment UsedCount when limit is already reached
+            } else {
+              // Valid use: atomically increment UsedCount in authoritative column
+              couponsSheet.getRange(match.rowIndex + 2, usedCountCol + 1).setValue(currentUsed + 1);
+              couponNote = "Applied successfully";
+              Logger.log("Incremented UsedCount for coupon " + couponCode + " (col " + (usedCountCol + 1) + ") to " + (currentUsed + 1));
             }
           }
         }

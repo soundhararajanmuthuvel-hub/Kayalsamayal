@@ -4,6 +4,7 @@
  */
 
 import { evaluateCoupon, normalizeCouponCode } from "../src/lib/coupons.ts";
+import { calculateOrderTotals } from "../src/lib/pricing.ts";
 
 // Simulated Coupons Sheet Catalog (exact representation of Google Sheet rows)
 const mockCouponsCatalog = [
@@ -88,6 +89,16 @@ const mockCouponsCatalog = [
     discountType: "percentage",
     discountValue: 99,
     minimumOrderSubtotal: 50,
+    active: true,
+  },
+  {
+    code: "HI",
+    description: "99% off up to ₹779",
+    discountType: "percentage",
+    discountValue: 99,
+    maximumDiscount: 779,
+    minimumOrderSubtotal: 0,
+    perCustomerLimit: 1,
     active: true,
   },
 ];
@@ -322,6 +333,115 @@ recordTest(
     raceOrder2.couponNote.includes("FLAGGED: UsageLimit") &&
     raceOrder2.usedCount === 5,
   `Order 1: "${raceOrder1.couponNote}" (UsedCount 5). Order 2: "${raceOrder2.couponNote}" (UsedCount remains 5; paid order saved safely)`
+);
+
+// 18. Coupon HI with ₹560 subtotal: 99% discount = ₹554, Grand Total = ₹6
+const t18 = evaluateCoupon("HI", 560, { availableCoupons: mockCouponsCatalog });
+recordTest(
+  18,
+  "Coupon HI with ₹560 subtotal: 99% discount = ₹554, Grand Total = ₹6",
+  t18.valid === true && t18.discountAmount === 554 && t18.finalAmount === 6,
+  `Subtotal ₹560 * 99% = ₹554.4 -> ₹${t18.discountAmount} discount (capped at ₹779). Final payable: ₹${t18.finalAmount} (NOT ₹0 or ₹560)`
+);
+
+// 19. Coupon HI with subtotal exceeding maximum discount cap (₹1000 subtotal)
+const t19 = evaluateCoupon("HI", 1000, { availableCoupons: mockCouponsCatalog });
+recordTest(
+  19,
+  "Coupon HI with ₹1000 subtotal respects MaxDiscount cap (₹779)",
+  t19.valid === true && t19.discountAmount === 779 && t19.finalAmount === 221,
+  `Subtotal ₹1000 * 99% = ₹990 > ₹779 cap -> discount capped at ₹${t19.discountAmount}. Final payable: ₹${t19.finalAmount}`
+);
+
+// 20. Expired coupon rejected
+const t20 = evaluateCoupon("EXPIRED10", 560, { availableCoupons: mockCouponsCatalog });
+recordTest(
+  20,
+  "Expired coupon rejected with appropriate error",
+  t20.valid === false && t20.error?.toLowerCase().includes("expired"),
+  `Expired coupon EXPIRED10 rejected: "${t20.error}"`
+);
+
+// 21. Invalid coupon code rejected
+const t21 = evaluateCoupon("NONEXISTENT999", 560, { availableCoupons: mockCouponsCatalog });
+recordTest(
+  21,
+  "Invalid/unknown coupon code rejected",
+  t21.valid === false && t21.error?.toLowerCase().includes("invalid"),
+  `Invalid coupon NONEXISTENT999 rejected: "${t21.error}"`
+);
+
+// 22. Dual-column Google Sheet resolution simulation (columns O onward take precedence over legacy A-L)
+function simulateDualColumnResolution(sheetRow) {
+  // Legacy columns A-L: Col 0 = Code, Col 3 = Value (legacy 100), Col 5 = MaxDiscount (0)
+  // Newer columns O onward: Col 14 = Code, Col 17 = Value (99), Col 19 = MaxDiscount (779)
+  const legacyCode = sheetRow[0];
+  const legacyVal = sheetRow[3];
+  const legacyMax = sheetRow[5];
+
+  const newerCode = sheetRow[14];
+  const newerVal = sheetRow[17];
+  const newerMax = sheetRow[19];
+
+  // Prioritize newer columns O onward if present
+  const isNewerPresent = Boolean(newerCode && String(newerCode).trim());
+  const effectiveCode = isNewerPresent ? newerCode : legacyCode;
+  const effectiveVal = isNewerPresent ? newerVal : legacyVal;
+  const effectiveMax = isNewerPresent ? newerMax : legacyMax;
+
+  const subtotal = 560;
+  const rawDiscount = Math.min(Math.round((subtotal * effectiveVal) / 100), effectiveMax || subtotal);
+  const grandTotal = subtotal - rawDiscount;
+
+  return {
+    isNewerPresent,
+    effectiveCode,
+    effectiveVal,
+    effectiveMax,
+    rawDiscount,
+    grandTotal,
+  };
+}
+
+// Simulated row with legacy Col A-L having 100% and newer Col O onward having 99% capped at 779
+const mockDualRow = new Array(26).fill("");
+mockDualRow[0] = "HI"; // Col A (legacy)
+mockDualRow[3] = 100;  // Col D (legacy 100%)
+mockDualRow[5] = 0;    // Col F (legacy no cap)
+mockDualRow[14] = "HI"; // Col O (authoritative newer code)
+mockDualRow[17] = 99;   // Col R (authoritative newer 99%)
+mockDualRow[19] = 779;  // Col T (authoritative newer cap ₹779)
+
+const t22 = simulateDualColumnResolution(mockDualRow);
+recordTest(
+  22,
+  "Dual-column Google Sheet: newer columns O onward take precedence over legacy A-L",
+  t22.isNewerPresent === true && t22.effectiveVal === 99 && t22.rawDiscount === 554 && t22.grandTotal === 6,
+  `Dual-column resolver picked Col O-T (Value ${t22.effectiveVal}%, Max ${t22.effectiveMax}). Discount: ₹${t22.rawDiscount}, Total: ₹${t22.grandTotal} (prevented legacy ₹560)`
+);
+
+// 23. End-to-end pricing calculation with calculateOrderTotals
+// Cart items: ABC Malt × 2 (₹180 each = ₹360), Kayal Keerai Podi Premium × 2 (₹100 each = ₹200). Subtotal: ₹560
+const t23 = calculateOrderTotals(
+  [
+    { productId: "abc-malt-regular", quantity: 2 },
+    { productId: "kayal-keerai-podi-premium", quantity: 2 },
+  ],
+  {
+    couponCode: "HI",
+    availableCoupons: mockCouponsCatalog,
+  }
+);
+recordTest(
+  23,
+  "End-to-end pricing: ABC Malt × 2 + Keerai Podi × 2 with coupon HI",
+  t23.valid === true &&
+    t23.subtotal === 560 &&
+    t23.shipping === 0 &&
+    t23.discount === 554 &&
+    t23.grandTotal === 6 &&
+    t23.amountInPaise === 600,
+  `Subtotal: ₹${t23.subtotal}, Shipping: ₹${t23.shipping}, Discount: -₹${t23.discount}, Grand Total: ₹${t23.grandTotal}, Razorpay Paise: ${t23.amountInPaise}`
 );
 
 console.log("\n========================================================");

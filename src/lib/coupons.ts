@@ -113,21 +113,18 @@ export function evaluateCoupon(
   // Calculate discount amount
   let discount = 0;
   if (coupon.discountType === "percentage") {
-    discount = Math.round((subtotal * coupon.discountValue) / 100);
+    let pct = Number(coupon.discountValue || 0);
+    if (pct > 0 && pct <= 1) pct = Math.round(pct * 100);
+    discount = Math.round((subtotal * pct) / 100);
     if (coupon.maximumDiscount && coupon.maximumDiscount > 0) {
       discount = Math.min(discount, coupon.maximumDiscount);
     }
   } else {
-    discount = Math.round(coupon.discountValue);
+    discount = Math.round(Number(coupon.discountValue || 0));
   }
 
   // Cap discount to subtotal so total never becomes negative
   discount = Math.max(0, Math.min(discount, subtotal));
-
-  // Ensure minimum payable amount ₹1 on Razorpay if subtotal >= 1
-  if (subtotal >= 1 && (subtotal - discount) < 1) {
-    discount = Math.max(0, subtotal - 1);
-  }
 
   const finalAmount = Math.max(0, subtotal - discount);
 

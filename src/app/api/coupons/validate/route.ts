@@ -56,10 +56,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      let discountAmount = Number(backendResult.discountAmount || 0);
-      if (subtotal >= 1 && (subtotal - discountAmount) < 1) {
-        discountAmount = Math.max(0, subtotal - 1);
-      }
+      const discountAmount = Math.min(subtotal, Math.max(0, Number(backendResult.discountAmount || 0)));
       const isFreeShipping = subtotal >= brand.freeShippingOver;
       const shipping = isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0;
       const grandTotal = Math.max(0, subtotal + shipping - discountAmount);

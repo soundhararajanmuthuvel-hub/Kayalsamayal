@@ -86,17 +86,16 @@ export function computeCouponDiscount(
   if (!coupon || subtotal <= 0) return 0;
   let rawDiscount = 0;
   if (coupon.discountType === "percentage") {
-    rawDiscount = Math.round((subtotal * (coupon.discountValue || 0)) / 100);
+    let pct = Number(coupon.discountValue || 0);
+    if (pct > 0 && pct <= 1) pct = Math.round(pct * 100);
+    rawDiscount = Math.round((subtotal * pct) / 100);
     if (coupon.maxDiscount && coupon.maxDiscount > 0) {
       rawDiscount = Math.min(rawDiscount, coupon.maxDiscount);
     }
   } else {
-    rawDiscount = Math.round(coupon.discountValue || 0);
+    rawDiscount = Math.round(Number(coupon.discountValue || 0));
   }
   rawDiscount = Math.max(0, Math.min(rawDiscount, subtotal));
-  if (subtotal >= 1 && (subtotal - rawDiscount) < 1) {
-    rawDiscount = Math.max(0, subtotal - 1);
-  }
   return rawDiscount;
 }
 
