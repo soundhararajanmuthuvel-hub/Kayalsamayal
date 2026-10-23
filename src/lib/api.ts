@@ -625,7 +625,7 @@ export async function validateCouponBackend(
       valid: false,
       code: normalized,
       discountAmount: 0,
-      error: "Coupon service unavailable, continue without coupon?",
+      error: "Coupons unavailable right now",
     };
   }
 }

@@ -67,15 +67,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: calc.error || "Invalid items in cart." }, { status: 400 });
     }
 
+    // TASK 5: Zero-total policy - /api/orders/free must reject any request whose total is 0 because of a coupon
+    if (couponCode || calc.couponCode || calc.discount > 0 || calc.couponResult) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Coupon orders cannot use the free order checkout. A minimum payable amount of ₹1 is required when applying coupons.",
+        },
+        { status: 400 }
+      );
+    }
+
     if (calc.grandTotal !== 0) {
       return NextResponse.json(
         { success: false, error: "This order is not free (total: RS " + calc.grandTotal + "). Use standard checkout." },
         { status: 400 }
       );
-    }
-
-    if (couponCode && !calc.couponResult?.valid) {
-      return NextResponse.json({ success: false, error: calc.couponResult?.error || "Invalid coupon code." }, { status: 400 });
     }
 
     const orderResponse = await createOrder({

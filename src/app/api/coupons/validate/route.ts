@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { normalizeCouponCode } from "@/lib/coupons";
+import { normalizeCouponCode, calculateCouponDiscount } from "@/lib/coupons";
 import { products } from "@/data/products";
 import { getProductPrice } from "@/lib/pricing";
 import { brand } from "@/lib/brand";
@@ -46,20 +46,20 @@ export async function POST(req: NextRequest) {
     // 2. Call Google Apps Script backend authoritative coupon validation
     const backendResult = await validateCouponBackend(normalized, subtotal, mobileStr);
 
-    if (backendResult.success !== false && (backendResult.valid === true || backendResult.valid === false)) {
-      if (!backendResult.valid) {
-        return NextResponse.json({
-          valid: false,
-          code: normalized,
-          error: backendResult.error || "Invalid coupon code",
-          discountAmount: 0,
-        });
-      }
+    if (backendResult.success !== false && backendResult.valid === true) {
+      const calcDiscount = calculateCouponDiscount({
+        discountType: backendResult.discountType,
+        discountValue: backendResult.discountValue,
+        maximumDiscount: backendResult.maximumDiscount,
+      }, subtotal);
 
-      const discountAmount = Math.min(subtotal, Math.max(0, Number(backendResult.discountAmount || 0)));
+      const discountAmount = calcDiscount.discount;
       const isFreeShipping = subtotal >= brand.freeShippingOver;
       const shipping = isFreeShipping ? 0 : subtotal > 0 ? brand.shippingFlat : 0;
-      const grandTotal = Math.max(0, subtotal + shipping - discountAmount);
+      let grandTotal = subtotal + shipping - discountAmount;
+      if (subtotal >= 1) {
+        grandTotal = Math.max(1, grandTotal);
+      }
 
       return NextResponse.json({
         valid: true,
@@ -79,13 +79,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       valid: false,
       code: normalized,
-      error: backendResult.error || "Invalid coupon code",
+      error: backendResult.error || "Coupons unavailable right now",
       discountAmount: 0,
     });
   } catch (err: unknown) {
     console.error("Coupon validation error:", err);
     return NextResponse.json(
-      { valid: false, error: "Coupon service unavailable, continue without coupon?" },
+      { valid: false, error: "Coupons unavailable right now", discountAmount: 0 },
       { status: 500 }
     );
   }

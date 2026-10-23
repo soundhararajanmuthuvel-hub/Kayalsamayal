@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           valid: false,
-          error: "Coupon service is currently unavailable. Please continue without a coupon.",
+          error: "Coupons unavailable right now",
         },
         { status: 503 }
       );
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       {
         success: false,
         valid: false,
-        error: "Coupon service unavailable, continue without coupon?",
+        error: "Coupons unavailable right now",
       },
       { status: 500 }
     );

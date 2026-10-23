@@ -27,11 +27,76 @@ export interface CouponValidationResult {
   message?: string;
 }
 
+export interface CouponDiscountInput {
+  discountType?: "percentage" | "fixed" | "PERCENT" | "FLAT";
+  discountValue?: number;
+  value?: number;
+  maximumDiscount?: number;
+  maxDiscount?: number;
+}
+
 /**
  * Normalizes coupon code (trim and uppercase).
  */
 export function normalizeCouponCode(code: string): string {
   return String(code || "").trim().toUpperCase();
+}
+
+/**
+ * Authoritative shared calculation function for coupon discounts across:
+ * cart drawer, cart page, checkout, create-order, COD, free-order, and CartContext.
+ *
+ * Rules:
+ * - Value = 1 means 1% and must NEVER become 100%. No multiplier heuristics.
+ * - Maximum discount cap strictly applied if > 0.
+ * - Zero-total policy: Enforces minimum ₹1 payable when a coupon is applied.
+ */
+export function calculateCouponDiscount(
+  coupon: CouponDiscountInput | null | undefined,
+  subtotal: number
+): { discount: number; finalAmount: number } {
+  if (!coupon || subtotal <= 0) {
+    return { discount: 0, finalAmount: Math.max(0, subtotal) };
+  }
+
+  const rawType = String(coupon.discountType || "percentage").toLowerCase();
+  const isPercent = rawType === "percentage" || rawType === "percent" || rawType === "%";
+  const val = Number(coupon.discountValue ?? coupon.value ?? 0);
+  const maxCap = Number(coupon.maximumDiscount ?? coupon.maxDiscount ?? 0);
+
+  let discount = 0;
+  if (isPercent) {
+    discount = Math.round((subtotal * val) / 100);
+    if (maxCap > 0) {
+      discount = Math.min(discount, maxCap);
+    }
+  } else {
+    discount = Math.round(val);
+    if (maxCap > 0) {
+      discount = Math.min(discount, maxCap);
+    }
+  }
+
+  // Zero-total policy: When a coupon is applied, enforce minimum Rs 1 payable
+  if (subtotal >= 1) {
+    discount = Math.min(discount, subtotal - 1);
+  } else {
+    discount = 0;
+  }
+  discount = Math.max(0, discount);
+  const finalAmount = Math.max(subtotal >= 1 ? 1 : 0, subtotal - discount);
+
+  return { discount, finalAmount };
+}
+
+/**
+ * Convenience helper returning just the numeric discount amount.
+ */
+export function computeCouponDiscount(
+  coupon: CouponDiscountInput | null | undefined,
+  subtotal: number
+): number {
+  return calculateCouponDiscount(coupon, subtotal).discount;
 }
 
 /**
@@ -99,6 +164,19 @@ export function evaluateCoupon(
   }
 
   if (
+    typeof coupon.usageLimit === "number" &&
+    coupon.usageLimit > 0 &&
+    typeof coupon.usedCount === "number" &&
+    coupon.usedCount >= coupon.usageLimit
+  ) {
+    return {
+      valid: false,
+      discountAmount: 0,
+      error: "Coupon usage limit reached",
+    };
+  }
+
+  if (
     typeof options?.existingCustomerUses === "number" &&
     coupon.perCustomerLimit &&
     options.existingCustomerUses >= coupon.perCustomerLimit
@@ -110,23 +188,8 @@ export function evaluateCoupon(
     };
   }
 
-  // Calculate discount amount
-  let discount = 0;
-  if (coupon.discountType === "percentage") {
-    let pct = Number(coupon.discountValue || 0);
-    if (pct > 0 && pct <= 1) pct = Math.round(pct * 100);
-    discount = Math.round((subtotal * pct) / 100);
-    if (coupon.maximumDiscount && coupon.maximumDiscount > 0) {
-      discount = Math.min(discount, coupon.maximumDiscount);
-    }
-  } else {
-    discount = Math.round(Number(coupon.discountValue || 0));
-  }
-
-  // Cap discount to subtotal so total never becomes negative
-  discount = Math.max(0, Math.min(discount, subtotal));
-
-  const finalAmount = Math.max(0, subtotal - discount);
+  // Authoritative shared discount calculation
+  const { discount, finalAmount } = calculateCouponDiscount(coupon, subtotal);
 
   return {
     valid: true,

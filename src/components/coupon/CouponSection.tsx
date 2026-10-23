@@ -107,7 +107,7 @@ export function CouponSection({
         message: `✅ ${data.code || code} applied! Saved ${formatINR(data.discountAmount || 0)}.`,
       });
     } catch {
-      const errMsg = "Unable to validate coupon. Please check your connection and try again.";
+      const errMsg = "Coupons unavailable right now";
       setCouponError(errMsg);
       setToast({
         id: Date.now().toString(),

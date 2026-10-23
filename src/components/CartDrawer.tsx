@@ -32,7 +32,11 @@ export default function CartDrawer() {
   const isFreeShipping = cartSubtotal >= brand.freeShippingOver;
   const shipping = isFreeShipping ? 0 : cartSubtotal > 0 ? brand.shippingFlat : 0;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-  const grandTotal = Math.max(0, cartSubtotal + shipping - discountAmount);
+  let rawGrandTotal = cartSubtotal + shipping - discountAmount;
+  if (appliedCoupon && cartSubtotal >= 1) {
+    rawGrandTotal = Math.max(1, rawGrandTotal);
+  }
+  const grandTotal = Math.max(0, rawGrandTotal);
   const neededForFreeShipping = brand.freeShippingOver - cartSubtotal;
 
   const checkoutHref = appliedCoupon

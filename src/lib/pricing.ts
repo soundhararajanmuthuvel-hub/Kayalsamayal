@@ -1,6 +1,6 @@
 import { products } from "@/data/products";
 import { brand } from "@/lib/brand";
-import { evaluateCoupon, CouponValidationResult } from "@/lib/coupons";
+import { evaluateCoupon, calculateCouponDiscount, CouponValidationResult } from "@/lib/coupons";
 
 export interface OrderItemCalculation {
   productId: string;
@@ -155,7 +155,11 @@ export function calculateOrderTotals(
   if (options?.couponValidation) {
     couponResult = options.couponValidation;
     if (couponResult.valid) {
-      discount = Math.min(subtotal, Math.max(0, Math.round(Number(couponResult.discountAmount) || 0)));
+      discount = calculateCouponDiscount({
+        discountType: couponResult.discountType,
+        discountValue: couponResult.discountValue,
+        maximumDiscount: couponResult.maximumDiscount,
+      }, subtotal).discount;
     }
   } else if (options?.couponCode && options.couponCode.trim()) {
     couponResult = evaluateCoupon(options.couponCode, subtotal, {
@@ -164,18 +168,20 @@ export function calculateOrderTotals(
       availableCoupons: options.availableCoupons,
     });
     if (couponResult.valid) {
-      discount = Math.min(subtotal, Math.max(0, Math.round(Number(couponResult.discountAmount) || 0)));
+      discount = calculateCouponDiscount({
+        discountType: couponResult.discountType,
+        discountValue: couponResult.discountValue,
+        maximumDiscount: couponResult.maximumDiscount,
+      }, subtotal).discount;
     }
   }
 
-  // Ensure minimum payable ₹1 if subtotal >= 1
-  if (subtotal >= 1 && (subtotal - discount) < 1) {
-    discount = Math.max(0, subtotal - 1);
-  }
-
   // Authoritative payable grand total: subtotal + shipping + gst - discount
-  // Any amount >= ₹1 is a valid payable total.
-  const rawPayable = subtotal + shipping + gstTotal - discount;
+  // Zero-total policy: When a coupon is applied, server enforces minimum Rs 1 payable
+  let rawPayable = subtotal + shipping + gstTotal - discount;
+  if (couponResult?.valid && subtotal >= 1) {
+    rawPayable = Math.max(1, rawPayable);
+  }
   const grandTotal = Math.max(0, Math.round(rawPayable));
   const amountInPaise = Math.round(grandTotal * 100);
 

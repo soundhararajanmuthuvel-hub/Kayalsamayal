@@ -79,25 +79,8 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export function computeCouponDiscount(
-  coupon: Pick<AppliedCoupon, "discountType" | "discountValue" | "maxDiscount"> & { code?: string },
-  subtotal: number
-): number {
-  if (!coupon || subtotal <= 0) return 0;
-  let rawDiscount = 0;
-  if (coupon.discountType === "percentage") {
-    let pct = Number(coupon.discountValue || 0);
-    if (pct > 0 && pct <= 1) pct = Math.round(pct * 100);
-    rawDiscount = Math.round((subtotal * pct) / 100);
-    if (coupon.maxDiscount && coupon.maxDiscount > 0) {
-      rawDiscount = Math.min(rawDiscount, coupon.maxDiscount);
-    }
-  } else {
-    rawDiscount = Math.round(Number(coupon.discountValue || 0));
-  }
-  rawDiscount = Math.max(0, Math.min(rawDiscount, subtotal));
-  return rawDiscount;
-}
+import { computeCouponDiscount } from "@/lib/coupons";
+export { computeCouponDiscount };
 
 // Helper to assign default prices if not present (e.g. for fallback products)
 export function getProductPrice(product: Product): number {

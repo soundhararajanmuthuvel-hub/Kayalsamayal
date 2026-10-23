@@ -61,9 +61,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Free-order path: 100% coupon (or similar) results in ₹0 grand total.
-    // Never send ₹0 to Razorpay — return freeOrder flag; checkout will use /api/orders/free.
+    // Free-order path: Non-coupon promotions resulting in ₹0 grand total
     if (calc.grandTotal === 0) {
+      if (couponCode || calc.couponCode || calc.discount > 0) {
+        return NextResponse.json(
+          { success: false, error: "Coupon orders cannot have a ₹0 payable total. Minimum ₹1 is required." },
+          { status: 400 }
+        );
+      }
       return NextResponse.json({
         success: true,
         freeOrder: true,
