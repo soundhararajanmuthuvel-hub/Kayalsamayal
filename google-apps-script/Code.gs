@@ -44,7 +44,8 @@ var ORDERS_HEADERS = [
   "Coupon Code",
   "Subtotal",
   "Discount",
-  "Final Amount"
+  "Final Amount",
+  "Coupon Note"
 ];
 
 // Required Columns for the "Coupons" sheet (Single Source of Truth)
@@ -197,7 +198,7 @@ function getOrCreateCouponsSheet(ss) {
     headerRange.setBackground("#8B2500"); // Kayal Samayal spice red
     headerRange.setFontColor("#FFFFFF");
 
-    // Seed 3 sample rows
+    // Seed 3 sample rows (Active = false by default so they never go live by accident)
     var sampleRows = [
       [
         "WELCOME10",
@@ -211,7 +212,7 @@ function getOrCreateCouponsSheet(ss) {
         100,
         0,
         1,
-        true
+        false
       ],
       [
         "FLAT50",
@@ -225,7 +226,7 @@ function getOrCreateCouponsSheet(ss) {
         50,
         0,
         1,
-        true
+        false
       ],
       [
         "EXPIRED5",
@@ -782,7 +783,9 @@ function doPost(e) {
     // ── SIGNATURE VERIFICATION ─────────────────────────────────────────────
     var signatureVerified = verifyRazorpaySignature(orderId, paymentId, signature);
 
-    // ── ATOMIC COUPON USAGE INCREMENT ─────────────────────────────────────
+    var couponNote = "";
+
+    // ── ATOMIC RE-CHECK OF USAGELIMIT & PERCUSTOMERLIMIT BEFORE INCREMENT ──
     if (couponCode) {
       try {
         var couponsSheet = getOrCreateCouponsSheet(ss);
@@ -792,6 +795,7 @@ function doPost(e) {
           var codeCol = cHeaderMap["code"];
           var usedCountCol = cHeaderMap["usedcount"];
           var usageLimitCol = cHeaderMap["usagelimit"];
+          var perCustLimitCol = cHeaderMap["percustomerlimit"];
 
           if (codeCol !== undefined && usedCountCol !== undefined) {
             var cData = couponsSheet.getRange(2, 1, cLastRow - 1, couponsSheet.getLastColumn()).getValues();
@@ -799,11 +803,59 @@ function doPost(e) {
               var rowCoupon = String(cData[ci][codeCol] || "").trim().toUpperCase();
               if (rowCoupon === couponCode) {
                 var currentUsed = Number(cData[ci][usedCountCol] || 0);
-                var limit = usageLimitCol !== undefined ? Number(cData[ci][usageLimitCol] || 0) : 0;
-                if (limit > 0 && currentUsed >= limit) {
-                  Logger.log("Notice: Coupon " + couponCode + " has already reached limit " + limit);
+                var globalLimit = usageLimitCol !== undefined ? Number(cData[ci][usageLimitCol] || 0) : 0;
+                var perCustomerLimit = perCustLimitCol !== undefined ? Number(cData[ci][perCustLimitCol] || 0) : 0;
+
+                var limitExceeded = false;
+                var limitReason = "";
+
+                // 1. Re-check global UsageLimit
+                if (globalLimit > 0 && currentUsed >= globalLimit) {
+                  limitExceeded = true;
+                  limitReason = "UsageLimit (" + globalLimit + ") exceeded on concurrent payment";
+                }
+
+                // 2. Re-check PerCustomerLimit against existing orders
+                if (!limitExceeded && perCustomerLimit > 0 && (phone || email)) {
+                  var oLastRow = ordersSheet.getLastRow();
+                  if (oLastRow > 1) {
+                    var oHeaderMap = getHeaderMap(ordersSheet);
+                    var oCouponCol = oHeaderMap["coupon code"];
+                    var oPhoneCol = oHeaderMap["phone"];
+                    var oEmailCol = oHeaderMap["email"];
+
+                    if (oCouponCol !== undefined) {
+                      var oData = ordersSheet.getRange(2, 1, oLastRow - 1, ordersSheet.getLastColumn()).getValues();
+                      var custUses = 0;
+                      for (var oi = 0; oi < oData.length; oi++) {
+                        var oRow = oData[oi];
+                        var existingCoupon = String(oRow[oCouponCol] || "").trim().toUpperCase();
+                        if (existingCoupon === couponCode) {
+                          var ordPhone = oPhoneCol !== undefined ? String(oRow[oPhoneCol] || "").trim() : "";
+                          var ordEmail = oEmailCol !== undefined ? String(oRow[oEmailCol] || "").trim().toLowerCase() : "";
+                          var matchP = phone && ordPhone && ordPhone.slice(-10) === phone.slice(-10);
+                          var matchE = email && ordEmail && ordEmail === email.toLowerCase();
+                          if (matchP || matchE) {
+                            custUses++;
+                          }
+                        }
+                      }
+                      if (custUses >= perCustomerLimit) {
+                        limitExceeded = true;
+                        limitReason = "PerCustomerLimit (" + perCustomerLimit + ") exceeded on concurrent payment";
+                      }
+                    }
+                  }
+                }
+
+                if (limitExceeded) {
+                  couponNote = "FLAGGED: " + limitReason;
+                  Logger.log("Notice: " + couponNote + " for order " + orderId + ". Order still recorded safely.");
+                  // DO NOT increment UsedCount when limit is already reached
                 } else {
+                  // Valid use: atomically increment UsedCount in sheet
                   couponsSheet.getRange(ci + 2, usedCountCol + 1).setValue(currentUsed + 1);
+                  couponNote = "Applied successfully";
                   Logger.log("Incremented UsedCount for coupon " + couponCode + " to " + (currentUsed + 1));
                 }
                 break;
@@ -812,7 +864,8 @@ function doPost(e) {
           }
         }
       } catch (couponIncErr) {
-        Logger.log("Failed to increment coupon UsedCount: " + couponIncErr.toString());
+        couponNote = "Error verifying coupon limits: " + couponIncErr.toString();
+        Logger.log("Failed in atomic coupon check: " + couponIncErr.toString());
       }
     }
 
@@ -833,12 +886,13 @@ function doPost(e) {
       couponCode,         // 13. Coupon Code
       subtotal,           // 14. Subtotal
       discount,           // 15. Discount
-      finalAmount         // 16. Final Amount
+      finalAmount,        // 16. Final Amount
+      couponNote          // 17. Coupon Note
     ];
 
     ordersSheet.appendRow(newRow);
 
-    Logger.log("Order saved successfully: Order ID " + orderId + ", Payment ID " + paymentId + (couponCode ? ", Coupon: " + couponCode : ""));
+    Logger.log("Order saved successfully: Order ID " + orderId + ", Payment ID " + paymentId + (couponCode ? ", Coupon: " + couponCode + " (" + couponNote + ")" : ""));
 
     return jsonResponse({
       success: true,
@@ -846,7 +900,8 @@ function doPost(e) {
       orderId: orderId,
       paymentId: paymentId,
       signatureVerified: signatureVerified,
-      couponCode: couponCode
+      couponCode: couponCode,
+      couponNote: couponNote
     });
 
   } catch (err) {
@@ -949,3 +1004,52 @@ function getSheetRowsAsJSON(sheet) {
     return obj;
   });
 }
+
+/**
+ * Convenience helper to initialize or verify "Orders" and "Coupons" tabs.
+ * Can be run directly from Apps Script editor via Run > setupDatabase.
+ */
+function setupDatabase() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  var ordersHeaders = [
+    'Timestamp','Order ID','Payment ID','Status','Amount','Currency',
+    'Customer Name','Phone','Email','Address','Items/Notes','Signature Verified',
+    'Coupon Code','Subtotal','Discount','Final Amount','Coupon Note'
+  ];
+  var couponsHeaders = [
+    'Code','Description','Type','Value','MinOrder','MaxDiscount',
+    'StartDate','EndDate','UsageLimit','UsedCount','PerCustomerLimit','Active'
+  ];
+
+  [['Orders', ordersHeaders], ['Coupons', couponsHeaders]].forEach(function (t) {
+    var sh = ss.getSheetByName(t[0]) || ss.insertSheet(t[0]);
+    if (sh.getLastRow() === 0) {
+      sh.getRange(1, 1, 1, t[1].length).setValues([t[1]])
+        .setFontWeight('bold').setBackground('#8B2500').setFontColor('#FFFFFF');
+      sh.setFrozenRows(1);
+    } else {
+      // Auto-upgrade existing sheet if missing any new columns (e.g. "Coupon Note")
+      var lastCol = sh.getLastColumn();
+      if (lastCol > 0) {
+        var existing = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) {
+          return String(h || "").trim().toLowerCase();
+        });
+        var missing = [];
+        for (var i = 0; i < t[1].length; i++) {
+          if (existing.indexOf(t[1][i].toLowerCase()) === -1) {
+            missing.push(t[1][i]);
+          }
+        }
+        if (missing.length > 0) {
+          var startCol = lastCol + 1;
+          var newRange = sh.getRange(1, startCol, 1, missing.length);
+          newRange.setValues([missing]).setFontWeight('bold').setBackground('#8B2500').setFontColor('#FFFFFF');
+        }
+      }
+    }
+  });
+
+  SpreadsheetApp.getUi().alert('Setup done: Orders (17 columns including Coupon Note) and Coupons tabs are ready.');
+}
+

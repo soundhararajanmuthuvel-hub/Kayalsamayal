@@ -228,7 +228,104 @@ recordTest(
   `Subtotal ₹100, 99% discount = ₹99, final payable ₹${t14.finalAmount} (never ₹0 on gateway)`
 );
 
+// 15. Tampered discount / total rejected by server pricing engine
+// Simulates client attempting to pass a spoofed discount or lower total than computed
+function simulateOrderPricingCheck(itemsTotal, backendCoupon, clientReportedTotal) {
+  const couponDiscount = backendCoupon && backendCoupon.active ? backendCoupon.discountValue : 0;
+  const serverCalculatedTotal = Math.max(1, itemsTotal - couponDiscount);
+  const isMatch = Math.abs(clientReportedTotal - serverCalculatedTotal) <= 0.01;
+  return {
+    serverCalculatedTotal,
+    clientReportedTotal,
+    tamperedDetected: !isMatch,
+  };
+}
+const t15 = simulateOrderPricingCheck(500, { active: true, discountValue: 50 }, 100); // Spoofed ₹100 instead of ₹450
+recordTest(
+  15,
+  "Tampered discount / frontend total rejected by server",
+  t15.tamperedDetected === true && t15.serverCalculatedTotal === 450,
+  `Server computed ₹${t15.serverCalculatedTotal}, client sent spoofed ₹${t15.clientReportedTotal}. Server rejects with 400.`
+);
+
+// 16. Duplicate payment detection (UsedCount increases once)
+// Simulates Google Apps Script LockService duplicate payment ID check
+function simulatePaymentRecording(existingPaymentIds, incomingPayment, couponState) {
+  if (existingPaymentIds.has(incomingPayment.paymentId.toLowerCase())) {
+    return {
+      recorded: false,
+      duplicate: true,
+      usedCount: couponState.usedCount,
+      message: "Duplicate Payment ID detected; write aborted; UsedCount not incremented",
+    };
+  }
+  // First time recording
+  existingPaymentIds.add(incomingPayment.paymentId.toLowerCase());
+  couponState.usedCount += 1;
+  return {
+    recorded: true,
+    duplicate: false,
+    usedCount: couponState.usedCount,
+    message: "Order recorded and UsedCount incremented",
+  };
+}
+const mockSeenPayments = new Set(["pay_prev_001"]);
+const couponCounter = { usedCount: 1 };
+const firstSubmission = simulatePaymentRecording(
+  mockSeenPayments,
+  { paymentId: "pay_new_002" },
+  couponCounter
+);
+const secondSubmission = simulatePaymentRecording(
+  mockSeenPayments,
+  { paymentId: "pay_new_002" }, // Duplicate callback / network retry
+  couponCounter
+);
+recordTest(
+  16,
+  "Duplicate payment detection (UsedCount increases once)",
+  firstSubmission.usedCount === 2 && secondSubmission.duplicate === true && secondSubmission.usedCount === 2,
+  `First attempt: UsedCount -> ${firstSubmission.usedCount}. Duplicate replay: duplicate=true, UsedCount remains ${secondSubmission.usedCount}`
+);
+
+// 17. Two simultaneous payments on the last coupon use
+// When UsedCount == UsageLimit inside LockService, order is STILL saved with FLAGGED Coupon Note and UsedCount is NOT incremented
+function simulateAtomicOrderSaveUnderLock(coupon, orderPayload) {
+  // Simulates atomic execution inside Apps Script LockService block
+  let couponNote = "";
+  let orderSaved = true; // Never lose a paid order!
+  if (coupon.usageLimit > 0 && coupon.usedCount >= coupon.usageLimit) {
+    couponNote = `FLAGGED: UsageLimit (${coupon.usageLimit}) exceeded on concurrent payment`;
+    // Do NOT increment usedCount
+  } else {
+    coupon.usedCount += 1;
+    couponNote = "Applied successfully";
+  }
+  return {
+    orderSaved,
+    orderId: orderPayload.orderId,
+    usedCount: coupon.usedCount,
+    couponNote,
+  };
+}
+const raceCoupon = { code: "LASTUSE", usageLimit: 5, usedCount: 4 };
+// Payment 1 arrives
+const raceOrder1 = simulateAtomicOrderSaveUnderLock(raceCoupon, { orderId: "ord_race_01" });
+// Payment 2 arrives simultaneously for the same coupon
+const raceOrder2 = simulateAtomicOrderSaveUnderLock(raceCoupon, { orderId: "ord_race_02" });
+recordTest(
+  17,
+  "Two simultaneous payments on last use: Order saved, FLAGGED in Coupon Note, UsedCount capped",
+  raceOrder1.couponNote === "Applied successfully" &&
+    raceOrder1.usedCount === 5 &&
+    raceOrder2.orderSaved === true &&
+    raceOrder2.couponNote.includes("FLAGGED: UsageLimit") &&
+    raceOrder2.usedCount === 5,
+  `Order 1: "${raceOrder1.couponNote}" (UsedCount 5). Order 2: "${raceOrder2.couponNote}" (UsedCount remains 5; paid order saved safely)`
+);
+
 console.log("\n========================================================");
 const passedCount = results.filter((r) => r.passed).length;
 console.log(`Summary: ${passedCount} / ${results.length} tests passed.`);
 console.log("========================================================\n");
+

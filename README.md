@@ -50,25 +50,26 @@ The checkout system operates in **TEST MODE ONLY** using verified Razorpay test 
    - Status transitions from *"Saving your order to database..."* to *"Order saved to database"*.
    - **Order ID** (e.g., `order_...` or `KS-...`) and **Payment ID** (e.g., `pay_...`) are clearly displayed with one-click copy buttons.
 7. Open the connected Google Sheet and navigate to the **"Orders"** tab.
-8. Verify that a new row has been appended with the following 16 columns:
-   | Column # | Column Name | Sample Value |
-   | :--- | :--- | :--- |
-   | 1 | **Timestamp** | `2026-10-22T14:30:00.000Z` |
-   | 2 | **Order ID** | `order_Tqyn4hcM2Z5yqH` |
-   | 3 | **Payment ID** | `pay_Tqyn87aBcDeFgH` |
-   | 4 | **Status** | `Paid` |
-   | 5 | **Amount** | `480` |
-   | 6 | **Currency** | `INR` |
-   | 7 | **Customer Name** | `Soundhar Muthuvel` |
-   | 8 | **Phone** | `9003860616` |
-   | 9 | **Email** | `customer@example.com` |
-   | 10 | **Address** | `123 Spice Garden, Tirupattur, Tamil Nadu - 635601` |
-   | 11 | **Items/Notes** | `Kayal Curry Masala (x2), Kalari Masala (x1)` |
-   | 12 | **Signature Verified** | `Yes` |
-   | 13 | **Coupon Code** | `WELCOME10` |
-   | 14 | **Subtotal** | `530` |
-   | 15 | **Discount** | `50` |
-   | 16 | **Final Amount** | `480` |
+8. Verify that a new row has been appended with the following 17 columns:
+   | Column # | Column Name | Sample Value | Description |
+   | :--- | :--- | :--- | :--- |
+   | 1 | **Timestamp** | `2026-10-22T14:30:00.000Z` | Order creation timestamp (ISO 8601) |
+   | 2 | **Order ID** | `order_Tqyn4hcM2Z5yqH` | Razorpay order ID or KS-Free ID |
+   | 3 | **Payment ID** | `pay_Tqyn87aBcDeFgH` | Razorpay payment ID (or FREE_ORDER) |
+   | 4 | **Status** | `Paid` | Payment status (Paid / COD Placed) |
+   | 5 | **Amount** | `480` | Total charged to customer in ₹ |
+   | 6 | **Currency** | `INR` | Transaction currency |
+   | 7 | **Customer Name** | `Soundhar Muthuvel` | Customer full name |
+   | 8 | **Phone** | `9003860616` | Contact phone number |
+   | 9 | **Email** | `customer@example.com` | Customer email |
+   | 10 | **Address** | `123 Spice Garden, Tirupattur, Tamil Nadu - 635601` | Shipping address |
+   | 11 | **Items/Notes** | `Kayal Curry Masala (x2), Kalari Masala (x1)` | Order items and delivery notes |
+   | 12 | **Signature Verified** | `Yes` | Cryptographic HMAC-SHA256 signature result |
+   | 13 | **Coupon Code** | `WELCOME10` | Applied coupon code (or blank) |
+   | 14 | **Subtotal** | `530` | Cart subtotal before discount |
+   | 15 | **Discount** | `50` | Total coupon discount applied in ₹ |
+   | 16 | **Final Amount** | `480` | Final payable amount |
+   | 17 | **Coupon Note** | `Applied successfully` | Audit note: `"Applied successfully"`, or `"FLAGGED: UsageLimit (X) exceeded on concurrent payment"`, or `"FLAGGED: PerCustomerLimit (X) exceeded on concurrent payment"`. Paid orders are never lost. |
 
 ---
 
@@ -100,11 +101,14 @@ The **"Coupons"** tab must have the following header row (case-insensitive colum
 
 ### 2. Auto-Seeded Sample Coupons
 
-When the Apps Script runs for the first time, if the "Coupons" sheet is missing or empty, it automatically creates the headers and seeds 3 initial rows:
+When the Apps Script runs for the first time, if the "Coupons" sheet is missing or empty, it automatically creates the headers and seeds 3 initial rows with **Active = FALSE by default** so they never go live accidentally:
 
-1. **`WELCOME10`**: `10% off on your order` | Type: `PERCENT` | Value: `10` | MinOrder: `200` | MaxDiscount: `100` | UsageLimit: `100` | Active: `TRUE`
-2. **`FLAT50`**: `Flat ₹50 off` | Type: `FLAT` | Value: `50` | MinOrder: `300` | MaxDiscount: `50` | UsageLimit: `50` | Active: `TRUE`
+1. **`WELCOME10`**: `10% off on your order` | Type: `PERCENT` | Value: `10` | MinOrder: `200` | MaxDiscount: `100` | UsageLimit: `100` | Active: `FALSE`
+2. **`FLAT50`**: `Flat ₹50 off` | Type: `FLAT` | Value: `50` | MinOrder: `300` | MaxDiscount: `50` | UsageLimit: `50` | Active: `FALSE`
 3. **`EXPIRED5`**: `Expired sample coupon` | Type: `PERCENT` | Value: `5` | MinOrder: `100` | Active: `FALSE`
+
+> [!NOTE]
+> All sample coupon rows are intentionally created with `Active = FALSE`. The store owner can easily toggle `Active` to `TRUE` in Google Sheets when ready to run promotions.
 
 ### 3. Managing Coupons in Google Sheets
 
