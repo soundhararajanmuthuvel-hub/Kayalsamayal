@@ -972,6 +972,51 @@ function doPost(e) {
 
     var action = payload.action;
 
+    // ── ADMIN API OPERATIONS (Protected by adminToken / SERVER_AUTH_SECRET) ─
+    if (action && typeof action === "string" && action.indexOf("admin_") === 0) {
+      var adminToken = payload.adminToken || payload.serverAuthToken || payload.token;
+      if (!verifyAdminToken(adminToken)) {
+        return jsonResponse({
+          success: false,
+          error: "Unauthorized: Invalid or missing admin authentication token."
+        });
+      }
+
+      var ssAdmin = getSpreadsheet();
+      if (action === "admin_get_orders") {
+        return jsonResponse(adminGetOrdersHandler(ssAdmin, payload));
+      }
+      if (action === "admin_update_order_status") {
+        return jsonResponse(adminUpdateOrderStatusHandler(ssAdmin, payload));
+      }
+      if (action === "admin_get_coupons") {
+        return jsonResponse(adminGetCouponsHandler(ssAdmin));
+      }
+      if (action === "admin_save_coupon") {
+        return jsonResponse(adminSaveCouponHandler(ssAdmin, payload));
+      }
+      if (action === "admin_delete_coupon") {
+        return jsonResponse(adminDeleteCouponHandler(ssAdmin, payload));
+      }
+      if (action === "admin_get_inventory") {
+        return jsonResponse(adminGetInventoryHandler(ssAdmin));
+      }
+      if (action === "admin_update_stock") {
+        return jsonResponse(adminUpdateStockHandler(ssAdmin, payload));
+      }
+      if (action === "admin_get_customers") {
+        return jsonResponse(adminGetCustomersHandler(ssAdmin));
+      }
+      if (action === "admin_get_settings") {
+        return jsonResponse(adminGetSettingsHandler(ssAdmin));
+      }
+      if (action === "admin_save_settings") {
+        return jsonResponse(adminSaveSettingsHandler(ssAdmin, payload));
+      }
+
+      return jsonResponse({ success: false, error: "Unrecognized admin action: " + action });
+    }
+
     // Optional: Server-side Razorpay order creation via UrlFetchApp
     if (action === "createOrder") {
       return jsonResponse(handleServerOrderCreation(payload));
@@ -1594,6 +1639,760 @@ function mergeOrderItemsIntoOrders() {
 
   Logger.log('Merged items into ' + updated + ' orders. Order IDs with no match in Orders: ' + unmatched);
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ── ADMIN ORDER MANAGEMENT SYSTEM (Protected Endpoints) ─────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Validates admin token against Script Properties (SERVER_AUTH_SECRET, ADMIN_SECRET, or KEY_SECRET).
+ */
+function verifyAdminToken(token) {
+  if (!token || typeof token !== "string") return false;
+  var scriptProps = PropertiesService.getScriptProperties();
+  var expected = scriptProps.getProperty("SERVER_AUTH_SECRET") ||
+                 scriptProps.getProperty("ADMIN_SECRET") ||
+                 scriptProps.getProperty("KEY_SECRET");
+  if (!expected) {
+    Logger.log("WARNING: Neither SERVER_AUTH_SECRET, ADMIN_SECRET, nor KEY_SECRET configured in Script Properties");
+    return false;
+  }
+  return safeStringCompare(token.trim(), expected.trim());
+}
+
+/**
+ * Builds an alias-aware column map for the Orders tab.
+ */
+function getOrdersHeaderMap(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return {};
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var map = {};
+  for (var i = 0; i < headers.length; i++) {
+    var raw = String(headers[i] || "").trim().toLowerCase();
+    var norm = raw.replace(/[\s_\-]+/g, "");
+    if (!norm) continue;
+    map[raw] = i;
+    for (var key in ORDERS_ALIASES) {
+      var aliases = ORDERS_ALIASES[key];
+      for (var a = 0; a < aliases.length; a++) {
+        if (norm === aliases[a].replace(/[\s_\-]+/g, "")) {
+          if (map[key] === undefined) {
+            map[key] = i;
+          }
+          break;
+        }
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * Parses item string "Product x2 (₹180); Podi x1 (₹90)" into structured array.
+ */
+function parseOrderItemsFromNotes(itemsNotes) {
+  var raw = String(itemsNotes || "").trim();
+  if (!raw) return [];
+  var productPart = raw.split("|")[0].trim();
+  var parsed = [];
+  if (productPart) {
+    var entries = productPart.indexOf(";") !== -1 ? productPart.split(";") : productPart.split(",");
+    entries.forEach(function(entry) {
+      var trimmed = entry.trim();
+      if (!trimmed) return;
+      var qtyMatch = trimmed.match(/x\s*(\d+)/i) || trimmed.match(/\(x(\d+)\)/i);
+      var priceMatch = trimmed.match(/₹\s*(\d+(?:\.\d+)?)/);
+      var cleanName = trimmed
+        .replace(/x\s*\d+/gi, "")
+        .replace(/\(x\d+\)/gi, "")
+        .replace(/\(₹[\d.]+\)/g, "")
+        .replace(/₹[\d.]+/g, "")
+        .trim();
+      var qty = qtyMatch ? Number(qtyMatch[1]) : 1;
+      var price = priceMatch ? Number(priceMatch[1]) : 0;
+      parsed.push({
+        name: cleanName || trimmed,
+        quantity: qty,
+        unitPrice: qty > 0 ? Math.round((price / qty) * 100) / 100 : price,
+        total: price
+      });
+    });
+  }
+  return parsed;
+}
+
+/**
+ * Logs an administrative action to the "Order Activity" or "API Logs" tab.
+ */
+function logOrderActivity(ss, orderId, action, prevStatus, newStatus, adminUser, details) {
+  try {
+    var logSheet = ss.getSheetByName("API Logs") || ss.getSheetByName("Order Activity");
+    if (!logSheet) {
+      logSheet = ss.insertSheet("Order Activity");
+      logSheet.appendRow(["Timestamp", "Action", "Order ID", "Previous Status", "New Status", "Admin", "Details"]);
+      logSheet.setFrozenRows(1);
+      logSheet.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#0C2B1C").setFontColor("#FFFFFF");
+    }
+    logSheet.appendRow([
+      new Date(),
+      action || "UPDATE_STATUS",
+      orderId || "",
+      prevStatus || "",
+      newStatus || "",
+      adminUser || "admin",
+      details || ""
+    ]);
+  } catch (e) {
+    Logger.log("Failed to log order activity: " + e.toString());
+  }
+}
+
+/**
+ * Admin: Fetches all orders from the "Orders" sheet with parsed details.
+ */
+function adminGetOrdersHandler(ss, payload) {
+  try {
+    var oSheet = getOrCreateOrdersSheet(ss);
+    var lastRow = oSheet.getLastRow();
+    var lastCol = oSheet.getLastColumn();
+
+    if (lastRow <= 1 || lastCol < 1) {
+      return { success: true, count: 0, orders: [] };
+    }
+
+    var colMap = getOrdersHeaderMap(oSheet);
+    var data = oSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var displayData = oSheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+
+    function getVal(row, key, fallbackIdx) {
+      var idx = colMap[key] !== undefined ? colMap[key] : fallbackIdx;
+      return idx !== undefined && idx < row.length ? row[idx] : "";
+    }
+    function getDisplay(displayRow, key, fallbackIdx) {
+      var idx = colMap[key] !== undefined ? colMap[key] : fallbackIdx;
+      return idx !== undefined && idx < displayRow.length ? displayRow[idx] : "";
+    }
+
+    var orders = [];
+
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      var disp = displayData[r];
+
+      var orderId = String(getVal(row, "order id", 1) || "").trim();
+      var paymentId = String(getVal(row, "payment id", 2) || "").trim();
+      if (!orderId && !paymentId) continue;
+
+      var rawTimestamp = getVal(row, "timestamp", 0);
+      var timestampStr = "";
+      if (rawTimestamp instanceof Date) {
+        timestampStr = rawTimestamp.toISOString();
+      } else {
+        timestampStr = String(getDisplay(disp, "timestamp", 0) || rawTimestamp || "");
+      }
+
+      var status = String(getVal(row, "status", 3) || "Pending").trim();
+      var rawAmount = getVal(row, "amount", 4);
+      var amount = typeof rawAmount === "number" ? rawAmount : (parseFloat(String(rawAmount).replace(/[^\d.]/g, "")) || 0);
+
+      var currency = String(getVal(row, "currency", 5) || "INR").trim();
+      var customerName = String(getVal(row, "customer name", 6) || "").trim();
+      var phone = String(getDisplay(disp, "phone", 7) || getVal(row, "phone", 7) || "").trim();
+      var email = String(getVal(row, "email", 8) || "").trim();
+      var address = String(getVal(row, "address", 9) || "").trim();
+      var itemsNotes = String(getVal(row, "items/notes", 10) || "").trim();
+      var signatureVerified = String(getVal(row, "signature verified", 11) || "No").trim();
+      var couponCode = String(getVal(row, "coupon code", 12) || "").trim().toUpperCase();
+
+      var rawSubtotal = getVal(row, "subtotal", 13);
+      var subtotal = typeof rawSubtotal === "number" ? rawSubtotal : (parseFloat(String(rawSubtotal).replace(/[^\d.]/g, "")) || amount);
+
+      var rawDiscount = getVal(row, "discount", 14);
+      var discount = typeof rawDiscount === "number" ? rawDiscount : (parseFloat(String(rawDiscount).replace(/[^\d.]/g, "")) || 0);
+
+      var rawFinalAmount = getVal(row, "final amount", 15);
+      var finalAmount = typeof rawFinalAmount === "number" ? rawFinalAmount : (parseFloat(String(rawFinalAmount).replace(/[^\d.]/g, "")) || amount);
+
+      var couponNote = String(getVal(row, "coupon note", 16) || "").trim();
+
+      // Determine Payment Method
+      var isCod = (status.indexOf("COD") !== -1 || paymentId === "COD_PENDING" || signatureVerified.indexOf("COD") !== -1);
+      var isFree = (paymentId === "FREE_ORDER" || signatureVerified.indexOf("Free Order") !== -1 || amount === 0);
+      var paymentMethod = "Razorpay Online";
+      if (isCod) paymentMethod = "COD";
+      else if (isFree) paymentMethod = "Free Order";
+
+      // Determine Payment Status
+      var paymentStatus = "Pending";
+      if (signatureVerified === "Yes" || signatureVerified.indexOf("Verified") !== -1) {
+        paymentStatus = "Paid";
+      } else if (isCod) {
+        paymentStatus = (status === "Delivered") ? "Paid" : "Pending";
+      } else if (signatureVerified.indexOf("No") !== -1 && !isCod) {
+        paymentStatus = "Failed";
+      }
+
+      // Determine Order Status (workflow)
+      var orderStatus = status;
+      if (status === "Paid" || status === "COD Pending") {
+        orderStatus = "Confirmed";
+      }
+
+      // Parse line items and customer notes
+      var parsedItems = parseOrderItemsFromNotes(itemsNotes);
+      var customerNotes = "";
+      if (itemsNotes.indexOf("|") !== -1) {
+        customerNotes = itemsNotes.split("|").slice(1).join("|").replace(/^[\s:]*notes:?/i, "").trim();
+      }
+
+      orders.push({
+        rowIndex: r + 2,
+        orderId: orderId,
+        paymentId: paymentId,
+        timestamp: timestampStr,
+        status: status,
+        orderStatus: orderStatus,
+        paymentStatus: paymentStatus,
+        paymentMethod: paymentMethod,
+        amount: amount,
+        currency: currency,
+        customerName: customerName,
+        phone: phone,
+        email: email,
+        address: address,
+        itemsNotes: itemsNotes,
+        customerNotes: customerNotes,
+        signatureVerified: signatureVerified,
+        couponCode: couponCode,
+        subtotal: subtotal,
+        discount: discount,
+        finalAmount: finalAmount,
+        couponNote: couponNote,
+        items: parsedItems
+      });
+    }
+
+    // Default: Sort by newest first
+    orders.reverse();
+
+    return {
+      success: true,
+      count: orders.length,
+      orders: orders
+    };
+  } catch (err) {
+    Logger.log("adminGetOrdersHandler error: " + err.toString());
+    return { success: false, error: "Failed to retrieve orders: " + err.toString() };
+  }
+}
+
+/**
+ * Admin: Updates order status with strict safety checks and audit logging.
+ */
+function adminUpdateOrderStatusHandler(ss, payload) {
+  var lock = LockService.getScriptLock();
+  var hasLock = false;
+
+  try {
+    var orderId = String(payload.orderId || payload.id || "").trim();
+    var newStatus = String(payload.status || payload.orderStatus || payload.newStatus || "").trim();
+    var adminUser = String(payload.adminUser || "admin").trim();
+    var notes = String(payload.notes || payload.details || "").trim();
+    var trackingNumber = String(payload.trackingNumber || "").trim();
+    var courier = String(payload.courier || "").trim();
+
+    if (!orderId) {
+      return { success: false, error: "Missing required orderId" };
+    }
+    if (!newStatus) {
+      return { success: false, error: "Missing required new status" };
+    }
+
+    hasLock = lock.tryLock(10000);
+    if (!hasLock) {
+      return { success: false, error: "Server busy updating orders. Please try again." };
+    }
+
+    var oSheet = getOrCreateOrdersSheet(ss);
+    var lastRow = oSheet.getLastRow();
+    var lastCol = oSheet.getLastColumn();
+    if (lastRow <= 1) {
+      return { success: false, error: "No orders found in database" };
+    }
+
+    var colMap = getOrdersHeaderMap(oSheet);
+    var oIdCol = colMap["order id"] !== undefined ? colMap["order id"] : 1;
+    var statusCol = colMap["status"] !== undefined ? colMap["status"] : 3;
+    var sigCol = colMap["signature verified"] !== undefined ? colMap["signature verified"] : 11;
+    var notesCol = colMap["items/notes"] !== undefined ? colMap["items/notes"] : 10;
+
+    var data = oSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var matchRowIndex = -1;
+    var currentStatus = "";
+    var currentSig = "";
+    var currentNotes = "";
+
+    for (var r = 0; r < data.length; r++) {
+      var rowOid = String(data[r][oIdCol] || "").trim();
+      if (rowOid.toLowerCase() === orderId.toLowerCase()) {
+        matchRowIndex = r + 2;
+        currentStatus = String(data[r][statusCol] || "").trim();
+        currentSig = String(data[r][sigCol] || "").trim();
+        currentNotes = String(data[r][notesCol] || "").trim();
+        break;
+      }
+    }
+
+    if (matchRowIndex === -1) {
+      return { success: false, error: "Order " + orderId + " not found" };
+    }
+
+    // STRICT SAFETY RULE: Never mark an unverified online payment as "Paid"
+    var isOnline = (orderId.indexOf("order_") === 0);
+    if (isOnline && (newStatus.toLowerCase() === "paid" || newStatus.toLowerCase() === "confirmed")) {
+      if (currentSig !== "Yes" && currentSig.indexOf("Verified") === -1) {
+        return {
+          success: false,
+          error: "Strict Safety: Cannot manually mark an online order as Paid without verified Razorpay payment signature."
+        };
+      }
+    }
+
+    // Update the Status cell
+    oSheet.getRange(matchRowIndex, statusCol + 1).setValue(newStatus);
+
+    // If tracking info or courier provided, append to notes if not already there
+    if (trackingNumber || courier) {
+      var courierEntry = "Courier: " + (courier || "Standard") + (trackingNumber ? " | Tracking: " + trackingNumber : "");
+      if (currentNotes.indexOf(courierEntry) === -1) {
+        var updatedNotes = currentNotes ? currentNotes + " | " + courierEntry : courierEntry;
+        oSheet.getRange(matchRowIndex, notesCol + 1).setValue(updatedNotes);
+      }
+    }
+
+    // Log the activity
+    var details = notes || (trackingNumber ? "Tracking: " + trackingNumber : "Status updated by admin");
+    logOrderActivity(ss, orderId, "UPDATE_STATUS", currentStatus, newStatus, adminUser, details);
+
+    Logger.log("Admin updated Order " + orderId + " status from '" + currentStatus + "' to '" + newStatus + "'");
+
+    return {
+      success: true,
+      message: "Order status successfully updated to " + newStatus,
+      orderId: orderId,
+      previousStatus: currentStatus,
+      newStatus: newStatus
+    };
+  } catch (err) {
+    Logger.log("adminUpdateOrderStatusHandler error: " + err.toString());
+    return { success: false, error: "Failed to update order status: " + err.toString() };
+  } finally {
+    if (hasLock) {
+      try { lock.releaseLock(); } catch (e) {}
+    }
+  }
+}
+
+/**
+ * Admin: Lists all coupons (active, inactive, usage counts, limits).
+ */
+function adminGetCouponsHandler(ss) {
+  try {
+    var cSheet = getOrCreateCouponsSheet(ss);
+    var lastRow = cSheet.getLastRow();
+    var lastCol = cSheet.getLastColumn();
+
+    if (lastRow <= 1 || lastCol < 1) {
+      return { success: true, coupons: [] };
+    }
+
+    var headers = cSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var mapResult = getCouponHeaderMap(headers);
+    if (mapResult.error) {
+      return { success: false, error: mapResult.error, reason: mapResult.reason };
+    }
+
+    var colMap = mapResult.map;
+    var data = cSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var displayData = cSheet.getRange(2, 1, lastRow - 1, lastCol).getDisplayValues();
+    var allCoupons = [];
+
+    for (var r = 0; r < data.length; r++) {
+      var row = data[r];
+      var displayRow = displayData[r];
+      var code = String(row[colMap.code] || "").trim().toUpperCase();
+      if (!code) continue;
+
+      var parsed = parseCouponFromRow(row, displayRow, colMap);
+      allCoupons.push({
+        rowIndex: r + 2,
+        code: code,
+        description: parsed.description || "",
+        type: parsed.type,
+        discountType: parsed.discountType,
+        value: parsed.discountValue,
+        discountValue: parsed.discountValue,
+        maximumDiscount: parsed.maximumDiscount,
+        minimumOrder: parsed.minOrder,
+        usageLimit: parsed.usageLimit,
+        usedCount: parsed.usedCount,
+        perCustomerLimit: parsed.perCustomerLimit,
+        startDate: parsed.startDate ? (parsed.startDate instanceof Date ? parsed.startDate.toISOString().slice(0, 10) : String(parsed.startDate)) : "",
+        expiryDate: parsed.endDate ? (parsed.endDate instanceof Date ? parsed.endDate.toISOString().slice(0, 10) : String(parsed.endDate)) : "",
+        active: parsed.active
+      });
+    }
+
+    return { success: true, coupons: allCoupons };
+  } catch (err) {
+    Logger.log("adminGetCouponsHandler error: " + err.toString());
+    return { success: false, error: "Failed to get coupons: " + err.toString() };
+  }
+}
+
+/**
+ * Admin: Creates or updates a coupon row in the Coupons tab.
+ */
+function adminSaveCouponHandler(ss, payload) {
+  var lock = LockService.getScriptLock();
+  var hasLock = false;
+
+  try {
+    var code = String(payload.code || "").trim().toUpperCase();
+    if (!code) {
+      return { success: false, error: "Coupon code is required" };
+    }
+
+    var discountType = String(payload.discountType || payload.type || "percentage").trim().toLowerCase();
+    if (discountType !== "percentage" && discountType !== "fixed") {
+      return { success: false, error: "Discount type must be 'percentage' or 'fixed'" };
+    }
+
+    var discountValue = Number(payload.discountValue !== undefined ? payload.discountValue : payload.value);
+    if (isNaN(discountValue) || discountValue <= 0) {
+      return { success: false, error: "Discount value must be a positive number" };
+    }
+
+    var maxDiscount = Number(payload.maximumDiscount !== undefined ? payload.maximumDiscount : payload.maxDiscount || 0);
+    var minOrder = Number(payload.minimumOrder !== undefined ? payload.minimumOrder : payload.minOrder || 0);
+    var usageLimit = Number(payload.usageLimit !== undefined ? payload.usageLimit : 0);
+    var perCustomerLimit = Number(payload.perCustomerLimit !== undefined ? payload.perCustomerLimit : 1);
+    var startDate = payload.startDate ? String(payload.startDate).slice(0, 10) : "";
+    var expiryDate = payload.expiryDate ? String(payload.expiryDate).slice(0, 10) : "";
+    var active = (payload.active === true || String(payload.active).toLowerCase() === "true");
+    var description = String(payload.description || "").trim();
+
+    hasLock = lock.tryLock(10000);
+    if (!hasLock) {
+      return { success: false, error: "Server busy saving coupon. Please retry." };
+    }
+
+    var cSheet = getOrCreateCouponsSheet(ss);
+    var lastRow = cSheet.getLastRow();
+    var lastCol = cSheet.getLastColumn();
+    var headers = cSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var mapResult = getCouponHeaderMap(headers);
+    if (mapResult.error) {
+      return { success: false, error: mapResult.error };
+    }
+
+    var colMap = mapResult.map;
+    var data = (lastRow > 1) ? cSheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+
+    var matchIndex = -1;
+    for (var r = 0; r < data.length; r++) {
+      var rowCode = String(data[r][colMap.code] || "").trim().toUpperCase();
+      if (rowCode === code) {
+        matchIndex = r;
+        break;
+      }
+    }
+
+    var nowIso = new Date().toISOString();
+
+    if (matchIndex !== -1) {
+      // Update existing coupon
+      var targetRow = matchIndex + 2;
+      if (colMap.type !== undefined) cSheet.getRange(targetRow, colMap.type + 1).setValue(discountType);
+      if (colMap.value !== undefined) cSheet.getRange(targetRow, colMap.value + 1).setValue(discountValue);
+      if (colMap.maxdiscount !== undefined) cSheet.getRange(targetRow, colMap.maxdiscount + 1).setValue(maxDiscount);
+      if (colMap.minorder !== undefined) cSheet.getRange(targetRow, colMap.minorder + 1).setValue(minOrder);
+      if (colMap.usagelimit !== undefined) cSheet.getRange(targetRow, colMap.usagelimit + 1).setValue(usageLimit);
+      if (colMap.percustomer !== undefined) cSheet.getRange(targetRow, colMap.percustomer + 1).setValue(perCustomerLimit);
+      if (colMap.start !== undefined) cSheet.getRange(targetRow, colMap.start + 1).setValue(startDate);
+      if (colMap.end !== undefined) cSheet.getRange(targetRow, colMap.end + 1).setValue(expiryDate);
+      if (colMap.active !== undefined) cSheet.getRange(targetRow, colMap.active + 1).setValue(active);
+      if (colMap.description !== undefined) cSheet.getRange(targetRow, colMap.description + 1).setValue(description);
+
+      return { success: true, message: "Coupon " + code + " updated successfully", code: code };
+    } else {
+      // Create new coupon row adhering to canonical A-N layout
+      var newCouponId = "CPN-" + code;
+      var newRow = [
+        newCouponId,       // Coupon ID
+        code,              // Code
+        discountType,      // Discount Type
+        discountValue,     // Discount Value
+        maxDiscount,       // Maximum Discount
+        minOrder,          // Minimum Order
+        usageLimit,        // Usage Limit
+        0,                 // Used Count
+        perCustomerLimit,  // Per Customer Limit
+        startDate,         // Start Date
+        expiryDate,        // Expiry Date
+        active,            // Active
+        nowIso,            // Created At
+        nowIso,            // Updated At
+        description        // Description
+      ];
+
+      cSheet.appendRow(newRow);
+      return { success: true, message: "Coupon " + code + " created successfully", code: code };
+    }
+  } catch (err) {
+    Logger.log("adminSaveCouponHandler error: " + err.toString());
+    return { success: false, error: "Failed to save coupon: " + err.toString() };
+  } finally {
+    if (hasLock) {
+      try { lock.releaseLock(); } catch (e) {}
+    }
+  }
+}
+
+/**
+ * Admin: Toggles coupon active status or deletes coupon.
+ */
+function adminDeleteCouponHandler(ss, payload) {
+  try {
+    var code = String(payload.code || "").trim().toUpperCase();
+    if (!code) return { success: false, error: "Coupon code is required" };
+
+    var cSheet = getOrCreateCouponsSheet(ss);
+    var lastRow = cSheet.getLastRow();
+    var lastCol = cSheet.getLastColumn();
+    if (lastRow <= 1) return { success: false, error: "Coupon not found" };
+
+    var headers = cSheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    var mapResult = getCouponHeaderMap(headers);
+    if (mapResult.error) return { success: false, error: mapResult.error };
+
+    var colMap = mapResult.map;
+    var data = cSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    for (var r = 0; r < data.length; r++) {
+      var rowCode = String(data[r][colMap.code] || "").trim().toUpperCase();
+      if (rowCode === code) {
+        if (payload.hardDelete === true) {
+          cSheet.deleteRow(r + 2);
+          return { success: true, message: "Coupon " + code + " deleted permanently" };
+        } else {
+          cSheet.getRange(r + 2, colMap.active + 1).setValue(false);
+          return { success: true, message: "Coupon " + code + " deactivated" };
+        }
+      }
+    }
+
+    return { success: false, error: "Coupon " + code + " not found" };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Admin: Retrieves product inventory from the Products tab.
+ */
+function adminGetInventoryHandler(ss) {
+  try {
+    var pSheet = ss.getSheetByName("Products");
+    if (!pSheet || pSheet.getLastRow() <= 1) {
+      return { success: true, products: [] };
+    }
+    var rows = getSheetRowsAsJSON(pSheet);
+    return { success: true, products: rows };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Admin: Updates product stock with audit log.
+ */
+function adminUpdateStockHandler(ss, payload) {
+  try {
+    var productId = String(payload.productId || "").trim();
+    var newStock = Number(payload.stock);
+    if (!productId || isNaN(newStock)) {
+      return { success: false, error: "Valid productId and stock are required" };
+    }
+
+    var pSheet = ss.getSheetByName("Products");
+    if (!pSheet || pSheet.getLastRow() <= 1) {
+      return { success: false, error: "Products sheet not found" };
+    }
+
+    var headerMap = getHeaderMap(pSheet);
+    var idCol = headerMap["product id"] !== undefined ? headerMap["product id"] : headerMap["id"];
+    var stockCol = headerMap["stock"];
+
+    if (idCol === undefined || stockCol === undefined) {
+      return { success: false, error: "Products sheet missing Product ID or Stock column" };
+    }
+
+    var data = pSheet.getRange(2, 1, pSheet.getLastRow() - 1, pSheet.getLastColumn()).getValues();
+    var matchRow = -1;
+    var prevStock = 0;
+
+    for (var r = 0; r < data.length; r++) {
+      if (String(data[r][idCol] || "").trim().toLowerCase() === productId.toLowerCase()) {
+        matchRow = r + 2;
+        prevStock = Number(data[r][stockCol] || 0);
+        break;
+      }
+    }
+
+    if (matchRow === -1) {
+      return { success: false, error: "Product " + productId + " not found" };
+    }
+
+    pSheet.getRange(matchRow, stockCol + 1).setValue(newStock);
+    logOrderActivity(ss, productId, "STOCK_UPDATE", String(prevStock), String(newStock), payload.adminUser || "admin", payload.reason || "Manual inventory adjustment");
+
+    return {
+      success: true,
+      message: "Stock updated for " + productId,
+      productId: productId,
+      previousStock: prevStock,
+      newStock: newStock
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Admin: Aggregates customer profiles from actual Orders sheet.
+ */
+function adminGetCustomersHandler(ss) {
+  try {
+    var ordersRes = adminGetOrdersHandler(ss, {});
+    if (!ordersRes.success) return ordersRes;
+
+    var orders = ordersRes.orders || [];
+    var customerMap = {};
+
+    orders.forEach(function(o) {
+      var phone = (o.phone || "").replace(/[^\d]/g, "").slice(-10);
+      var email = (o.email || "").trim().toLowerCase();
+      var key = phone || email || o.customerName || "unknown";
+
+      if (!customerMap[key]) {
+        customerMap[key] = {
+          id: "CUST-" + (phone || email ? (phone || email.replace(/[^a-z0-9]/g, "")) : Math.random().toString(36).slice(2, 8)),
+          name: o.customerName || "Customer",
+          phone: o.phone || "",
+          email: o.email || "",
+          address: o.address || "",
+          totalOrders: 0,
+          verifiedSpend: 0,
+          lastOrderDate: o.timestamp,
+          orders: []
+        };
+      }
+
+      var c = customerMap[key];
+      c.totalOrders += 1;
+      if (o.paymentStatus === "Paid") {
+        c.verifiedSpend += (o.finalAmount || o.amount || 0);
+      }
+      if (new Date(o.timestamp) > new Date(c.lastOrderDate)) {
+        c.lastOrderDate = o.timestamp;
+      }
+      c.orders.push({
+        orderId: o.orderId,
+        date: o.timestamp,
+        amount: o.finalAmount || o.amount,
+        status: o.status,
+        paymentStatus: o.paymentStatus
+      });
+    });
+
+    var customersList = Object.keys(customerMap).map(function(k) { return customerMap[k]; });
+    customersList.sort(function(a, b) { return b.verifiedSpend - a.verifiedSpend; });
+
+    return {
+      success: true,
+      count: customersList.length,
+      customers: customersList
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Admin: Retrieves store settings from Settings sheet.
+ */
+function adminGetSettingsHandler(ss) {
+  try {
+    var sSheet = ss.getSheetByName("Settings");
+    var settings = {
+      cod_enabled: "true",
+      shipping_charge: "60",
+      free_shipping_threshold: "500",
+      business_name: "Kayal Samayal",
+      whatsapp_number: "+91 9003860616"
+    };
+    if (sSheet && sSheet.getLastRow() > 1) {
+      var rows = getSheetRowsAsJSON(sSheet);
+      rows.forEach(function(r) {
+        if (r.Key) settings[r.Key] = String(r.Value !== undefined ? r.Value : "");
+      });
+    }
+    return { success: true, settings: settings };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Admin: Updates store settings in Settings sheet.
+ */
+function adminSaveSettingsHandler(ss, payload) {
+  try {
+    var sSheet = ss.getSheetByName("Settings");
+    if (!sSheet) {
+      sSheet = ss.insertSheet("Settings");
+      sSheet.appendRow(["Key", "Value", "Description"]);
+      sSheet.setFrozenRows(1);
+    }
+
+    var updates = payload.settings || {};
+    var lastRow = sSheet.getLastRow();
+    var existing = {};
+    if (lastRow > 1) {
+      var keys = sSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var k = 0; k < keys.length; k++) {
+        var keyName = String(keys[k][0] || "").trim();
+        if (keyName) existing[keyName] = k + 2;
+      }
+    }
+
+    for (var uKey in updates) {
+      var val = String(updates[uKey]);
+      if (existing[uKey]) {
+        sSheet.getRange(existing[uKey], 2).setValue(val);
+      } else {
+        sSheet.appendRow([uKey, val, "Configured via Admin Dashboard"]);
+      }
+    }
+
+    return { success: true, message: "Settings saved successfully" };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
 
 
 
