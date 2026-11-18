@@ -12,6 +12,9 @@ interface AdminHeaderProps {
   lastSynced?: Date | null;
   autoRefreshEnabled?: boolean;
   onToggleAutoRefresh?: () => void;
+  codEnabled?: boolean;
+  isTogglingCod?: boolean;
+  onToggleCod?: () => void;
 }
 
 export function AdminHeader({
@@ -23,6 +26,9 @@ export function AdminHeader({
   lastSynced,
   autoRefreshEnabled,
   onToggleAutoRefresh,
+  codEnabled,
+  isTogglingCod,
+  onToggleCod,
 }: AdminHeaderProps) {
   const formattedSyncTime = lastSynced
     ? lastSynced.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -51,6 +57,36 @@ export function AdminHeader({
 
       {/* Right: Sync Status & Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* COD Quick Toggle */}
+        {onToggleCod !== undefined && (
+          <button
+            onClick={onToggleCod}
+            disabled={isTogglingCod}
+            className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+              codEnabled
+                ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                : "border-neutral-300 bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            }`}
+            title={`Cash on Delivery is currently ${codEnabled ? "ACTIVE" : "DISABLED"} on checkout. Click to toggle.`}
+          >
+            <span className="text-[11px] font-bold">COD:</span>
+            <span
+              className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
+                codEnabled ? "bg-emerald-600" : "bg-neutral-400"
+              }`}
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-xs ${
+                  codEnabled ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+            <span className={`text-[10px] sm:text-[11px] font-bold ${codEnabled ? "text-emerald-700" : "text-neutral-500"}`}>
+              {isTogglingCod ? "..." : codEnabled ? "ON" : "OFF"}
+            </span>
+          </button>
+        )}
+
         {/* Google Sheet Live Badge */}
         <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-2.5 py-1 text-[11px] font-medium text-emerald-800">
           <Sheet size={13} className="text-emerald-600" />

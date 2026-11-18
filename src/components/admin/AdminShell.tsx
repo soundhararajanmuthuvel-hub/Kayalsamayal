@@ -3,12 +3,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
+import { fetchAdminSettings, saveAdminSettings } from "@/lib/admin-api";
 
 interface AdminContextType {
   lastSynced: Date | null;
   isRefreshing: boolean;
   refreshData: () => Promise<void>;
   registerRefreshHandler: (fn: () => Promise<void>) => () => void;
+  codEnabled: boolean;
+  isTogglingCod: boolean;
+  toggleCod: () => Promise<boolean>;
 }
 
 const AdminContext = createContext<AdminContextType>({
@@ -16,6 +20,9 @@ const AdminContext = createContext<AdminContextType>({
   isRefreshing: false,
   refreshData: async () => {},
   registerRefreshHandler: () => () => {},
+  codEnabled: true,
+  isTogglingCod: false,
+  toggleCod: async () => true,
 });
 
 export const useAdmin = () => useContext(AdminContext);
@@ -32,6 +39,41 @@ export function AdminShell({ children, title = "Admin ERP", subtitle }: AdminShe
   const [lastSynced, setLastSynced] = useState<Date | null>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [codEnabled, setCodEnabled] = useState<boolean>(true);
+  const [isTogglingCod, setIsTogglingCod] = useState<boolean>(false);
+
+  // Fetch initial COD setting from Sheet
+  useEffect(() => {
+    let active = true;
+    fetchAdminSettings()
+      .then((res) => {
+        if (!active) return;
+        if (res.success && res.settings) {
+          const val = res.settings.cod_enabled;
+          setCodEnabled(val === "true" || String(val).toLowerCase() === "true");
+        }
+      })
+      .catch((err) => console.warn("Notice: Initial COD setting load", err));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggleCod = useCallback(async (): Promise<boolean> => {
+    setIsTogglingCod(true);
+    const nextState = !codEnabled;
+    setCodEnabled(nextState);
+    try {
+      await saveAdminSettings({ cod_enabled: String(nextState) });
+      return nextState;
+    } catch (e) {
+      console.error("Failed to toggle COD setting:", e);
+      setCodEnabled(!nextState);
+      return !nextState;
+    } finally {
+      setIsTogglingCod(false);
+    }
+  }, [codEnabled]);
 
   // Registry of page-specific refresh callbacks
   const [refreshHandlers, setRefreshHandlers] = useState<Array<() => Promise<void>>>([]);
@@ -71,6 +113,9 @@ export function AdminShell({ children, title = "Admin ERP", subtitle }: AdminShe
         isRefreshing,
         refreshData,
         registerRefreshHandler,
+        codEnabled,
+        isTogglingCod,
+        toggleCod,
       }}
     >
       <div className="min-h-screen bg-[#F8F6F0] text-neutral-900 font-sans">
@@ -97,6 +142,9 @@ export function AdminShell({ children, title = "Admin ERP", subtitle }: AdminShe
             lastSynced={lastSynced}
             autoRefreshEnabled={autoRefreshEnabled}
             onToggleAutoRefresh={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+            codEnabled={codEnabled}
+            isTogglingCod={isTogglingCod}
+            onToggleCod={toggleCod}
           />
 
           <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">

@@ -25,7 +25,7 @@ const QUICK_TABS = [
 ];
 
 export default function AdminOrdersPage() {
-  const { registerRefreshHandler } = useAdmin();
+  const { registerRefreshHandler, codEnabled, isTogglingCod, toggleCod } = useAdmin();
   const [allOrders, setAllOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,13 +152,43 @@ export default function AdminOrdersPage() {
             Real-time synchronization with Google Sheets &ldquo;Orders&rdquo;
           </p>
         </div>
-        <button
-          onClick={handleExportCsv}
-          className="flex items-center gap-1.5 rounded-lg border border-[#0C2B1C] bg-[#0C2B1C] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#16452E] transition-all cursor-pointer"
-        >
-          <Download size={14} />
-          <span>Export Orders CSV</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Cash on Delivery (COD) On/Off Toggle Button */}
+          <button
+            onClick={toggleCod}
+            disabled={isTogglingCod}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+              codEnabled
+                ? "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
+            }`}
+            title={`Cash on Delivery is currently ${codEnabled ? "ACTIVE (ON)" : "DISABLED (OFF)"} on checkout. Click to toggle.`}
+          >
+            <span className="text-[11px] text-neutral-600">Cash on Delivery:</span>
+            <span
+              className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
+                codEnabled ? "bg-emerald-600" : "bg-rose-500"
+              }`}
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-xs ${
+                  codEnabled ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+            <span className="font-bold">
+              {isTogglingCod ? "Updating..." : codEnabled ? "COD ON" : "COD OFF"}
+            </span>
+          </button>
+
+          <button
+            onClick={handleExportCsv}
+            className="flex items-center gap-1.5 rounded-lg border border-[#0C2B1C] bg-[#0C2B1C] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#16452E] transition-all cursor-pointer"
+          >
+            <Download size={14} />
+            <span>Export Orders CSV</span>
+          </button>
+        </div>
       </div>
 
       {error && (
