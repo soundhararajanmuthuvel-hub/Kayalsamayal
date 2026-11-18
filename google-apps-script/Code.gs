@@ -353,9 +353,64 @@ function getOrCreateCouponsSheet(ss) {
       newRange.setFontColor("#FFFFFF");
       Logger.log("Appended missing column to Coupons tab: " + missing.join(", "));
     }
+    // Prune any empty duplicate columns beyond canonical A-N (column 14)
+    pruneDuplicateCouponColumns(sheet);
   }
 
   return sheet;
+}
+
+/**
+ * Prunes empty duplicate coupon columns beyond column 14 (columns O onward).
+ * If a column index >= 15 has a header matching any canonical coupon field AND all data rows are blank,
+ * it deletes that column to restore the clean canonical A-N schema.
+ */
+function pruneDuplicateCouponColumns(sheet) {
+  if (!sheet) return;
+  var lastCol = sheet.getLastColumn();
+  var lastRow = sheet.getLastRow();
+  if (lastCol <= 14) return;
+
+  var deletedCount = 0;
+  for (var c = lastCol; c >= 15; c--) {
+    var rawHeader = String(sheet.getRange(1, c).getValue() || "").trim();
+    if (!rawHeader) continue;
+    var norm = rawHeader.toLowerCase().replace(/[\s_\-]+/g, "");
+
+    var isDuplicate = false;
+    for (var field in COUPON_ALIASES) {
+      if (field === "description") continue; // Preserve optional Description column
+      var aliases = COUPON_ALIASES[field];
+      for (var a = 0; a < aliases.length; a++) {
+        if (norm === aliases[a].replace(/[\s_\-]+/g, "")) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      if (isDuplicate) break;
+    }
+
+    if (isDuplicate) {
+      var isEmpty = true;
+      if (lastRow > 1) {
+        var vals = sheet.getRange(2, c, lastRow - 1, 1).getValues();
+        for (var r = 0; r < vals.length; r++) {
+          if (String(vals[r][0] || "").trim() !== "") {
+            isEmpty = false;
+            break;
+          }
+        }
+      }
+      if (isEmpty) {
+        Logger.log("Pruning empty duplicate column " + c + " (" + rawHeader + ") from Coupons sheet");
+        sheet.deleteColumn(c);
+        deletedCount++;
+      }
+    }
+  }
+  if (deletedCount > 0) {
+    Logger.log("Pruned " + deletedCount + " empty duplicate column(s) from Coupons sheet.");
+  }
 }
 
 /**
@@ -1543,6 +1598,21 @@ function setupDatabase() {
   getOrCreateOrdersSheet(ss);
   getOrCreateCouponsSheet(ss);
   Logger.log('Setup done: Orders and Coupons tabs are ready in "' + ss.getName() + '"');
+}
+
+/**
+ * Editor-only diagnostic and maintenance function to prune duplicate columns from Coupons tab.
+ * Run directly from the Apps Script editor via Run > cleanupCouponsSheet.
+ */
+function cleanupCouponsSheet() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName("Coupons");
+  if (!sheet) {
+    Logger.log("ERROR: Coupons sheet not found");
+    return;
+  }
+  pruneDuplicateCouponColumns(sheet);
+  Logger.log("cleanupCouponsSheet completed successfully.");
 }
 
 /**

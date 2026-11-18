@@ -36,6 +36,7 @@ export function CouponSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const userRemovedCouponRef = useRef(false);
+  const attemptedUrlCouponRef = useRef<string | null>(null);
 
   const handleApplyCoupon = async (rawCode: string) => {
     const code = rawCode.trim().toUpperCase();
@@ -128,11 +129,16 @@ export function CouponSection({
 
     const normalizedUrl = urlCoupon.trim().toUpperCase();
 
+    // Do not re-attempt the same URL coupon code multiple times in one session
+    if (attemptedUrlCouponRef.current === normalizedUrl) return;
+
     // If this coupon is already active in CartContext, do nothing
     if (appliedCoupon && appliedCoupon.code.trim().toUpperCase() === normalizedUrl) {
+      attemptedUrlCouponRef.current = normalizedUrl;
       return;
     }
 
+    attemptedUrlCouponRef.current = normalizedUrl;
     const timer = setTimeout(() => {
       handleApplyCoupon(normalizedUrl);
     }, 50);
