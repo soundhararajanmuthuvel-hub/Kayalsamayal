@@ -37,7 +37,7 @@ import Script from "next/script";
 // 2. Set matching live RAZORPAY_KEY_SECRET in server environment and Google Apps Script Script Properties.
 // 3. Remove or toggle the TEST_MODE indicator.
 export const RAZORPAY_KEY_ID =
-  process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_XXXXXXXXXXXXXXX";
+  process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
 export const IS_TEST_MODE = RAZORPAY_KEY_ID.startsWith("rzp_test_");
 
 // Google Apps Script Web App URL for recording orders in Google Sheets
@@ -502,7 +502,7 @@ export default function CheckoutPage() {
 
       setLoadingStatusText("Opening secure payment...");
 
-      const activeRazorpayKey = RAZORPAY_KEY_ID || orderData.keyId;
+      const activeRazorpayKey = orderData.keyId || RAZORPAY_KEY_ID;
       const activeRazorpayOrderId = orderData.razorpayOrderId || orderData.orderId;
 
       // 3. Configure official Razorpay Checkout Options
