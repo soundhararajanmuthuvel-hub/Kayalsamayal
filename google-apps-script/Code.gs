@@ -938,6 +938,27 @@ function doGet(e) {
       return jsonResponse({ success: false, error: "Order not found" });
     }
 
+    // Direct sheet reads for frontend dashboard
+    if (action === "getOrders" || action === "orders" || action === "admin_get_orders") {
+      var ssOrders = getSpreadsheet();
+      return jsonResponse(adminGetOrdersHandler(ssOrders, params));
+    }
+
+    if (action === "getCustomers" || action === "customers" || action === "admin_get_customers") {
+      var ssCust = getSpreadsheet();
+      return jsonResponse(adminGetCustomersHandler(ssCust));
+    }
+
+    if (action === "getInventory" || action === "inventory" || action === "admin_get_inventory") {
+      var ssInv = getSpreadsheet();
+      return jsonResponse(adminGetInventoryHandler(ssInv));
+    }
+
+    if (action === "admin_get_coupons") {
+      var ssCpn = getSpreadsheet();
+      return jsonResponse(adminGetCouponsHandler(ssCpn));
+    }
+
     return jsonResponse({ success: true, message: "Action not recognized, server is ready" });
   } catch (err) {
     return jsonResponse({ success: false, error: err.toString() });

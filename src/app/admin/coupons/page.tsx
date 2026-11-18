@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { AdminCoupon } from "@/lib/admin-api";
+import { AdminCoupon, fetchAdminCoupons, saveAdminCoupon, deleteAdminCoupon } from "@/lib/admin-api";
 import { useAdmin } from "@/components/admin/AdminShell";
-import { Plus, Edit2, CheckCircle2, Loader2, Power } from "lucide-react";
+import { Plus, Edit2, CheckCircle2, Loader2, Power, Trash2 } from "lucide-react";
 
 export default function AdminCouponsPage() {
   const { registerRefreshHandler } = useAdmin();
@@ -30,8 +30,7 @@ export default function AdminCouponsPage() {
 
   const fetchCoupons = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/coupons");
-      const data = await res.json();
+      const data = await fetchAdminCoupons();
       if (data.success) {
         setCoupons(data.coupons || []);
       }
@@ -100,15 +99,10 @@ export default function AdminCouponsPage() {
         active,
       };
 
-      const res = await fetch("/api/admin/coupons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const data = await saveAdminCoupon(payload);
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setMessage({ type: "error", text: data.error || "Failed to save coupon" });
+      if (!data.success) {
+        setMessage({ type: "error", text: "Failed to save coupon" });
       } else {
         setMessage({ type: "success", text: "Coupon saved successfully in Google Sheets!" });
         setModalOpen(false);
@@ -124,17 +118,23 @@ export default function AdminCouponsPage() {
 
   const handleToggleActive = async (c: AdminCoupon) => {
     try {
-      await fetch("/api/admin/coupons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...c,
-          active: !c.active,
-        }),
+      await saveAdminCoupon({
+        ...c,
+        active: !c.active,
       });
       fetchCoupons();
     } catch (err) {
       console.error("Failed to toggle coupon active state", err);
+    }
+  };
+
+  const handleDelete = async (codeToDelete: string) => {
+    if (!window.confirm(`Are you sure you want to delete coupon ${codeToDelete}?`)) return;
+    try {
+      await deleteAdminCoupon(codeToDelete);
+      fetchCoupons();
+    } catch (err) {
+      console.error("Failed to delete coupon", err);
     }
   };
 
@@ -224,13 +224,23 @@ export default function AdminCouponsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleOpenEdit(c)}
-                      className="inline-flex items-center gap-1 rounded border border-[#E8E2D8] bg-white px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 cursor-pointer"
-                    >
-                      <Edit2 size={12} />
-                      <span>Edit</span>
-                    </button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenEdit(c)}
+                        className="inline-flex items-center gap-1 rounded border border-[#E8E2D8] bg-white px-2 py-1 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+                      >
+                        <Edit2 size={12} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(c.code)}
+                        className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-100 cursor-pointer"
+                        title="Delete coupon from Google Sheets"
+                      >
+                        <Trash2 size={12} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

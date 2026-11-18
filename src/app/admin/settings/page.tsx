@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Save, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { fetchAdminSettings, saveAdminSettings } from "@/lib/admin-api";
 
 export default function AdminSettingsPage() {
   const [codEnabled, setCodEnabled] = useState(true);
@@ -15,19 +16,26 @@ export default function AdminSettingsPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/settings")
-      .then((res) => res.json())
+    let active = true;
+    fetchAdminSettings()
       .then((data) => {
+        if (!active) return;
         if (data.success && data.settings) {
           const s = data.settings;
-          setCodEnabled(s.cod_enabled === "true" || s.cod_enabled === true);
+          setCodEnabled(s.cod_enabled === "true" || String(s.cod_enabled) === "true");
           setShippingCharge(Number(s.shipping_charge) || 60);
           setFreeShippingThreshold(Number(s.free_shipping_threshold) || 500);
-          if (s.business_name) setBusinessName(s.business_name);
-          if (s.whatsapp_number) setWhatsappNumber(s.whatsapp_number);
+          if (s.business_name) setBusinessName(String(s.business_name));
+          if (s.whatsapp_number) setWhatsappNumber(String(s.whatsapp_number));
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -36,25 +44,18 @@ export default function AdminSettingsPage() {
     setMessage(null);
 
     try {
-      const payload = {
-        settings: {
-          cod_enabled: String(codEnabled),
-          shipping_charge: String(shippingCharge),
-          free_shipping_threshold: String(freeShippingThreshold),
-          business_name: businessName,
-          whatsapp_number: whatsappNumber,
-        },
+      const payload: Record<string, string> = {
+        cod_enabled: String(codEnabled),
+        shipping_charge: String(shippingCharge),
+        free_shipping_threshold: String(freeShippingThreshold),
+        business_name: businessName,
+        whatsapp_number: whatsappNumber,
       };
 
-      const res = await fetch("/api/admin/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const data = await saveAdminSettings(payload);
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setMessage({ type: "error", text: data.error || "Failed to update settings" });
+      if (!data.success) {
+        setMessage({ type: "error", text: "Failed to update settings" });
       } else {
         setMessage({ type: "success", text: "Settings saved successfully to Google Sheets!" });
       }

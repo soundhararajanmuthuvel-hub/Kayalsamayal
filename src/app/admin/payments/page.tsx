@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAdmin } from "@/components/admin/AdminShell";
+import { fetchAdminOrders, AdminOrder } from "@/lib/admin-api";
 import { CreditCard, CheckCircle2, AlertCircle, Clock, ShieldCheck } from "lucide-react";
 
 interface PaymentSummary {
@@ -36,11 +37,59 @@ export default function AdminPaymentsPage() {
 
   const fetchPayments = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/payments");
-      const data = await res.json();
-      if (data.success) {
-        setSummary(data.summary);
-        setTransactions(data.transactions || []);
+      const data = await fetchAdminOrders();
+      if (data.success && Array.isArray(data.orders)) {
+        const orders: AdminOrder[] = data.orders;
+        let razorpaySuccessCount = 0;
+        let razorpaySuccessAmount = 0;
+        let razorpayFailedCount = 0;
+        let codOrdersCount = 0;
+        let codOrdersAmount = 0;
+        let pendingPaymentAmount = 0;
+        let freeOrdersCount = 0;
+
+        orders.forEach((o) => {
+          const amt = o.finalAmount || o.amount || 0;
+          if (o.paymentMethod === "Razorpay Online") {
+            if (o.paymentStatus === "Paid") {
+              razorpaySuccessCount++;
+              razorpaySuccessAmount += amt;
+            } else if (o.paymentStatus === "Failed") {
+              razorpayFailedCount++;
+            } else {
+              pendingPaymentAmount += amt;
+            }
+          } else if (o.paymentMethod === "COD") {
+            codOrdersCount++;
+            codOrdersAmount += amt;
+          } else {
+            freeOrdersCount++;
+          }
+        });
+
+        setSummary({
+          totalTransactions: orders.length,
+          razorpaySuccessCount,
+          razorpaySuccessAmount,
+          razorpayFailedCount,
+          codOrdersCount,
+          codOrdersAmount,
+          pendingPaymentAmount,
+          freeOrdersCount,
+        });
+
+        const txList: Transaction[] = orders.map((o) => ({
+          orderId: o.orderId,
+          paymentId: o.paymentId,
+          date: o.timestamp,
+          customerName: o.customerName,
+          phone: o.phone,
+          method: o.paymentMethod,
+          status: o.paymentStatus,
+          signatureVerified: o.signatureVerified,
+          amount: o.finalAmount || o.amount,
+        }));
+        setTransactions(txList);
       }
     } finally {
       setLoading(false);

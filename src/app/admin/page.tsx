@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAdmin } from "@/components/admin/AdminShell";
-import { AdminOrder } from "@/lib/admin-api";
+import { AdminOrder, fetchAdminOrders } from "@/lib/admin-api";
 import {
   ShoppingBag,
   IndianRupee,
@@ -49,48 +49,148 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    const [ordersRes, reportsRes] = await Promise.all([
-      fetch("/api/admin/orders?limit=8"),
-      fetch("/api/admin/reports"),
-    ]);
+  const calculateAnalytics = useCallback((allOrders: AdminOrder[]) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let totalRevenue = 0;
+    let pendingRevenue = 0;
+    let todayOrdersCount = 0;
+    let codOrdersCount = 0;
+    let razorpayOrdersCount = 0;
 
-    const ordersData = await ordersRes.json();
-    const reportsData = await reportsRes.json();
+    const statusCounts: Record<string, number> = {
+      pending: 0,
+      confirmed: 0,
+      processing: 0,
+      packed: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+    };
 
-    if (ordersData.success) {
-      setStats(ordersData.stats);
-      setRecentOrders(ordersData.orders || []);
-    } else {
-      setError(ordersData.error || "Failed to load order statistics");
+    // 14-day sales trend map
+    const dailySalesMap: Record<string, { date: string; revenue: number; ordersCount: number }> = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dailySalesMap[key] = { date: key, revenue: 0, ordersCount: 0 };
     }
 
-    if (reportsData.success) {
-      setReport(reportsData);
-    }
+    const productSalesMap: Record<string, { name: string; quantity: number; revenue: number }> = {};
+    const paymentBreakdown = {
+      razorpay: { count: 0, amount: 0 },
+      cod: { count: 0, amount: 0 },
+      free: { count: 0, amount: 0 },
+    };
+
+    allOrders.forEach((o) => {
+      const dateKey = o.timestamp ? o.timestamp.slice(0, 10) : "";
+      if (dateKey === todayStr) {
+        todayOrdersCount++;
+      }
+
+      const st = (o.status || o.orderStatus || "").toLowerCase();
+      if (st.includes("pending")) statusCounts.pending++;
+      else if (st.includes("confirm")) statusCounts.confirmed++;
+      else if (st.includes("process")) statusCounts.processing++;
+      else if (st.includes("pack")) statusCounts.packed++;
+      else if (st.includes("ship")) statusCounts.shipped++;
+      else if (st.includes("deliver")) statusCounts.delivered++;
+      else if (st.includes("cancel")) statusCounts.cancelled++;
+      else statusCounts.pending++;
+
+      const isPaid = o.paymentStatus === "Paid";
+      const isCod = o.paymentMethod === "COD";
+      const isFree = o.paymentMethod === "Free Order";
+      const amt = o.finalAmount || o.amount || 0;
+
+      if (isCod) {
+        codOrdersCount++;
+        paymentBreakdown.cod.count++;
+        paymentBreakdown.cod.amount += amt;
+      } else if (isFree) {
+        paymentBreakdown.free.count++;
+      } else {
+        razorpayOrdersCount++;
+        paymentBreakdown.razorpay.count++;
+        if (isPaid) paymentBreakdown.razorpay.amount += amt;
+      }
+
+      if (isPaid) {
+        totalRevenue += amt;
+      } else if (o.paymentStatus === "Pending") {
+        pendingRevenue += amt;
+      }
+
+      if (dateKey && dailySalesMap[dateKey]) {
+        dailySalesMap[dateKey].ordersCount++;
+        if (isPaid) dailySalesMap[dateKey].revenue += amt;
+      }
+
+      (o.items || []).forEach((it) => {
+        const name = it.name || "Item";
+        if (!productSalesMap[name]) {
+          productSalesMap[name] = { name, quantity: 0, revenue: 0 };
+        }
+        productSalesMap[name].quantity += (it.quantity || 1);
+        if (isPaid) {
+          productSalesMap[name].revenue += (it.total || it.unitPrice * (it.quantity || 1));
+        }
+      });
+    });
+
+    setStats({
+      totalOrders: allOrders.length,
+      todayOrders: todayOrdersCount,
+      pendingOrders: statusCounts.pending,
+      confirmedOrders: statusCounts.confirmed,
+      processingOrders: statusCounts.processing,
+      packedOrders: statusCounts.packed,
+      shippedOrders: statusCounts.shipped,
+      deliveredOrders: statusCounts.delivered,
+      cancelledOrders: statusCounts.cancelled,
+      totalRevenue: Math.round(totalRevenue),
+      pendingRevenue: Math.round(pendingRevenue),
+      codOrders: codOrdersCount,
+      razorpayOrders: razorpayOrdersCount,
+    });
+
+    setReport({
+      dailySales: Object.values(dailySalesMap),
+      bestsellingProducts: Object.values(productSalesMap).sort((a, b) => b.quantity - a.quantity).slice(0, 5),
+      paymentBreakdown,
+    });
+
+    setRecentOrders(allOrders.slice(0, 8));
   }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const res = await fetchAdminOrders();
+      if (res.success) {
+        calculateAnalytics(res.orders);
+      } else {
+        setError(res.error || "Failed to load order records");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error reading orders");
+    } finally {
+      setLoading(false);
+    }
+  }, [calculateAnalytics]);
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      fetch("/api/admin/orders?limit=8").then((r) => r.json()),
-      fetch("/api/admin/reports").then((r) => r.json()),
-    ])
-      .then(([ordersData, reportsData]) => {
+    fetchAdminOrders()
+      .then((res) => {
         if (!active) return;
-        if (ordersData.success) {
-          setStats(ordersData.stats);
-          setRecentOrders(ordersData.orders || []);
-        } else {
-          setError(ordersData.error || "Failed to load order statistics");
-        }
-        if (reportsData.success) {
-          setReport(reportsData);
+        if (res.success) {
+          calculateAnalytics(res.orders);
         }
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : "Error connecting to database");
+        setError(err instanceof Error ? err.message : "Error loading orders");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -101,7 +201,7 @@ export default function AdminDashboardPage() {
       active = false;
       unregister();
     };
-  }, [loadData, registerRefreshHandler]);
+  }, [calculateAnalytics, loadData, registerRefreshHandler]);
 
   if (loading && !stats) {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { AdminProduct } from "@/lib/admin-api";
+import { AdminProduct, fetchAdminInventory, updateAdminStock } from "@/lib/admin-api";
 import { useAdmin } from "@/components/admin/AdminShell";
 import { AlertTriangle, CheckCircle2, Edit2, Loader2, Search } from "lucide-react";
 
@@ -20,10 +20,9 @@ export default function AdminInventoryPage() {
 
   const fetchInventory = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/inventory");
-      const data = await res.json();
+      const data = await fetchAdminInventory();
       if (data.success) {
-        setItems(data.inventory || []);
+        setItems(data.products || []);
       }
     } finally {
       setLoading(false);
@@ -50,19 +49,14 @@ export default function AdminInventoryPage() {
     setMessage(null);
 
     try {
-      const res = await fetch("/api/admin/inventory", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: editingProduct.id,
-          stock: newStockVal,
-          reason: updateReason,
-        }),
-      });
+      const data = await updateAdminStock(
+        editingProduct.id,
+        newStockVal,
+        updateReason
+      );
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setMessage({ type: "error", text: data.error || "Failed to update stock" });
+      if (!data.success) {
+        setMessage({ type: "error", text: "Failed to update stock" });
       } else {
         setMessage({ type: "success", text: "Stock updated successfully in Google Sheets!" });
         setEditingProduct(null);

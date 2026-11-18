@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useAdmin } from "@/components/admin/AdminShell";
-import { AdminOrder } from "@/lib/admin-api";
+import { AdminOrder, fetchAdminOrders, exportOrdersToCsv } from "@/lib/admin-api";
 import {
   Search,
   Download,
@@ -26,7 +26,7 @@ const QUICK_TABS = [
 
 export default function AdminOrdersPage() {
   const { registerRefreshHandler } = useAdmin();
-  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,77 +40,104 @@ export default function AdminOrdersPage() {
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
-  const fetchOrders = useCallback(async () => {
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(limit),
-      sort,
-      status: activeTab,
-      paymentStatus,
-      paymentMethod,
-      startDate,
-      endDate,
-      search,
-    });
-
-    const res = await fetch(`/api/admin/orders?${params.toString()}`);
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || "Failed to load orders from Google Sheets");
+  const loadOrders = useCallback(async () => {
+    try {
+      const res = await fetchAdminOrders();
+      if (res.success) {
+        setAllOrders(res.orders || []);
+      } else {
+        setError(res.error || "Failed to load orders from Google Sheets");
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error reading orders");
+    } finally {
+      setLoading(false);
     }
-
-    setOrders(data.orders || []);
-    setTotalPages(data.pagination?.totalPages || 1);
-    setTotalCount(data.pagination?.totalCount || 0);
-  }, [page, limit, sort, activeTab, paymentStatus, paymentMethod, startDate, endDate, search]);
+  }, []);
 
   useEffect(() => {
     let active = true;
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(limit),
-      sort,
-      status: activeTab,
-      paymentStatus,
-      paymentMethod,
-      startDate,
-      endDate,
-      search,
-    });
-
-    fetch(`/api/admin/orders?${params.toString()}`)
-      .then((res) => res.json())
-      .then((data) => {
+    fetchAdminOrders()
+      .then((res) => {
         if (!active) return;
-        if (data.success) {
-          setOrders(data.orders || []);
-          setTotalPages(data.pagination?.totalPages || 1);
-          setTotalCount(data.pagination?.totalCount || 0);
-        } else {
-          setError(data.error || "Failed to load orders from Google Sheets");
+        if (res.success) {
+          setAllOrders(res.orders || []);
         }
       })
       .catch((err) => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : "Error fetching orders");
+        setError(err instanceof Error ? err.message : "Error loading orders");
       })
       .finally(() => {
         if (active) setLoading(false);
       });
 
-    const unregister = registerRefreshHandler(fetchOrders);
+    const unregister = registerRefreshHandler(loadOrders);
     return () => {
       active = false;
       unregister();
     };
-  }, [page, limit, sort, activeTab, paymentStatus, paymentMethod, startDate, endDate, search, fetchOrders, registerRefreshHandler]);
+  }, [loadOrders, registerRefreshHandler]);
+
+  // Client-side filtering & sorting
+  const filteredOrders = useMemo(() => {
+    return allOrders
+      .filter((o) => {
+        // 1. Text search
+        if (search) {
+          const q = search.toLowerCase();
+          const matchesId = (o.orderId || "").toLowerCase().includes(q);
+          const matchesName = (o.customerName || "").toLowerCase().includes(q);
+          const matchesPhone = (o.phone || "").toLowerCase().includes(q);
+          const matchesPayId = (o.paymentId || "").toLowerCase().includes(q);
+          if (!matchesId && !matchesName && !matchesPhone && !matchesPayId) return false;
+        }
+
+        // 2. Tab filter
+        if (activeTab !== "all") {
+          const st = (o.status || o.orderStatus || "").toLowerCase();
+          if (!st.includes(activeTab)) return false;
+        }
+
+        // 3. Payment Status filter
+        if (paymentStatus !== "all") {
+          if (o.paymentStatus.toLowerCase() !== paymentStatus) return false;
+        }
+
+        // 4. Payment Method filter
+        if (paymentMethod !== "all") {
+          if (!o.paymentMethod.toLowerCase().includes(paymentMethod)) return false;
+        }
+
+        // 5. Date filters
+        if (startDate && o.timestamp && o.timestamp.slice(0, 10) < startDate) return false;
+        if (endDate && o.timestamp && o.timestamp.slice(0, 10) > endDate) return false;
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sort === "oldest") {
+          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        }
+        if (sort === "amount_high") {
+          return (b.finalAmount || b.amount) - (a.finalAmount || a.amount);
+        }
+        if (sort === "amount_low") {
+          return (a.finalAmount || a.amount) - (b.finalAmount || b.amount);
+        }
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+  }, [allOrders, search, activeTab, paymentStatus, paymentMethod, startDate, endDate, sort]);
+
+  const totalPages = Math.ceil(filteredOrders.length / limit) || 1;
+  const paginatedOrders = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredOrders.slice(start, start + limit);
+  }, [filteredOrders, page, limit]);
 
   const handleExportCsv = () => {
-    window.open("/api/admin/export/orders", "_blank");
+    exportOrdersToCsv(filteredOrders);
   };
 
   return (
@@ -119,7 +146,7 @@ export default function AdminOrdersPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-serif text-lg font-bold text-[#0C2B1C]">
-            Live Orders ({totalCount})
+            Live Orders ({filteredOrders.length})
           </h2>
           <p className="text-xs text-neutral-500">
             Real-time synchronization with Google Sheets &ldquo;Orders&rdquo;
@@ -290,7 +317,7 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E8E2D8]">
-              {orders.map((o) => {
+              {paginatedOrders.map((o) => {
                 const totalQty = (o.items || []).reduce((acc, it) => acc + (it.quantity || 1), 0);
                 const isPaid = o.paymentStatus === "Paid";
                 const isCod = o.paymentMethod === "COD";
@@ -381,7 +408,7 @@ export default function AdminOrdersPage() {
                 );
               })}
 
-              {!loading && orders.length === 0 && (
+              {!loading && filteredOrders.length === 0 && (
                 <tr>
                   <td colSpan={12} className="px-4 py-12 text-center text-neutral-400">
                     No orders match your filter criteria.
@@ -405,7 +432,7 @@ export default function AdminOrdersPage() {
         <div className="flex items-center justify-between border-t border-[#E8E2D8] bg-[#FAF8F5] px-4 py-3">
           <div className="text-xs text-neutral-500">
             Showing Page <span className="font-semibold text-neutral-900">{page}</span> of{" "}
-            <span className="font-semibold text-neutral-900">{totalPages}</span> ({totalCount} total)
+            <span className="font-semibold text-neutral-900">{totalPages}</span> ({filteredOrders.length} total)
           </div>
           <div className="flex items-center gap-2">
             <button

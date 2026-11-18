@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Loader2 } from "lucide-react";
+import { fetchAdminInventory } from "@/lib/admin-api";
 
 interface CategoryMeta {
   name: string;
@@ -17,14 +18,40 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/categories")
-      .then((res) => res.json())
+    let active = true;
+    fetchAdminInventory()
       .then((data) => {
-        if (data.success) {
-          setCategories(data.categories || []);
+        if (!active) return;
+        if (data.success && Array.isArray(data.products)) {
+          const map: Record<string, CategoryMeta> = {};
+          data.products.forEach((p) => {
+            const cat = p.category || "Traditional Masalas";
+            if (!map[cat]) {
+              let emoji = "🌶️";
+              if (cat.toLowerCase().includes("health")) emoji = "🥣";
+              else if (cat.toLowerCase().includes("instant")) emoji = "⚡";
+              else if (cat.toLowerCase().includes("podi")) emoji = "🌾";
+              map[cat] = {
+                name: cat,
+                count: 0,
+                activeCount: 0,
+                sampleImage: p.image || null,
+                emoji,
+              };
+            }
+            map[cat].count += 1;
+            if (p.active) map[cat].activeCount += 1;
+          });
+          setCategories(Object.values(map));
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (loading) {

@@ -1,11 +1,34 @@
 "use client";
 
-import React from "react";
-import { usePathname } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { isAdminAuthenticated } from "@/lib/admin-auth";
+import { Loader2 } from "lucide-react";
 
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      const isAuth = isAdminAuthenticated();
+      setAuthenticated(isAuth);
+      setChecking(false);
+
+      if (!isAuth && pathname !== "/admin/login") {
+        router.push("/admin/login");
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [pathname, router]);
 
   if (pathname === "/admin/login") {
     return (
@@ -13,6 +36,18 @@ export default function AdminRootLayout({ children }: { children: React.ReactNod
         {children}
       </div>
     );
+  }
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-[#092216] flex items-center justify-center text-[#D4A373]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return null;
   }
 
   // Determine current page title for the header

@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { logoutAdmin } from "@/lib/admin-auth";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -53,17 +54,10 @@ export function AdminSidebar({
   const router = useRouter();
   const [loggingOut, setLoggingOut] = React.useState(false);
 
-  const handleLogout = async () => {
-    try {
-      setLoggingOut(true);
-      await fetch("/api/admin/auth/logout", { method: "POST" });
-      router.push("/admin/login");
-      router.refresh();
-    } catch (err) {
-      console.error("Logout error", err);
-    } finally {
-      setLoggingOut(false);
-    }
+  const handleLogout = () => {
+    setLoggingOut(true);
+    logoutAdmin();
+    router.push("/admin/login");
   };
 
   const sidebarContent = (

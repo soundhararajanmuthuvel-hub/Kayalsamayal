@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, User, AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { loginAdmin } from "@/lib/admin-auth";
 
 function LoginForm() {
   const router = useRouter();
@@ -15,32 +16,19 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/admin/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setError(data.error || "Invalid username or password");
-        setLoading(false);
-        return;
-      }
-
-      router.push(redirectPath);
-      router.refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Network error";
-      setError(msg);
+    const result = loginAdmin(username, password);
+    if (!result.success) {
+      setError(result.error || "Invalid username or password");
       setLoading(false);
+      return;
     }
+
+    router.push(redirectPath);
   };
 
   return (
@@ -63,7 +51,7 @@ function LoginForm() {
           Admin Portal & ERP
         </p>
         <p className="text-xs text-neutral-400 mt-2">
-          Secure, authenticated access to live Google Sheets order records
+          Direct Google Sheets integration • Real-time order synchronization
         </p>
       </div>
 
@@ -121,7 +109,7 @@ function LoginForm() {
           {loading ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              <span>Verifying Credentials...</span>
+              <span>Verifying...</span>
             </>
           ) : (
             <>
@@ -134,7 +122,7 @@ function LoginForm() {
 
       <div className="mt-6 border-t border-[#1B432E] pt-4 text-center">
         <p className="text-[11px] text-neutral-500">
-          Google Sheets single source of truth • End-to-end server verification
+          Google Sheets single source of truth • Frontend + Sheet direct sync
         </p>
       </div>
     </div>

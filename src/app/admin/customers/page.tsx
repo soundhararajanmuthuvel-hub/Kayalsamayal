@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { AdminCustomer } from "@/lib/admin-api";
+import { AdminCustomer, fetchAdminCustomers } from "@/lib/admin-api";
 import { useAdmin } from "@/components/admin/AdminShell";
 import { Search, ChevronRight } from "lucide-react";
 
@@ -15,8 +15,7 @@ export default function AdminCustomersPage() {
 
   const fetchCustomers = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/customers");
-      const data = await res.json();
+      const data = await fetchAdminCustomers();
       if (data.success) {
         setCustomers(data.customers || []);
       }

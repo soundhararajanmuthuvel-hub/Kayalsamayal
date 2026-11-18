@@ -2,19 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useAdmin } from "@/components/admin/AdminShell";
+import { fetchAdminOrders, fetchAdminCoupons, computeAdminReports, AdminReportsData } from "@/lib/admin-api";
 import { Tag, Package, Loader2 } from "lucide-react";
 
-interface ReportPayload {
-  dailySales: Array<{ date: string; revenue: number; ordersCount: number }>;
-  monthlySales: Array<{ month: string; revenue: number; ordersCount: number }>;
-  bestsellingProducts: Array<{ name: string; quantity: number; revenue: number }>;
-  topCoupons: Array<{ code: string; uses: number; totalDiscount: number }>;
-  paymentBreakdown: {
-    razorpay: { count: number; amount: number };
-    cod: { count: number; amount: number };
-    free: { count: number; amount: number };
-  };
-}
+type ReportPayload = AdminReportsData;
 
 export default function AdminReportsPage() {
   const { registerRefreshHandler } = useAdmin();
@@ -23,10 +14,13 @@ export default function AdminReportsPage() {
 
   const fetchReports = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/reports");
-      const json = await res.json();
-      if (json.success) {
-        setData(json);
+      const [ordersRes, couponsRes] = await Promise.all([
+        fetchAdminOrders(),
+        fetchAdminCoupons(),
+      ]);
+      if (ordersRes.success && Array.isArray(ordersRes.orders)) {
+        const computed = computeAdminReports(ordersRes.orders, couponsRes.coupons || []);
+        setData(computed);
       }
     } finally {
       setLoading(false);

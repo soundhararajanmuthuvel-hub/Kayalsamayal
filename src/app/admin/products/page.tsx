@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { AdminProduct } from "@/lib/admin-api";
+import { AdminProduct, fetchAdminInventory } from "@/lib/admin-api";
 import { useAdmin } from "@/components/admin/AdminShell";
 import { Search, Package } from "lucide-react";
 
@@ -14,8 +14,7 @@ export default function AdminProductsPage() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/products");
-      const data = await res.json();
+      const data = await fetchAdminInventory();
       if (data.success) {
         setProducts(data.products || []);
       }
@@ -26,8 +25,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/admin/products")
-      .then((res) => res.json())
+    fetchAdminInventory()
       .then((data) => {
         if (!active) return;
         if (data.success) {

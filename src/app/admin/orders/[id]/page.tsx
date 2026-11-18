@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { AdminOrder } from "@/lib/admin-api";
+import { useParams } from "next/navigation";
+import { AdminOrder, fetchAdminOrders, updateAdminOrderStatus } from "@/lib/admin-api";
 import {
   ArrowLeft,
   Printer,
@@ -29,13 +30,9 @@ const ORDER_STATUS_FLOW = [
   "Refunded",
 ];
 
-export default function AdminOrderDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }> | { id: string };
-}) {
-  const resolvedParams = use(Promise.resolve(params));
-  const orderId = resolvedParams.id;
+export default function AdminOrderDetailPage() {
+  const routeParams = useParams();
+  const orderId = String(routeParams?.id || "");
 
   const [order, setOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,13 +48,19 @@ export default function AdminOrderDetailPage({
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/admin/orders/${encodeURIComponent(orderId)}`)
-      .then((res) => res.json())
+    fetchAdminOrders()
       .then((data) => {
         if (!active) return;
-        if (data.success && data.order) {
-          setOrder(data.order);
-          setSelectedStatus(data.order.status);
+        if (data.success && Array.isArray(data.orders)) {
+          const found = data.orders.find(
+            (o) => o.orderId.toLowerCase() === decodeURIComponent(orderId).toLowerCase()
+          );
+          if (found) {
+            setOrder(found);
+            setSelectedStatus(found.status);
+          } else {
+            setError("Order not found in Google Sheets");
+          }
         } else {
           setError(data.error || "Order not found");
         }
@@ -82,23 +85,20 @@ export default function AdminOrderDetailPage({
     setStatusMessage(null);
 
     try {
-      const res = await fetch(`/api/admin/orders/${encodeURIComponent(order.orderId)}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: selectedStatus,
-          trackingNumber,
-          courier,
-          notes: adminNotes,
-        }),
-      });
+      const data = await updateAdminOrderStatus(
+        order.orderId,
+        selectedStatus,
+        "admin",
+        adminNotes,
+        trackingNumber,
+        courier
+      );
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         setStatusMessage({ type: "error", text: data.error || "Failed to update order status" });
       } else {
         setStatusMessage({ type: "success", text: data.message || "Order status updated successfully!" });
-        setOrder((prev) => (prev ? { ...prev, status: selectedStatus } : null));
+        setOrder((prev) => (prev ? { ...prev, status: selectedStatus, orderStatus: selectedStatus } : null));
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error updating status";
