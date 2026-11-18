@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     if (event === "payment.captured" || event === "order.paid") {
       // Reconcile and confirm order idempotently in Google Apps Script
       if (razorpayOrderId && razorpayPaymentId) {
-        const rawAuthSecret = process.env.SERVER_AUTH_SECRET || "";
+        const rawAuthSecret = process.env.SERVER_AUTH_SECRET || process.env.RAZORPAY_KEY_SECRET || "";
         const serverAuthSecret = rawAuthSecret.trim().replace(/^["']|["']$/g, "").trim();
 
         if (!serverAuthSecret) {

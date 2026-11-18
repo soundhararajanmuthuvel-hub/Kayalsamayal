@@ -1038,9 +1038,14 @@ function doPost(e) {
       return jsonResponse({ success: false, error: "Unrecognized admin action: " + action });
     }
 
-    // Optional: Server-side Razorpay order creation via UrlFetchApp
+    // Optional: Server-side Razorpay order creation via UrlFetchApp (online orders only)
     if (action === "createOrder") {
-      return jsonResponse(handleServerOrderCreation(payload));
+      var pMethod = String(payload.paymentMethod || payload.payment_method || "").toLowerCase();
+      var isCodReq = (pMethod.indexOf("cod") !== -1 || pMethod.indexOf("cash") !== -1 || payload.isCod === true);
+      if (!isCodReq && !payload.order_id && !payload.orderId) {
+        return jsonResponse(handleServerOrderCreation(payload));
+      }
+      // COD and direct order persistence proceed to PRIMARY ORDER PERSISTENCE below
     }
 
     // Coupon validation against Coupons sheet
@@ -1068,9 +1073,9 @@ function doPost(e) {
     var ss = getSpreadsheet();
     var ordersSheet = getOrCreateOrdersSheet(ss);
 
-    // Extract fields supporting both camelCase and snake_case conventions
-    var orderId     = String(payload.order_id || payload.orderId || "").trim();
-    var paymentId   = String(payload.payment_id || payload.paymentId || "").trim();
+    // Extract fields supporting camelCase, snake_case, and Razorpay-specific conventions
+    var orderId     = String(payload.order_id || payload.orderId || payload.razorpayOrderId || payload.razorpay_order_id || "").trim();
+    var paymentId   = String(payload.payment_id || payload.paymentId || payload.razorpayPaymentId || payload.razorpay_payment_id || "").trim();
     var status      = String(payload.status || payload.paymentStatus || "Paid").trim();
     var amount      = Number(payload.amount !== undefined ? payload.amount : (payload.grandTotal || 0));
     var currency    = String(payload.currency || "INR").trim();
@@ -1370,6 +1375,49 @@ function doPost(e) {
     ];
 
     ordersSheet.appendRow(newRow);
+
+    // ── INVENTORY STOCK DEDUCTION (Products Tab) ───────────────────────────
+    try {
+      var pSheet = ss.getSheetByName("Products");
+      if (pSheet && Array.isArray(payload.items) && payload.items.length > 0) {
+        var pLastRow = pSheet.getLastRow();
+        var pLastCol = pSheet.getLastColumn();
+        if (pLastRow > 1 && pLastCol > 0) {
+          var pHeaders = pSheet.getRange(1, 1, 1, pLastCol).getValues()[0];
+          var pIdCol = -1;
+          var pNameCol = -1;
+          var pStockCol = -1;
+          for (var pi = 0; pi < pHeaders.length; pi++) {
+            var ph = String(pHeaders[pi] || "").trim().toLowerCase();
+            if (ph === "product id" || ph === "id") pIdCol = pi;
+            if (ph === "product name" || ph === "name") pNameCol = pi;
+            if (ph === "stock" || ph === "quantity") pStockCol = pi;
+          }
+          if (pStockCol !== -1 && (pIdCol !== -1 || pNameCol !== -1)) {
+            var pData = pSheet.getRange(2, 1, pLastRow - 1, pLastCol).getValues();
+            for (var itIdx = 0; itIdx < payload.items.length; itIdx++) {
+              var itItem = payload.items[itIdx];
+              var targetId = String(itItem.productId || itItem.id || "").trim().toLowerCase();
+              var targetName = String(itItem.productName || itItem.name || "").trim().toLowerCase();
+              var deductQty = Math.max(1, Number(itItem.quantity || itItem.qty || 1));
+              for (var rowIdx = 0; rowIdx < pData.length; rowIdx++) {
+                var rowId = pIdCol !== -1 ? String(pData[rowIdx][pIdCol] || "").trim().toLowerCase() : "";
+                var rowName = pNameCol !== -1 ? String(pData[rowIdx][pNameCol] || "").trim().toLowerCase() : "";
+                if ((targetId && rowId === targetId) || (targetName && rowName === targetName)) {
+                  var curStock = Number(pData[rowIdx][pStockCol] || 0);
+                  var updatedStock = Math.max(0, curStock - deductQty);
+                  pSheet.getRange(rowIdx + 2, pStockCol + 1).setValue(updatedStock);
+                  Logger.log("Deducted " + deductQty + " stock for " + (targetName || targetId) + ": " + curStock + " -> " + updatedStock);
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (stockErr) {
+      Logger.log("Inventory stock deduction notice: " + stockErr.toString());
+    }
 
     Logger.log("Order saved successfully: Order ID " + orderId + ", Payment ID " + paymentId + (couponCode ? ", Coupon: " + couponCode + " (" + couponNote + ")" : ""));
 

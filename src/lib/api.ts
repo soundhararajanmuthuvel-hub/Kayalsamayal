@@ -410,7 +410,16 @@ export async function createOrder(order: OrderInput): Promise<OrderResponse> {
 
 export async function createPendingOrder(order: OrderInput): Promise<OrderResponse> {
   try {
-    const payload = { action: "createPendingOrder", ...order };
+    const payload = {
+      action: "createPendingOrder",
+      order_id: order.razorpayOrderId || `order_pending_${Date.now()}`,
+      orderId: order.razorpayOrderId || `order_pending_${Date.now()}`,
+      payment_id: "PENDING",
+      paymentId: "PENDING",
+      status: "Pending",
+      amount: order.razorpayAmount || 0,
+      ...order,
+    };
     const res = await fetch(API_URL, {
       method: "POST",
       mode: "cors",
@@ -465,7 +474,16 @@ export async function confirmRazorpayOrder(data: {
   items_notes?: string;
 }): Promise<OrderResponse> {
   try {
-    const payload = { action: "confirmRazorpayOrder", ...data };
+    const payload = {
+      action: "confirmRazorpayOrder",
+      order_id: data.razorpayOrderId,
+      orderId: data.razorpayOrderId,
+      payment_id: data.razorpayPaymentId,
+      paymentId: data.razorpayPaymentId,
+      status: "Paid",
+      amount: data.razorpayAmount,
+      ...data,
+    };
     const res = await fetch(API_URL, {
       method: "POST",
       mode: "cors",
